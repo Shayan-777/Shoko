@@ -22,8 +22,6 @@ module Shoko
               annotation_editor_overlay(mode)
             when :in_book_search_popup
               in_book_search_popup(mode)
-            when :translator_screen
-              translator_screen(mode)
             else
               raise ArgumentError, "unknown component palette: #{component}"
             end
@@ -95,51 +93,6 @@ module Shoko
             }
           end
           private_class_method :in_book_search_popup_light
-
-          def translator_screen(mode)
-            return translator_screen_light if mode == :light
-
-            translator_screen_dark
-          end
-          private_class_method :translator_screen
-
-          def translator_screen_dark
-            {
-              source_panel_bg: "\e[48;2;20;35;48m",
-              target_panel_bg: "\e[48;2;19;40;35m",
-              source_accent: "\e[38;2;129;208;235m",
-              target_accent: "\e[38;2;161;226;196m",
-              source_cursor_bg: "\e[48;2;73;107;126m",
-              cursor_fg: "\e[38;2;242;246;255m#{ANSI::BOLD}",
-              dropdown_bg: "\e[48;2;31;35;53m",
-              dropdown_selected_bg: "\e[48;2;67;74;108m",
-              dropdown_fg: "\e[38;2;211;220;246m",
-              dropdown_selected_fg: "\e[38;2;242;246;255m#{ANSI::BOLD}",
-              dropdown_muted_fg: "\e[38;2;125;132;162m",
-              panel_text_fg: UI::TOOLTIP_FG_DEFAULT,
-              panel_muted_fg: UI::MENU_MUTED_FG,
-            }
-          end
-          private_class_method :translator_screen_dark
-
-          def translator_screen_light
-            {
-              source_panel_bg: "\e[48;2;232;239;245m",
-              target_panel_bg: "\e[48;2;232;240;236m",
-              source_accent: "\e[38;2;18;90;122m",
-              target_accent: "\e[38;2;44;112;88m",
-              source_cursor_bg: "\e[48;2;185;214;228m",
-              cursor_fg: "\e[38;2;22;40;57m#{ANSI::BOLD}",
-              dropdown_bg: "\e[48;2;231;236;243m",
-              dropdown_selected_bg: "\e[48;2;210;220;236m",
-              dropdown_fg: "\e[38;2;43;50;63m",
-              dropdown_selected_fg: "\e[38;2;22;40;57m#{ANSI::BOLD}",
-              dropdown_muted_fg: "\e[38;2;122;131;149m",
-              panel_text_fg: "\e[38;2;40;48;62m",
-              panel_muted_fg: "\e[38;2;108;118;133m",
-            }
-          end
-          private_class_method :translator_screen_light
         end
       end
     end

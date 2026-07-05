@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../constants/ui_constants'
+require_relative '../menu_design/canvas_frame'
+require_relative '../menu_design/view_accents'
+require_relative '../status_bar/palette'
 require_relative '../ui/text_utils'
-require_relative '../menu_design/frame_renderer'
-require_relative '../menu_design/layout'
-require_relative '../menu_design/status_renderer'
 require 'shoko/shared/terminal/text_sanitizer'
-require 'shoko/shared/terminal/ansi'
 require_relative 'annotation_rendering_helpers'
 
 module Shoko
@@ -15,11 +13,15 @@ module Shoko
     module Ui
       module Components
         module Screens
-          # Detailed view for a selected annotation with readable sections.
+          # Detail view for one annotation: the selected passage as a muted,
+          # quote-marked block and the note beneath it in the primary tone —
+          # the in-book notes panel's reading order, given the whole canvas.
+          # Small dim labels separate the sections; no divider lines.
           class AnnotationDetailScreenComponent < BaseComponent
-            include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
             include AnnotationScreenRendering
+
+            Palette = StatusBar::Palette
 
             def initialize(dependencies: nil, menu_visual_profile: nil)
               super()
@@ -29,90 +31,91 @@ module Shoko
             end
 
             def do_render(surface, bounds)
+              frame = MenuDesign::CanvasFrame.new(surface, bounds)
+              frame.paint
               annotation = selected_annotation
               view = annotation ? AnnotationView.new(annotation) : nil
+              frame.render_rule(title: 'Annotation', accent: accent, meta: rule_meta(view))
+              return render_empty(frame) unless view
 
-              frame = MenuDesign::FrameRenderer.new(surface, bounds)
-              frame.render_title(title: 'Annotation Detail', hint: 'O open  E edit  D delete  ESC back')
-              frame.render_divider
-
-              unless view
-                render_empty(surface, bounds)
-                frame.render_footer(text: 'No annotation selected')
-                return
-              end
-
-              layout = compute_layout(bounds)
-              render_status(surface, bounds, layout, view)
-              render_sections(surface, bounds, layout, view)
-              frame.render_footer(text: footer_text(view))
+              render_sections(frame, view)
+              frame.render_hint('O open in book · E edit · D delete · ESC back')
             end
 
             def preferred_height(_available_height)
               :fill
             end
 
-            # Section rendering helpers for annotation detail screens.
-            include Adapters::Ui::Constants::Ui
-
-            SectionContext = Data.define(:surface, :bounds, :row, :indent, :width, :title, :lines, :budget, :prefix)
-
             private
 
-            def render_empty(surface, bounds)
-              MenuDesign::StatusRenderer.new(surface, bounds).render_empty(
-                row: bounds.height / 2,
-                indent: 2,
-                message: 'Select an annotation from the list to inspect details.',
-                color: COLOR_TEXT_DIM
-              )
+            def accent
+              MenuDesign::ViewAccents.for(:annotations)
             end
 
-            def render_status(surface, bounds, layout, annotation)
-              left = "Book • #{resolve_book_label}"
-              right_parts = [
-                "Ch #{annotation.chapter_index || '—'}",
-              ].compact
+            def rule_meta(view)
+              return '' unless view
 
-              MenuDesign::StatusRenderer.new(surface, bounds).render_status(
-                row: layout[:status_row],
-                indent: layout[:content_indent],
-                left: truncate_text(left, [layout[:content_width] - 10, 8].max),
-                right: right_parts.join('  •  '),
-                width: layout[:content_width],
-                left_color: COLOR_TEXT_DIM,
-                right_color: COLOR_TEXT_DIM
-              )
+              parts = [compact_book_label]
+              parts << "Ch #{view.chapter_index}" if view.chapter_index
+              saved = view.formatted_date.to_s.strip
+              parts << "saved #{saved.split.first}" unless saved.empty?
+              parts.join(' · ')
+            end
+
+            def render_empty(frame)
+              row = frame.body_top + [frame.body_height / 2, 0].max - 1
+              frame.write_line(row, [['Select an annotation from the list to inspect it.',
+                                      Palette::LANDING_DIM_FG]])
+              frame.render_hint('ESC back')
+            end
+
+            def render_sections(frame, view)
+              budgets = section_budgets(frame)
+              row = render_quote_section(frame, view, frame.body_top, budgets[:quote])
+              render_note_section(frame, view, row + 1, budgets[:note])
+            end
+
+            def render_quote_section(frame, view, top, budget)
+              frame.write_line(top, [['SELECTED TEXT', Palette::LANDING_DIM_FG]])
+              lines = wrap_block(view.text, frame.content_width - 4, empty: 'No selected text.')
+              write_quoted_lines(frame, lines.first(budget), top + 1)
+            end
+
+            def write_quoted_lines(frame, lines, row)
+              lines.each_with_index do |line, offset|
+                lead = offset.zero? ? '❝ ' : '  '
+                frame.write_line(row + offset, [[lead, Palette::LANDING_DIM_FG],
+                                                [line, Palette::NOTES_EXCERPT_FG]])
+              end
+              row + lines.length
+            end
+
+            def render_note_section(frame, view, top, budget)
+              return if top > frame.body_bottom
+
+              frame.write_line(top, [['NOTE', Palette::LANDING_DIM_FG]])
+              lines = wrap_block(view.note, frame.content_width - 4, empty: 'No note added yet.')
+              lines.first(budget).each_with_index do |line, offset|
+                break if top + 1 + offset > frame.body_bottom
+
+                frame.write_line(top + 1 + offset, [['  ', nil], [line, Palette::NOTES_NOTE_FG]])
+              end
+            end
+
+            def section_budgets(frame)
+              available = [frame.body_height - 3, 4].max
+              quote = (available * 0.5).floor.clamp(2, available - 2)
+              { quote: quote, note: [available - quote, 2].max }
             end
 
             def wrap_block(text, width, empty:)
               clean = safe_text(text.to_s)
               clean = empty if clean.strip.empty?
-              wrap_text(clean, [width, 8].max)
+              wrap_words(clean, [width, 8].max)
             end
 
-            def compute_layout(bounds)
-              content_width = MenuDesign::Layout.centered_content_width(
-                bounds,
-                preferred: 104,
-                min: 52,
-                horizontal_padding: 8
-              )
-              indent = MenuDesign::Layout.centered_indent(bounds, content_width)
-
-              {
-                status_row: 3,
-                content_indent: indent,
-                content_width: content_width,
-                content_top: 5,
-                content_bottom: bounds.height - 2,
-              }
-            end
-
-            def footer_text(annotation)
-              saved = annotation.formatted_date.to_s.strip
-              saved = 'unknown' if saved.empty?
-              "Saved #{saved}"
+            def compact_book_label
+              safe_text(resolve_book_label.to_s)
             end
 
             def selected_annotation
@@ -121,129 +124,11 @@ module Shoko
             end
 
             def menu_state_reader
-              return @menu_state_reader if @menu_state_reader
-
-              @menu_state_reader = @dependencies&.menu_state_reader
+              @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
             def safe_text(text)
               Shoko::Shared::Terminal::TextSanitizer.sanitize(text, preserve_newlines: false, preserve_tabs: false)
-            end
-
-            def render_sections(surface, bounds, layout, annotation)
-              sections = section_contexts(surface, bounds, layout, annotation)
-              row = render_section(sections.fetch(:quote))
-              render_section(sections.fetch(:note).with(row: row + 1))
-            end
-
-            def render_section(section)
-              render_section_heading(section)
-              render_section_lines(section)
-              section.row + 2 + [section.budget, 1].max
-            end
-
-            def section_contexts(surface, bounds, layout, annotation)
-              base_context = { surface: surface, bounds: bounds, layout: layout, annotation: annotation }
-              budgets = section_budgets(layout)
-              {
-                quote: quote_section_context(base_context, budgets[:quote]),
-                note: note_section_context(base_context, budgets[:note]),
-              }
-            end
-
-            def section_context(surface, bounds, layout, title:, lines:, budget:, prefix:)
-              SectionContext.new(
-                surface: surface,
-                bounds: bounds,
-                row: layout[:content_top],
-                indent: layout[:content_indent],
-                width: layout[:content_width],
-                title: title,
-                lines: lines,
-                budget: budget,
-                prefix: prefix
-              )
-            end
-
-            def quote_section_context(base_context, budget)
-              section_context(
-                base_context.fetch(:surface),
-                base_context.fetch(:bounds),
-                base_context.fetch(:layout),
-                title: 'Selected Text',
-                lines: wrapped_quote_lines(base_context),
-                budget: budget,
-                prefix: '│ '
-              )
-            end
-
-            def note_section_context(base_context, budget)
-              section_context(
-                base_context.fetch(:surface),
-                base_context.fetch(:bounds),
-                base_context.fetch(:layout),
-                title: 'Note',
-                lines: wrapped_note_lines(base_context),
-                budget: budget,
-                prefix: '  '
-              )
-            end
-
-            def wrapped_quote_lines(base_context)
-              annotation = base_context.fetch(:annotation)
-              layout = base_context.fetch(:layout)
-              wrap_block(annotation.text, layout[:content_width] - 3, empty: 'No selected text.')
-            end
-
-            def wrapped_note_lines(base_context)
-              annotation = base_context.fetch(:annotation)
-              layout = base_context.fetch(:layout)
-              wrap_block(annotation.note, layout[:content_width] - 3, empty: 'No note added yet.')
-            end
-
-            def section_budgets(layout)
-              available_rows = [layout[:content_bottom] - layout[:content_top] + 1, 6].max
-              quote_budget = (available_rows * 0.55).floor.clamp(4, available_rows - 3)
-              note_budget = [available_rows - quote_budget - 3, 2].max
-              { quote: quote_budget, note: note_budget }
-            end
-
-            def render_section_heading(section)
-              title_style = "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}"
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              section.surface.write(
-                section.bounds,
-                section.row,
-                section.indent,
-                "#{title_style}#{section.title}#{reset}"
-              )
-              section.surface.write(
-                section.bounds,
-                section.row + 1,
-                section.indent,
-                "#{COLOR_TEXT_DIM}#{'─' * section.width}#{reset}"
-              )
-            end
-
-            def render_section_lines(section)
-              clipped_lines(section).each_with_index do |line, offset|
-                content = truncate_text("#{section.prefix}#{line}", section.width)
-                section.surface.write(
-                  section.bounds,
-                  section.row + 2 + offset,
-                  section.indent,
-                  pad_right(content, section.width)
-                )
-              end
-            end
-
-            def clipped_lines(section)
-              return [] if section.budget <= 0
-              return section.lines.first(section.budget) if section.lines.length <= section.budget
-
-              clipped = section.lines.first(section.budget)
-              clipped[-1] = truncate_text('…', [clipped[-1].to_s.length, 1].max)
-              clipped
             end
           end
         end

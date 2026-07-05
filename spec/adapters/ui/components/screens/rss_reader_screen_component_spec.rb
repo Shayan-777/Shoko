@@ -55,13 +55,13 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
     [:dark, 80, 24],
     [:light, 120, 32]
   ].each do |mode, width, height|
-    it "renders the article list in the shared shell in #{mode} mode at #{width}x#{height}" do
+    it "renders the article blocks on the canvas in #{mode} mode at #{width}x#{height}" do
       text = text_for(mode: mode, width: width, height: height)
 
-      expect(text).to include('SHOKO')
       expect(text).to include('RSS Reader')
       expect(text).to include('Morning Edition')
       expect(text).to include('Daily Planet')
+      expect(text).not_to include('│')
     end
   end
 
@@ -92,7 +92,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
     expect(text).to include('City hall story with more detail.')
   end
 
-  it 'renders the centered field in add-feed mode' do
+  it 'keeps the list visible and points at the status bar in add-feed mode' do
     allow(menu_state_reader).to receive_messages(
       mode: :rss_reader_feed_input,
       rss_feed_input: 'https://example.com/feed.xml',
@@ -101,8 +101,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
 
     text = text_for(mode: :dark, width: 90, height: 28)
 
-    expect(text).to include('Add Feed')
-    expect(text).to include('Paste an RSS or Atom feed URL')
-    expect(text).to include('https://example.com/feed.xml')
+    expect(text).to include('type in the bar below')
+    expect(text).to include('Morning Edition')
   end
 end

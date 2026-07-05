@@ -95,7 +95,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DictionarySettingsScree
       bounds = Shoko::Adapters::Ui::Components::Rect.new(1, 1, 80, 24)
 
       expect { component.render(surface, bounds) }.not_to raise_error
-      expect(output.writes.any? { |entry| entry[:text].include?('Loading dictionary list...') }).to be(true)
+      expect(output.writes.any? { |entry| entry[:text].include?('Loading dictionary list…') }).to be(true)
     end
   end
 end

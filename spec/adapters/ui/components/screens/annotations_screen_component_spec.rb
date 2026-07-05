@@ -101,9 +101,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
 
     output = terminal.writes.map { |write| write[:text] }.join
     expect(output).to include('Annotations')
-    expect(output).to include('PREVIEW')
-    expect(output).to include('EXCERPT')
+    expect(output).to include('A personal reflection.')
     expect(output).to include('A highlighted sentence')
+    expect(output).to include('Ch 5')
   end
 
   it 'renders menu annotations with symbol keys and missing timestamps without raising' do
@@ -130,6 +130,6 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
     expect { component.render(surface, bounds) }.not_to raise_error
 
     output = terminal.writes.map { |write| write[:text] }.join
-    expect(output).to include('No selected text')
+    expect(output).to include('(empty note)')
   end
 end

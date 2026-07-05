@@ -20,6 +20,32 @@ module Shoko
               Shoko::Shared::Terminal::TextMetrics.wrap_cells(t, w)
             end
 
+            # Word-aware wrapping for prose (descriptions, notes, articles):
+            # lines break between words; a single word longer than the line
+            # falls back to cell wrapping so nothing is ever lost.
+            def wrap_words(text, width)
+              w = width.to_i
+              metrics = Shoko::Shared::Terminal::TextMetrics
+              words = (text || '').to_s.split(/\s+/).reject(&:empty?)
+              return [''] if words.empty? || w <= 0
+
+              lines = [+'']
+              words.each do |word|
+                segments = metrics.visible_length(word) > w ? metrics.wrap_cells(word, w) : [word]
+                segments.each { |segment| flow_segment(lines, segment, w) }
+              end
+              lines
+            end
+
+            def flow_segment(lines, segment, width)
+              candidate = lines.last.empty? ? segment : "#{lines.last} #{segment}"
+              if Shoko::Shared::Terminal::TextMetrics.visible_length(candidate) <= width
+                lines[-1] = candidate
+              else
+                lines << segment.dup
+              end
+            end
+
             def truncate_text(text, max_length)
               str = (text || '').to_s
               w = max_length.to_i

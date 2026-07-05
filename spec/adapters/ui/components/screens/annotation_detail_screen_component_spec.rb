@@ -25,20 +25,17 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationDetailScreenC
   let(:component) { described_class.new(dependencies: dependencies) }
 
   [
-    [:dark, 80, 24],
-    [:light, 80, 24],
-    [:dark, 120, 40],
-    [:light, 120, 40]
-  ].each do |mode, width, height|
-    it "renders coherent annotation detail layout in #{mode} mode at #{width}x#{height}" do
-      writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
+    [80, 24],
+    [120, 40]
+  ].each do |width, height|
+    it "renders the canvas annotation detail at #{width}x#{height}" do
+      writes = render_component(component, width: width, height: height)
       text = rendered_text(writes)
 
-      expect(text).to include('Annotation Detail')
-      expect(text).to include('Selected Text')
-      expect(text).to include('Note')
-      expect(text).to include('Book •')
-      expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
+      expect(text).to include('Annotation')
+      expect(text).to include('SELECTED TEXT')
+      expect(text).to include('NOTE')
+      expect(text).not_to include('│')
     end
   end
 end

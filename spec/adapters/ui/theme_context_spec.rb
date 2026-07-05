@@ -14,7 +14,7 @@ RSpec.describe Shoko::Adapters::Ui::ThemeContext do
       expect(context.theme_id).to eq(:default)
       expect(context.color_mode).to eq(:dark)
       expect(context.palette).to eq(Shoko::Adapters::Ui::Constants::Themes.palette_for(:default))
-      expect(context.ui_tokens).to include(:menu_surface_bg, :menu_title_fg)
+      expect(context.ui_tokens).to include(:highlight_bg, :annotation_panel_bg)
     end
   end
 
@@ -23,8 +23,8 @@ RSpec.describe Shoko::Adapters::Ui::ThemeContext do
       context = described_class.apply!(theme_id: :sepia)
 
       expect(context.color_mode).to eq(:light)
-      expect(Shoko::Adapters::Ui::Constants::Ui::MENU_SURFACE_BG)
-        .to eq(Shoko::Adapters::Ui::Constants::Ui::MENU_SURFACE_BG_LIGHT)
+      expect(Shoko::Adapters::Ui::Constants::Ui::HIGHLIGHT_BG_ACTIVE)
+        .to eq(Shoko::Adapters::Ui::Constants::Ui::HIGHLIGHT_BG_LIGHT)
       expect(Shoko::Adapters::Ui::Components::RenderStyle.palette)
         .to eq(Shoko::Adapters::Ui::Constants::Themes.palette_for(:sepia))
     end

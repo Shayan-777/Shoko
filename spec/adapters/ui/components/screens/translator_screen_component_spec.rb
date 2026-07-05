@@ -84,16 +84,16 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
 
     raw = terminal.writes.map { |write| write[:text] }.join("\n")
     rendered = strip_ansi(raw)
-    palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:translator_screen, :dark)
+    palette = Shoko::Adapters::Ui::Components::StatusBar::Palette
 
     expect(rendered).to include('Translator')
     expect(rendered).to include('SOURCE')
     expect(rendered).to include('RESULT')
     expect(rendered).to include('Hallo')
     expect(rendered).to include('Hello world')
-    expect(rendered).to include('Detected: German')
-    expect(raw).to include(palette[:source_accent])
-    expect(raw).to include(palette[:target_accent])
+    expect(rendered).to include('detected: german')
+    expect(raw).to include(palette::TRANS_FIELD_BG)
+    expect(raw).to include(palette::TRANS_BG)
   end
 
   it 'renders the caret as the thin blinking stripe, not a block cell' do
@@ -101,10 +101,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
 
     raw = terminal.writes.map { |write| write[:text] }.join("\n")
     rendered = strip_ansi(raw)
-    palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:translator_screen, :dark)
 
     expect(rendered).to include(Shoko::Adapters::Ui::Components::Ui::CursorBlink::CURSOR_GLYPH)
-    expect(raw).not_to include(palette[:source_cursor_bg])
+    expect(raw).to include(Shoko::Adapters::Ui::Components::StatusBar::Palette::TRANS_CARET_FG)
   end
 
   it 'maps header and body clicks to translator actions' do
@@ -140,8 +139,37 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
     expect(rendered_dropdown).to include('FR   French')
     expect(rendered_dropdown).to include('ES   Spanish')
     expect(rendered_dropdown).not_to include('Italian')
+
+    # Family scrollbar: full-height █ track + accent █ thumb, no line glyphs.
+    raw = terminal.writes.map { |write| write[:text] }.join("\n")
+    palette = Shoko::Adapters::Ui::Components::StatusBar::Palette
     expect(rendered_dropdown).to include('█')
-    expect(rendered_dropdown).to include('│')
+    expect(rendered_dropdown).not_to include('│')
+    expect(raw).to include(palette::TRANS_SCROLL_TRACK_FG)
+    expect(raw).to include(palette::TRANS_SCROLL_THUMB_FG)
+  end
+
+  it 'registers the open picker as a wheel target and scrolls it minimally' do
+    menu_state_reader.mode = :translator_source_dropdown
+    registry = Shoko::Adapters::Ui::State::MenuHitRegistry.new
+    deps = Struct.new(:menu_state_reader, :menu_hit_registry).new(menu_state_reader, registry)
+    wheel_component = described_class.new(dependencies: deps)
+
+    wheel_component.render(surface, bounds)
+
+    layout = wheel_component.send(:layout_metrics, bounds)
+    popup_box = wheel_component.send(:dropdown_popup_box, layout[:left_box], :source)
+    action = registry.hit(popup_box.col + 2, popup_box.row + 2)
+    expect(action).to eq(type: :list_wheel, list: :translator_language)
+
+    # Minimal scrolling: moving the selection inside the window keeps start 0;
+    # moving past the bottom scrolls just enough to reveal it.
+    menu_state_reader.translator_dropdown_selected = 4
+    expect(wheel_component.send(:dropdown_window, :source)[:start]).to eq(0)
+    menu_state_reader.translator_dropdown_selected = 5
+    expect(wheel_component.send(:dropdown_window, :source)[:start]).to eq(1)
+    menu_state_reader.translator_dropdown_selected = 1
+    expect(wheel_component.send(:dropdown_window, :source)[:start]).to eq(1)
   end
 
   it 'maps wrapped body coordinates into source and target selection ranges' do
@@ -204,7 +232,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
     raw = terminal.writes.map { |write| write[:text] }.join("\n")
     rendered = strip_ansi(raw)
 
-    expect(raw).to include(Shoko::Adapters::Ui::Constants::Ui::MENU_SELECTION_BG)
+    expect(raw).to include(Shoko::Adapters::Ui::Components::StatusBar::Palette::TRANS_SELECTED_BG)
     expect(rendered).to include('Copy to Clipboard')
     expect(rendered).to include('Paste from Clipboard')
   end

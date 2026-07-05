@@ -67,33 +67,38 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
     let(:component) { described_class.new(nil, dependencies: dependencies) }
 
     [
-      [:dark, 80, 24],
-      [:light, 80, 24],
-      [:dark, 120, 40],
-      [:light, 120, 40]
-    ].each do |mode, width, height|
-      it "renders shared settings shell in #{mode} mode at #{width}x#{height}" do
-        writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
+      [80, 24],
+      [120, 40]
+    ].each do |width, height|
+      it "renders the canvas settings list at #{width}x#{height}" do
+        writes = render_component(component, width: width, height: height)
         text = rendered_text(writes)
 
         expect(text).to include('Settings')
-        expect(text).to include('PREFERENCES')
-        expect(text).to include('SELECTION')
         expect(text).to include('View Mode')
         expect(text).to include('Download Source')
         expect(text).to include('Go Back')
-        expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
+        expect(text).not_to include('│')
       end
+    end
+
+    it 'shows the highlighted setting description in the inspector well on wide canvases' do
+      allow(menu_state_reader).to receive(:settings_selected).and_return(22)
+
+      writes = render_component(component, width: 110, height: 30)
+      text = strip_ansi(rendered_text(writes))
+
+      expect(text).to include('Nuke everything')
+      expect(text).to include('Arm a full reset')
     end
 
     it 'keeps the selected setting visible near the end of the list' do
       allow(menu_state_reader).to receive(:settings_selected).and_return(22)
 
-      writes = with_color_mode(:dark) { render_component(component, width: 80, height: 24) }
+      writes = render_component(component, width: 80, height: 24)
       text = strip_ansi(rendered_text(writes))
 
       expect(text).to include('Nuke everything')
-      expect(text).to include('Arm a full reset')
     end
   end
 end

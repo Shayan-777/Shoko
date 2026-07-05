@@ -1,15 +1,14 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../constants/ui_constants'
 require 'shoko/shared/terminal/text_sanitizer'
 require_relative '../ui/cursor_blink'
 require 'shoko/shared/annotation_list_input'
 require_relative '../ui/annotation_markup'
 require_relative '../ui/text_utils'
-require_relative '../menu_design/frame_renderer'
-require_relative '../menu_design/layout'
-require_relative '../menu_design/status_renderer'
+require_relative '../menu_design/canvas_frame'
+require_relative '../menu_design/view_accents'
+require_relative '../status_bar/palette'
 require 'shoko/shared/terminal/ansi'
 require_relative 'annotation_rendering_helpers'
 
@@ -18,14 +17,21 @@ module Shoko
     module Ui
       module Components
         module Screens
-          # Note editor for selected annotation from menu flows.
+          # Note editor for a selected annotation: the quoted passage as muted
+          # context up top, and the note in a raised compose well beneath it —
+          # the in-book notes compose treatment given the whole canvas. Line
+          # numbers ride a dim gutter inside the well; the caret is the same
+          # blinking thin stripe the other editors use.
           class AnnotationEditScreenComponent < BaseComponent
-            include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
             include AnnotationScreenRendering
             include Ui::CursorBlink
 
+            Palette = StatusBar::Palette
+
             GUTTER_WIDTH = 4
+            QUOTE_ROWS = 3
+            WELL_PAD = 1
 
             attr_reader :edit_state
 
@@ -40,25 +46,17 @@ module Shoko
             end
 
             def do_render(surface, bounds)
+              frame = MenuDesign::CanvasFrame.new(surface, bounds)
+              frame.paint
               annotation = edit_state.selected_annotation
               view = AnnotationView.new(annotation || {})
+              frame.render_rule(title: 'Edit Annotation', accent: accent, meta: rule_meta(view, annotation))
+              return render_empty(frame) unless annotation
 
-              frame = MenuDesign::FrameRenderer.new(surface, bounds)
-              frame.render_title(title: 'Edit Annotation', hint: 'Ctrl-S save  Esc cancel  Arrows move')
-              frame.render_divider
-
-              unless annotation
-                render_empty(surface, bounds)
-                frame.render_footer(text: 'No annotation selected for editing')
-                return
-              end
-
-              layout = compute_layout(bounds)
-              render_status_row(surface, bounds, layout, view)
-              render_quote_context(surface, bounds, layout, view)
-              render_editor(surface, bounds, layout)
-
-              frame.render_footer(text: footer_text(layout))
+              layout = compute_layout(frame)
+              render_quote_context(frame, view, layout)
+              render_editor(surface, bounds, frame, layout)
+              frame.render_hint(hint_text(layout))
             end
 
             def preferred_height(_available_height)
@@ -120,39 +118,119 @@ module Shoko
               move_cursor { |styler, cursor, width| styler.move_down(cursor, width) }
             end
 
-            # Rendering helpers for the menu annotation edit screen.
-            include Adapters::Ui::Constants::Ui
-
-            EditorRenderContext = Data.define(:surface, :bounds, :layout, :lines, :cursor_state)
-            EditorLineContext = Data.define(:surface, :bounds, :layout, :index, :line_text, :cursor_state)
+            EditorRenderContext = Data.define(:surface, :bounds, :frame, :layout, :lines, :cursor_state)
 
             private
 
-            def render_empty(surface, bounds)
-              MenuDesign::StatusRenderer.new(surface, bounds).render_empty(
-                row: bounds.height / 2,
-                indent: 2,
-                message: 'Select an annotation first, then press E to edit its note.',
-                color: COLOR_TEXT_DIM
+            def accent
+              MenuDesign::ViewAccents.for(:annotations)
+            end
+
+            def rule_meta(view, annotation)
+              return '' unless annotation
+
+              parts = [compact_book_label]
+              parts << "Ch #{view.chapter_index}" if view.chapter_index
+              parts << "#{edit_state.text.length} chars"
+              parts.join(' · ')
+            end
+
+            def compact_book_label
+              Shoko::Shared::Terminal::TextSanitizer.sanitize(
+                resolve_book_label.to_s, preserve_newlines: false, preserve_tabs: false
               )
             end
 
-            def render_status_row(surface, bounds, layout, annotation)
-              left = "Book • #{resolve_book_label}"
-              right_parts = [
-                "Ch #{annotation.chapter_index || '—'}",
-                "#{edit_state.text.length} chars",
-              ].compact
+            def render_empty(frame)
+              row = frame.body_top + [frame.body_height / 2, 0].max - 1
+              frame.write_line(row, [['Select an annotation first, then press E to edit its note.',
+                                      Palette::LANDING_DIM_FG]])
+              frame.render_hint('ESC back')
+            end
 
-              MenuDesign::StatusRenderer.new(surface, bounds).render_status(
-                row: layout[:status_row],
-                indent: layout[:content_indent],
-                left: truncate_text(left, [layout[:content_width] - 10, 8].max),
-                right: right_parts.join('  •  '),
-                width: layout[:content_width],
-                left_color: COLOR_TEXT_DIM,
-                right_color: COLOR_TEXT_DIM
+            def hint_text(layout)
+              text = edit_state.text.to_s
+              cursor = edit_state.cursor(text)
+              width = @editor_text_width || [layout[:well_width] - GUTTER_WIDTH - 2, 8].max
+              line, col = Ui::AnnotationMarkup::Styler.new(text).cursor_position(cursor, width)
+              "CTRL-S save · ESC cancel · line #{line + 1}, col #{col + 1}"
+            end
+
+            def compute_layout(frame)
+              editor_top = frame.body_top + QUOTE_ROWS + 2
+              {
+                quote_top: frame.body_top,
+                well_top: editor_top,
+                well_height: [frame.body_bottom - editor_top + 1, 3].max,
+                well_width: frame.content_width,
+              }
+            end
+
+            def render_quote_context(frame, view, layout)
+              frame.write_line(layout[:quote_top], [['SELECTED TEXT', Palette::LANDING_DIM_FG]])
+              lines = visible_quote_lines(view, frame)
+              lines.each_with_index do |line, index|
+                lead = index.zero? ? '❝ ' : '  '
+                frame.write_line(layout[:quote_top] + 1 + index,
+                                 [[lead, Palette::LANDING_DIM_FG], [line, Palette::NOTES_EXCERPT_FG]])
+              end
+            end
+
+            def visible_quote_lines(view, frame)
+              quote = view.text.to_s.strip
+              quote = 'No selected text.' if quote.empty?
+              wrap_words(safe_text(quote), [frame.content_width - 4, 8].max).first(QUOTE_ROWS)
+            end
+
+            # ----- the compose well -----
+
+            def render_editor(surface, bounds, frame, layout)
+              paint_well(surface, bounds, frame, layout)
+              render_editor_lines(
+                EditorRenderContext.new(
+                  surface: surface, bounds: bounds, frame: frame, layout: layout,
+                  lines: prepared_editor_lines(layout),
+                  cursor_state: prepared_cursor_state(layout)
+                )
               )
+            end
+
+            def paint_well(surface, bounds, frame, layout)
+              blank = "#{Palette::RESET}#{Palette::NOTES_FIELD_BG}#{' ' * layout[:well_width]}#{Palette::RESET}"
+              layout[:well_height].times do |offset|
+                surface.write(bounds, layout[:well_top] + offset, frame.content_x, blank)
+              end
+            end
+
+            def editor_text_width(layout)
+              [layout[:well_width] - GUTTER_WIDTH - (WELL_PAD * 2) - 1, 8].max
+            end
+
+            def prepared_editor_text(layout)
+              @editor_text_width = editor_text_width(layout)
+              edit_state.text.to_s
+            end
+
+            def prepared_editor_lines(layout)
+              text = prepared_editor_text(layout)
+              Ui::AnnotationMarkup::Styler.new(text).render_lines(@editor_text_width)
+            end
+
+            def prepared_cursor_state(layout)
+              text = prepared_editor_text(layout)
+              styler = Ui::AnnotationMarkup::Styler.new(text)
+              editor_cursor_state(styler, text, layout)
+            end
+
+            def editor_cursor_state(styler, text, layout)
+              cursor_index = edit_state.cursor(text)
+              cursor_line, cursor_col = styler.cursor_position(cursor_index, @editor_text_width)
+              @editor_scroll_top = compute_scroll_top(cursor_line, layout[:well_height])
+              {
+                line: cursor_line,
+                col: cursor_col,
+                visible_line: cursor_line - @editor_scroll_top,
+              }
             end
 
             def compute_scroll_top(cursor_line, editor_height)
@@ -162,12 +240,47 @@ module Shoko
               cursor_line - editor_height + 1
             end
 
-            def footer_text(layout)
-              text = edit_state.text.to_s
-              cursor = edit_state.cursor(text)
-              width = @editor_text_width || [layout[:content_width] - GUTTER_WIDTH - 1, 8].max
-              line, col = Ui::AnnotationMarkup::Styler.new(text).cursor_position(cursor, width)
-              "Editing note • line #{line + 1}, col #{col + 1} • #{text.length} chars"
+            def visible_editor_lines(lines, layout)
+              visible = lines[@editor_scroll_top, layout[:well_height]] || []
+              Array.new(layout[:well_height]) { |index| visible[index].to_s }
+            end
+
+            def render_editor_lines(context)
+              visible_editor_lines(context.lines, context.layout).each_with_index do |line_text, index|
+                render_editor_line(context, index, line_text)
+              end
+            end
+
+            def render_editor_line(context, index, line_text)
+              absolute_line = @editor_scroll_top + index
+              row = context.layout[:well_top] + index
+              gutter = pad_left((absolute_line + 1).to_s, GUTTER_WIDTH - 1)
+              content = editor_line_text(line_text, index, context.cursor_state)
+              context.surface.write(
+                context.bounds, row, context.frame.content_x + WELL_PAD,
+                editor_line_shell(gutter, pad_right(content, @editor_text_width))
+              )
+            end
+
+            def editor_line_text(line_text, index, cursor_state)
+              display = "#{line_text}#{Ui::AnnotationMarkup::STYLE_RESET}"
+              return display unless index == cursor_state[:visible_line]
+
+              inline_cursor_text(
+                display,
+                cursor_state[:col],
+                width: @editor_text_width,
+                style_prefix: Palette::NOTES_CARET_FG,
+                restore_prefix: Palette::NOTES_INPUT_FG
+              )
+            end
+
+            # Every span rides the well surface; embedded full resets are
+            # re-based so markup styling can never drop the well background.
+            def editor_line_shell(gutter, padded)
+              base = "#{Palette::RESET}#{Palette::NOTES_FIELD_BG}"
+              body = padded.gsub(Shoko::Shared::Terminal::Ansi::RESET, "#{base}#{Palette::NOTES_INPUT_FG}")
+              "#{base}#{Palette::LANDING_DIM_FG}#{gutter} #{base}#{Palette::NOTES_INPUT_FG}#{body}#{Palette::RESET}"
             end
 
             def move_cursor
@@ -191,186 +304,6 @@ module Shoko
 
             def safe_text(text)
               Shoko::Shared::Terminal::TextSanitizer.sanitize(text, preserve_newlines: false, preserve_tabs: false)
-            end
-
-            def render_quote_context(surface, bounds, layout, annotation)
-              render_section_heading(
-                surface,
-                bounds,
-                row: layout[:quote_heading_row],
-                indent: layout[:content_indent],
-                width: layout[:content_width],
-                title: 'Selected Text Context'
-              )
-
-              visible_quote_lines(annotation, layout).each_with_index do |line, index|
-                row = layout[:quote_start_row] + index
-                content = truncate_text("│ #{line}", layout[:content_width])
-                surface.write(bounds, row, layout[:content_indent], pad_right(content, layout[:content_width]))
-              end
-            end
-
-            def render_editor(surface, bounds, layout)
-              render_editor_heading(surface, bounds, layout)
-              render_editor_lines(
-                EditorRenderContext.new(
-                  surface: surface,
-                  bounds: bounds,
-                  layout: layout,
-                  lines: prepared_editor_lines(layout),
-                  cursor_state: prepared_cursor_state(layout)
-                )
-              )
-            end
-
-            def compute_layout(bounds)
-              content_width = MenuDesign::Layout.centered_content_width(
-                bounds,
-                preferred: 110,
-                min: 58,
-                horizontal_padding: 8
-              )
-
-              {
-                status_row: 3,
-                content_indent: MenuDesign::Layout.centered_indent(bounds, content_width),
-                content_width: content_width,
-              }.merge(quote_layout(bounds)).merge(editor_layout(bounds))
-            end
-
-            def visible_quote_lines(annotation, layout)
-              quote = annotation.text.to_s.strip
-              quote = 'No selected text.' if quote.empty?
-              wrap_text(safe_text(quote), [layout[:content_width] - 2, 8].max).first(layout[:quote_lines_visible])
-            end
-
-            def render_section_heading(surface, bounds, row:, indent:, width:, title:)
-              heading_style = "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}"
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              surface.write(bounds, row, indent, "#{heading_style}#{title}#{reset}")
-              surface.write(bounds, row + 1, indent, "#{COLOR_TEXT_DIM}#{'─' * width}#{reset}")
-            end
-
-            def quote_layout(bounds)
-              {
-                quote_heading_row: 4,
-                quote_divider_row: 5,
-                quote_start_row: 6,
-                quote_lines_visible: bounds.height >= 30 ? 4 : 3,
-              }
-            end
-
-            def editor_layout(bounds)
-              quote_info = quote_layout(bounds)
-              editor_heading = quote_info[:quote_start_row] + quote_info[:quote_lines_visible] + 1
-              editor_divider = editor_heading + 1
-              editor_start = editor_divider + 1
-              editor_bottom = bounds.height - 2
-
-              {
-                editor_heading_row: editor_heading,
-                editor_divider_row: editor_divider,
-                editor_start_row: editor_start,
-                editor_height: [editor_bottom - editor_start + 1, 3].max,
-              }
-            end
-
-            def editor_text_width(layout)
-              [layout[:content_width] - self.class::GUTTER_WIDTH - 1, 8].max
-            end
-
-            def render_editor_heading(surface, bounds, layout)
-              render_section_heading(
-                surface,
-                bounds,
-                row: layout[:editor_heading_row],
-                indent: layout[:content_indent],
-                width: layout[:content_width],
-                title: 'Note Editor'
-              )
-            end
-
-            def prepared_editor_text(layout)
-              @editor_text_width = editor_text_width(layout)
-              edit_state.text.to_s
-            end
-
-            def prepared_editor_lines(layout)
-              text = prepared_editor_text(layout)
-              Ui::AnnotationMarkup::Styler.new(text).render_lines(@editor_text_width)
-            end
-
-            def prepared_cursor_state(layout)
-              text = prepared_editor_text(layout)
-              styler = Ui::AnnotationMarkup::Styler.new(text)
-              editor_cursor_state(styler, text, layout)
-            end
-
-            def editor_cursor_state(styler, text, layout)
-              cursor_index = edit_state.cursor(text)
-              cursor_line, cursor_col = styler.cursor_position(cursor_index, @editor_text_width)
-              @editor_scroll_top = compute_scroll_top(cursor_line, layout[:editor_height])
-              {
-                line: cursor_line,
-                col: cursor_col,
-                visible_line: cursor_line - @editor_scroll_top,
-              }
-            end
-
-            def visible_editor_lines(lines, layout)
-              visible = lines[@editor_scroll_top, layout[:editor_height]] || []
-              Array.new(layout[:editor_height]) { |index| visible[index].to_s }
-            end
-
-            def render_editor_lines(context)
-              visible_editor_lines(context.lines, context.layout).each_with_index do |line_text, index|
-                render_editor_line(
-                  EditorLineContext.new(
-                    surface: context.surface,
-                    bounds: context.bounds,
-                    layout: context.layout,
-                    index: index,
-                    line_text: line_text,
-                    cursor_state: context.cursor_state
-                  )
-                )
-              end
-            end
-
-            def render_editor_line(context)
-              row, gutter, padded = editor_line_output(context)
-              context.surface.write(
-                context.bounds,
-                row,
-                context.layout[:content_indent],
-                editor_line_shell(gutter, padded)
-              )
-            end
-
-            def editor_line_text(line_text, index, cursor_state)
-              display = "#{line_text}#{Ui::AnnotationMarkup::STYLE_RESET}"
-              return display unless index == cursor_state[:visible_line]
-
-              inline_cursor_text(
-                display,
-                cursor_state[:col],
-                width: @editor_text_width,
-                style_prefix: SELECTION_HIGHLIGHT,
-                restore_prefix: COLOR_TEXT_PRIMARY
-              )
-            end
-
-            def editor_line_output(context)
-              absolute_line = @editor_scroll_top + context.index
-              row = context.layout[:editor_start_row] + context.index
-              gutter = pad_left((absolute_line + 1).to_s, self.class::GUTTER_WIDTH - 1)
-              content = editor_line_text(context.line_text, context.index, context.cursor_state)
-              [row, gutter, pad_right(content, @editor_text_width)]
-            end
-
-            def editor_line_shell(gutter, padded)
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              "#{COLOR_TEXT_DIM}#{gutter} #{reset}#{COLOR_TEXT_PRIMARY}#{padded}#{reset}"
             end
           end
         end

@@ -1,15 +1,14 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../constants/ui_constants'
-require_relative '../menu_design/frame_renderer'
-require_relative '../menu_design/status_renderer'
+require_relative '../menu_design/canvas_frame'
+require_relative '../menu_design/view_accents'
+require_relative '../status_bar/palette'
 require_relative '../ui/box_drawer'
 require_relative '../ui/text_utils'
 require_relative '../ui/cursor_blink'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/hash_normalizer'
-require_relative '../../constants/component_palettes'
 require 'shoko/shared/terminal/ansi'
 
 module Shoko
@@ -17,16 +16,19 @@ module Shoko
     module Ui
       module Components
         module Screens
-          # Menu-mode translator screen with color-distinct source/target panes.
+          # Menu-mode translator — the emerald member, mirroring the in-book
+          # translator's surfaces on the canvas: the source pane is the raised
+          # compose well, the result pane the translation card, both separated
+          # from the canvas purely by elevation. Language pickers drop down as
+          # recessed candidate lists with the family's selection treatment;
+          # text selection, the clipboard context menu, and the blinking
+          # thin-stripe caret all carry over unchanged.
           class TranslatorScreenComponent < BaseComponent
-            include Adapters::Ui::Constants::Ui
-            include Ui::BoxDrawer
             include Ui::TextUtils
             include Ui::CursorBlink
 
-            UI = Adapters::Ui::Constants::Ui
+            Palette = StatusBar::Palette
             BOLD = Shoko::Shared::Terminal::Ansi::BOLD
-            DIM = Shoko::Shared::Terminal::Ansi::DIM
 
             MAX_DROPDOWN_ROWS = 5
             DROPDOWN_CODE_WIDTH = 4
@@ -42,11 +44,14 @@ module Shoko
 
             def do_render(surface, bounds)
               layout = layout_metrics(bounds)
-              render_frame(surface, bounds)
-              render_status(surface, bounds, layout)
+              frame = MenuDesign::CanvasFrame.new(surface, bounds)
+              frame.paint
+              frame.render_rule(title: 'Translator', accent: view_accent, meta: detected_language_label.downcase)
+              render_status(frame, layout)
               render_panel(surface, bounds, layout[:left_box], kind: :source)
               render_panel(surface, bounds, layout[:right_box], kind: :target)
               render_context_menu(surface, bounds)
+              frame.render_hint('ALT+ENTER translate · TAB focus · S swap · drag selects · right-click copies/pastes')
             end
 
             def hit_test(column, row, bounds)
@@ -169,33 +174,28 @@ module Shoko
 
             private
 
-            def render_frame(surface, bounds)
-              frame = MenuDesign::FrameRenderer.new(surface, bounds)
-              frame.render_title(title: 'Translator',
-                                 hint: 'Alt+Enter translate  Enter newline  TAB focus  S swap  Esc back')
-              frame.render_divider
-              frame.render_footer(text: footer_text)
-            end
-
-            def render_status(surface, bounds, layout)
-              MenuDesign::StatusRenderer.new(surface, bounds).render_status(
+            def render_status(frame, layout)
+              frame.render_status(
                 row: layout[:status_row],
-                indent: layout[:indent],
                 left: status_message,
-                right: detected_language_label,
-                width: layout[:content_width],
-                left_color: status_left_color,
-                right_color: detected_language_label.empty? ? nil : panel_accent(:source)
+                left_fg: status_left_color
               )
             end
 
+            # The pane is a surface, not a box: the source pane sits on the
+            # raised compose-well tone, the result pane on the translation
+            # card tone — elevation is the whole frame.
             def render_panel(surface, bounds, box, kind:)
-              draw_box(surface, bounds, box, border_color: panel_border_color(kind))
+              fill_pane(surface, bounds, box, kind)
               render_panel_title(surface, bounds, box, kind)
               render_dropdown_trigger(surface, bounds, box, kind)
-              render_panel_divider(surface, bounds, box, kind) unless dropdown_open_for?(kind)
               render_body(surface, bounds, box, kind)
               render_dropdown(surface, bounds, box, kind) if dropdown_open_for?(kind)
+            end
+
+            def fill_pane(surface, bounds, box, kind)
+              blank = "#{Palette::RESET}#{panel_bg(kind)}#{' ' * box.width}#{Palette::RESET}"
+              box.height.times { |offset| surface.write(bounds, box.row + offset, box.col, blank) }
             end
 
             def render_panel_title(surface, bounds, box, kind)
@@ -207,18 +207,15 @@ module Shoko
               )
             end
 
-            def render_panel_divider(surface, bounds, box, kind)
-              line = '─' * [box.width - 4, 0].max
-              surface.write(bounds, box.row + 3, box.col + 2, "#{panel_accent(kind)}#{DIM}#{line}#{reset}")
-            end
-
             def render_body(surface, bounds, box, kind)
               # Cache the source pane's text width so cursor up/down can navigate the same
               # visual (wrapped) lines that were last rendered — mirrors the note editor's
               # @editor_text_width. Movement happens off-frame, where bounds are unavailable.
               @source_body_width = body_width(box) if kind == :source
+              base = "#{Palette::RESET}#{panel_bg(kind)}#{panel_text_fg(kind)}"
               body_lines(box, kind).each_with_index do |line, index|
-                surface.write(bounds, body_start_row(box, kind) + index, box.col + 2, line)
+                surface.write(bounds, body_start_row(box, kind) + index, box.col + 2,
+                              "#{base}#{line}#{Palette::RESET}")
               end
             end
 
@@ -226,7 +223,7 @@ module Shoko
               popup_box = context_menu_popup_box(bounds)
               return unless popup_box
 
-              draw_box(surface, bounds, popup_box, border_color: context_menu_border_color)
+              fill_dropdown(surface, bounds, popup_box)
               inner_width = [popup_box.width - 2, 1].max
               context_menu_actions.each_with_index do |action, index|
                 render_context_menu_row(
@@ -290,8 +287,11 @@ module Shoko
               kind == :source ? 'SOURCE' : 'RESULT'
             end
 
+            # A small label on the pane's first row; the active pane's label
+            # takes the emerald signature, the other rests dim.
             def panel_title_badge(kind)
-              "#{dropdown_bg}#{panel_accent(kind)}#{BOLD} #{panel_title(kind)} #{reset}"
+              label_fg = panel_active?(kind) ? "#{BOLD}#{view_accent}" : Palette::TRANS_DIM_FG
+              "#{Palette::RESET}#{panel_bg(kind)}#{label_fg}#{panel_title(kind)}#{Palette::RESET}"
             end
 
             # Dropdown rendering helpers for the translator screen.
@@ -314,7 +314,8 @@ module Shoko
 
             def render_dropdown(surface, bounds, box, kind)
               popup_box = dropdown_popup_box(box, kind)
-              draw_box(surface, bounds, popup_box, border_color: panel_accent(kind))
+              fill_dropdown(surface, bounds, popup_box)
+              register_dropdown_wheel(bounds, popup_box)
               context = {
                 surface: surface,
                 bounds: bounds,
@@ -325,6 +326,27 @@ module Shoko
               dropdown_rows_for(kind).each_with_index do |item, offset|
                 render_dropdown_row(context, kind, item, offset)
               end
+            end
+
+            # One region over the open picker, so wheel turns anywhere on it
+            # move the language selection like every other list.
+            def register_dropdown_wheel(bounds, popup_box)
+              menu_hits&.register(
+                col: bounds.x + popup_box.col - 1, row: bounds.y + popup_box.row - 1,
+                width: popup_box.width, height: popup_box.height,
+                action: { type: :list_wheel, list: :translator_language }
+              )
+            end
+
+            def menu_hits
+              @dependencies.respond_to?(:menu_hit_registry) ? @dependencies.menu_hit_registry : nil
+            end
+
+            # The picker recesses below the pane on the darkest family tone,
+            # so it reads as a layer without needing a border.
+            def fill_dropdown(surface, bounds, popup_box)
+              blank = "#{Palette::RESET}#{dropdown_bg}#{' ' * popup_box.width}#{Palette::RESET}"
+              popup_box.height.times { |offset| surface.write(bounds, popup_box.row + offset, popup_box.col, blank) }
             end
 
             def dropdown_rows_for(kind)
@@ -340,15 +362,21 @@ module Shoko
               end
             end
 
+            # The window scrolls only when the selection leaves it (the
+            # family's ensure-visible rule) instead of re-centering — rows
+            # stay put under the pointer, so click-to-select then
+            # click-to-apply lands on the same candidate.
             def dropdown_window(kind)
               items = language_options(kind)
-              start = [dropdown_selected - (self.class::MAX_DROPDOWN_ROWS / 2), 0].max
-              max_start = [items.length - self.class::MAX_DROPDOWN_ROWS, 0].max
-              resolved_start = start.clamp(0, max_start)
-              {
-                start: resolved_start,
-                items: items.slice(resolved_start, self.class::MAX_DROPDOWN_ROWS) || [],
-              }
+              visible = self.class::MAX_DROPDOWN_ROWS
+              max_start = [items.length - visible, 0].max
+              @dropdown_scroll = (@dropdown_scroll || 0).clamp(0, max_start)
+              if dropdown_selected < @dropdown_scroll
+                @dropdown_scroll = dropdown_selected
+              elsif dropdown_selected >= @dropdown_scroll + visible
+                @dropdown_scroll = dropdown_selected - visible + 1
+              end
+              { start: @dropdown_scroll, items: items.slice(@dropdown_scroll, visible) || [] }
             end
 
             def dropdown_trigger_width(box, _code, name)
@@ -392,35 +420,46 @@ module Shoko
             end
 
             def render_dropdown_row(context, kind, item, offset)
+              row = dropdown_item_start_row(context[:popup_box]) + offset
               context[:surface].write(
-                context[:bounds],
-                dropdown_item_start_row(context[:popup_box]) + offset,
-                context[:popup_box].col + 1,
+                context[:bounds], row, context[:popup_box].col + 1,
                 dropdown_row(
-                  code: item[:code],
-                  name: item[:name],
-                  width: context[:width],
-                  selected: item[:index] == dropdown_selected,
-                  kind: kind,
+                  code: item[:code], name: item[:name], width: context[:width],
+                  selected: item[:index] == dropdown_selected, kind: kind,
                   placeholder: item[:placeholder] == true,
+                  hovered: dropdown_row_hovered?(context, row),
                   scrollbar_cell: dropdown_scrollbar_cell(context[:scrollbar], offset)
                 )
               )
             end
 
-            def dropdown_row(code:, name:, width:, selected:, kind:, placeholder: false, scrollbar_cell: ' ')
+            # The pointer-hovered candidate takes the family hover tone, like
+            # every other list row.
+            def dropdown_row_hovered?(context, row)
+              hits = menu_hits
+              return false unless hits
+
+              bounds = context[:bounds]
+              popup_box = context[:popup_box]
+              hits.hover?(
+                col: bounds.x + popup_box.col - 1, row: bounds.y + row - 1,
+                width: popup_box.width, height: 1
+              )
+            end
+
+            def dropdown_row(code:, name:, width:, selected:, kind:, placeholder: false, hovered: false,
+                             scrollbar_cell: ' ')
               layout = dropdown_row_layout(width)
-              palette = dropdown_palette(selected: selected, placeholder: placeholder, kind: kind)
+              palette = dropdown_palette(selected: selected, placeholder: placeholder, hovered: hovered, kind: kind)
               code_text = dropdown_code(code, layout[:code_width], placeholder: placeholder)
               text = Shoko::Shared::Terminal::TextMetrics.truncate_to(name.to_s, layout[:text_width])
               padding = ' ' * [layout[:text_width] - visible_length(text), 0].max
 
-              "#{palette[:row_bg]} " \
-                "#{palette[:code_fg]}#{code_text}" \
-                "#{palette[:row_bg]} " \
+              "#{Palette::RESET}#{palette[:row_bg]} " \
+                "#{palette[:code_fg]}#{code_text} " \
                 "#{palette[:text_fg]}#{text}#{padding}" \
-                "#{palette[:scrollbar_fg]}#{scrollbar_cell}" \
-                "#{palette[:row_bg]} #{reset}"
+                "#{scrollbar_cell} " \
+                "#{Palette::RESET}"
             end
 
             def dropdown_row_layout(width)
@@ -437,15 +476,15 @@ module Shoko
               Shoko::Shared::Terminal::TextMetrics.truncate_to(value, width).ljust(width)
             end
 
-            def dropdown_palette(selected:, placeholder:, kind:)
+            def dropdown_palette(selected:, placeholder:, kind:, hovered: false)
               return placeholder_dropdown_palette if placeholder
               return selected_dropdown_palette if selected
 
+              _ = kind
               {
-                row_bg: dropdown_bg,
-                code_fg: panel_accent(kind),
+                row_bg: hovered ? Palette::TRANS_HOVER_BG : dropdown_bg,
+                code_fg: Palette::TRANS_CODE_FG,
                 text_fg: dropdown_fg,
-                scrollbar_fg: dropdown_muted_fg,
               }
             end
 
@@ -454,7 +493,6 @@ module Shoko
                 row_bg: dropdown_bg,
                 code_fg: dropdown_muted_fg,
                 text_fg: dropdown_muted_fg,
-                scrollbar_fg: dropdown_muted_fg,
               }
             end
 
@@ -463,7 +501,6 @@ module Shoko
                 row_bg: dropdown_selected_bg,
                 code_fg: dropdown_selected_fg,
                 text_fg: dropdown_selected_fg,
-                scrollbar_fg: dropdown_selected_fg,
               }
             end
 
@@ -483,11 +520,19 @@ module Shoko
               { thumb_row: thumb_row, thumb_height: thumb_height, visible: visible }
             end
 
+            # The family scrollbar: a full-height █ track in the lighter tone
+            # with a brand-accent █ thumb, riding the row so selection and
+            # hover strips pass underneath it — no line glyphs.
             def dropdown_scrollbar_cell(scrollbar, offset)
               return ' ' unless scrollbar
 
               thumb_end = scrollbar[:thumb_row] + scrollbar[:thumb_height] - 1
-              offset.between?(scrollbar[:thumb_row], thumb_end) ? '█' : '│'
+              color = if offset.between?(scrollbar[:thumb_row], thumb_end)
+                        Palette::TRANS_SCROLL_THUMB_FG
+                      else
+                        Palette::TRANS_SCROLL_TRACK_FG
+                      end
+              "#{color}█"
             end
 
             def dropdown_scrollbar_thumb_height(total, visible)
@@ -752,10 +797,6 @@ module Shoko
               padded + Array.new([height - padded.length, 0].max) { empty_body_line(width) }
             end
 
-            def footer_text
-              'Drag to select text. Right-click for Copy to Clipboard or Paste from Clipboard.'
-            end
-
             def status_message
               return translator_message unless translator_message.empty?
 
@@ -768,27 +809,28 @@ module Shoko
 
             def cursor_placeholder_line(width)
               prompt = Shoko::Shared::Terminal::TextMetrics.truncate_to('Type or paste text here.', width)
-              styled = "#{panel_muted_fg}#{prompt}#{reset}"
-              inline_cursor_text(styled, 0, width: width, style_prefix: SELECTION_HIGHLIGHT,
+              styled = "#{panel_muted_fg}#{prompt}"
+              inline_cursor_text(styled, 0, width: width, style_prefix: Palette::TRANS_CARET_FG,
                                             restore_prefix: panel_muted_fg)
             end
 
             def style_placeholder_line(text, width)
               content = Shoko::Shared::Terminal::TextMetrics.truncate_to(text.to_s, width)
-              "#{panel_muted_fg}#{content}#{reset}"
+              "#{panel_muted_fg}#{content}"
             end
 
             def render_body_layout_line(line, kind, width)
               selection = selection_for_kind(kind)
               rendered = line.clusters.each_with_object(+'') do |cluster, buffer|
-                buffer << styled_cluster_text(cluster, selection)
+                buffer << styled_cluster_text(cluster, selection, kind)
               end
               cursor_column = cursor_column_for_line(line, source_cursor_index_for(kind, selection), width)
               return rendered unless cursor_column
 
               # Thin blinking stripe, identical to the note editor's caret, instead of a block cell.
               inline_cursor_text(rendered, cursor_column, width: width,
-                                                          style_prefix: SELECTION_HIGHLIGHT, restore_prefix: panel_text_fg)
+                                                          style_prefix: Palette::TRANS_CARET_FG,
+                                                          restore_prefix: panel_text_fg(kind))
             end
 
             # Visual column of the caret on this rendered line, or nil if it is not on it. A full (wrapped)
@@ -807,13 +849,16 @@ module Shoko
               last ? last.column_end : 0
             end
 
-            def styled_cluster_text(cluster, selection)
-              style = if selection && cluster_selected?(cluster, selection)
-                        "#{selection_bg}#{selection_fg}"
-                      else
-                        panel_text_fg
-                      end
-              "#{style}#{cluster.text}#{reset}"
+            # Selected clusters take the family selection strip; every cluster
+            # restores the pane's own surface afterwards, so the background
+            # never drops out mid-row.
+            def styled_cluster_text(cluster, selection, kind)
+              restore = "#{panel_bg(kind)}#{panel_text_fg(kind)}"
+              if selection && cluster_selected?(cluster, selection)
+                "#{Palette::TRANS_SELECTED_BG}#{Palette::LANDING_TITLE_FG}#{cluster.text}#{restore}"
+              else
+                "#{restore}#{cluster.text}"
+              end
             end
 
             def selection_for_kind(kind)
@@ -953,99 +998,63 @@ module Shoko
               cursor_index == last_line.end_index && last_line.clusters.last&.column_end.to_i >= width
             end
 
-            # Palette helpers for the translator screen.
+            # Palette: the family's fixed translator tones (theme-independent,
+            # like every bar-anchored panel).
+            def view_accent
+              MenuDesign::ViewAccents.for(:translator)
+            end
+
             def status_left_color
               case translator_status
-              when :done
-                panel_accent(:target)
-              when :error
-                UI::COLOR_TEXT_ERROR
-              when :loading, :working
-                UI::MENU_SELECTION_FG
-              when :ready
-                panel_accent(:source)
-              else
-                UI::MENU_MUTED_FG
+              when :done, :ready then Palette::TRANS_ACCENT_FG
+              when :error then Palette::LANDING_QUIT_FG
+              when :loading, :working then Palette::LIST_MATCH_FG
+              else Palette::LANDING_DIM_FG
               end
             end
 
             def panel_bg(kind)
-              return translator_palette[:source_panel_bg] if kind == :source
-
-              translator_palette[:target_panel_bg]
+              kind == :source ? Palette::TRANS_FIELD_BG : Palette::TRANS_BG
             end
 
-            def panel_accent(kind)
-              return translator_palette[:source_accent] if kind == :source
-
-              translator_palette[:target_accent]
-            end
-
-            def panel_border_color(kind)
-              return panel_accent(kind) if panel_active?(kind)
-
-              "#{panel_accent(kind)}#{DIM}"
-            end
-
-            def panel_text_fg
-              translator_palette[:panel_text_fg]
+            def panel_text_fg(kind)
+              kind == :source ? Palette::TRANS_INPUT_FG : Palette::TRANS_TEXT_FG
             end
 
             def panel_muted_fg
-              translator_palette[:panel_muted_fg]
-            end
-
-            def selection_bg
-              UI::MENU_SELECTION_BG
-            end
-
-            def selection_fg
-              UI::MENU_SELECTION_TEXT
+              Palette::TRANS_PLACEHOLDER_FG
             end
 
             def context_menu_bg
-              light_mode? ? translator_palette[:dropdown_bg] : UI::TOOLTIP_BG_DEFAULT
+              dropdown_bg
             end
 
             def context_menu_fg
-              light_mode? ? translator_palette[:dropdown_fg] : UI::TOOLTIP_FG_DEFAULT
+              Palette::TRANS_BUTTON_FG
             end
 
             def context_menu_disabled_fg
-              panel_muted_fg
-            end
-
-            def context_menu_border_color
-              panel_accent(:source)
+              Palette::TRANS_DIM_FG
             end
 
             def dropdown_bg
-              translator_palette[:dropdown_bg]
+              Palette::TRANS_TAB_INACTIVE_BG
             end
 
             def dropdown_selected_bg
-              translator_palette[:dropdown_selected_bg]
+              Palette::TRANS_SELECTED_BG
             end
 
             def dropdown_fg
-              translator_palette[:dropdown_fg]
+              Palette::TRANS_LANG_FG
             end
 
             def dropdown_selected_fg
-              translator_palette[:dropdown_selected_fg]
+              "#{Palette::LANDING_TITLE_FG}#{BOLD}"
             end
 
             def dropdown_muted_fg
-              translator_palette[:dropdown_muted_fg]
-            end
-
-            def light_mode?
-              UI::MENU_SURFACE_BG == UI::MENU_SURFACE_BG_LIGHT
-            end
-
-            def translator_palette
-              mode = light_mode? ? :light : :dark
-              Adapters::Ui::Constants::ComponentPalettes.fetch(:translator_screen, mode)
+              Palette::TRANS_DIM_FG
             end
 
             def reset

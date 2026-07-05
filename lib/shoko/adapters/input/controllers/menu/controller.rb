@@ -5,6 +5,7 @@ require_relative 'state_controller'
 require_relative 'input_controller'
 require_relative 'intent_runtime_bridge'
 require_relative 'translator_mouse_handler'
+require_relative 'mouse_router'
 require_relative 'workflow_render_observer'
 require_relative 'input_mode_observer'
 require 'shoko/shared/hash_normalizer'
@@ -16,6 +17,8 @@ module Shoko
         module Menu
           # Controller responsible for the menu orchestration loop.
           class Controller
+            FallbackBounds = Data.define(:x, :y, :width, :height)
+
             RuntimeDependencies = Data.define(
               :observer_registry,
               :catalog,
@@ -113,6 +116,10 @@ module Shoko
               payload[:settings_selected] = 1 if mode == :settings
               payload[:library_details_open] = false if mode == :library
               @menu_session_mutator.update_menu(payload)
+              # The reader disables terminal mouse tracking on its way out
+              # (this is the path it hands control back through), so drop the
+              # flag and let the next loop tick re-enable menu tracking.
+              @menu_mouse_tracking = false
             end
 
             # Thin convenience API retained for non-input collaborators and focused specs.
@@ -335,6 +342,7 @@ module Shoko
                 intent_handler: @intent_handler
               )
               @translator_mouse_handler = build_translator_mouse_handler
+              @menu_mouse_router = build_menu_mouse_router
               @dispatcher = @input_controller.dispatcher
             end
 
@@ -346,6 +354,16 @@ module Shoko
                 translator_screen: @main_menu_component.translator_screen,
                 clipboard_service: @clipboard_service,
                 notification_service: @notification_service
+              )
+            end
+
+            def build_menu_mouse_router
+              MouseRouter.new(
+                hit_registry: @main_menu_component.hit_registry,
+                menu_state_reader: @menu_state_reader,
+                menu_session_mutator: @menu_session_mutator,
+                intent_handler: @intent_handler,
+                main_menu_component: @main_menu_component
               )
             end
 
@@ -455,11 +473,11 @@ module Shoko
               end
             end
 
+            # The whole menu is mouseable: tracking stays on for the entire
+            # menu session and is released with the terminal on cleanup (the
+            # reader manages its own tracking while a book is open).
             def sync_menu_mouse_tracking
-              return enable_menu_mouse_tracking if translator_mouse_mode? && !@menu_mouse_tracking
-              return disable_menu_mouse_tracking if !translator_mouse_mode? && @menu_mouse_tracking
-
-              nil
+              enable_menu_mouse_tracking unless @menu_mouse_tracking
             end
 
             def enable_menu_mouse_tracking
@@ -477,34 +495,53 @@ module Shoko
             end
 
             def consume_menu_mouse_input(keys)
-              return Array(keys) unless translator_mouse_mode?
-
               Array(keys).each_with_object([]) do |key, remaining|
-                translator_mouse_sequence?(key) ? handle_translator_mouse_sequence(key) : remaining << key
+                menu_mouse_sequence?(key) ? handle_menu_mouse_sequence(key) : remaining << key
               end
             end
 
-            def translator_mouse_sequence?(token)
+            def menu_mouse_sequence?(token)
               @mouse_handler&.mouse_sequence?(token)
             end
 
-            def handle_translator_mouse_sequence(token)
+            # The translator's own handler (drag selection, clipboard menu,
+            # dropdown clicks) gets first refusal in translator mode; anything
+            # it declines — rail clicks, wheel turns — falls through to the
+            # menu-wide router, which consumes every remaining mouse token so
+            # none leak into key handling.
+            def handle_menu_mouse_sequence(token)
               event = @mouse_handler.parse_mouse_event(token)
               return unless event
-              return if @translator_mouse_handler&.handle(event, bounds: translator_bounds)
-              return unless translator_click_release?(event)
+              return if translator_mouse_mode? && handle_translator_mouse_event(event)
 
-              action = translator_screen.hit_test(event[:x] + 1, event[:y] + 1, translator_bounds)
+              @menu_mouse_router&.handle(event)
+            end
+
+            def handle_translator_mouse_event(event)
+              bounds = translator_bounds
+              local = event.merge(x: event[:x] - (bounds.x - 1), y: event[:y] - (bounds.y - 1))
+              return true if @translator_mouse_handler&.handle(local, bounds: bounds)
+              return false unless translator_click_release?(local)
+
+              action = translator_screen.hit_test(local[:x] + 1, local[:y] + 1, bounds)
+              return false unless action
+
               apply_translator_mouse_action(action)
+              true
             end
 
             def translator_click_release?(event)
               event[:released] && event[:button].to_i.zero?
             end
 
+            # The rect the translator rendered into on the last frame; falls
+            # back to the full terminal before the first paint.
             def translator_bounds
+              canvas = @main_menu_component&.canvas_bounds
+              return canvas if canvas
+
               height, width = @terminal_service.size
-              Struct.new(:width, :height).new(width, height)
+              FallbackBounds.new(x: 1, y: 1, width: width, height: height)
             end
 
             def apply_translator_mouse_action(action)
@@ -513,8 +550,18 @@ module Shoko
               case action[:type]
               when :focus then focus_translator_input
               when :toggle_dropdown then toggle_translator_dropdown(action[:kind])
-              when :select_language then select_translator_language(action)
+              when :select_language then click_translator_language(action)
               end
+            end
+
+            # The menu's click grammar: the first click moves the highlight to
+            # the language under the pointer; a click on the already-highlighted
+            # candidate applies it (and closes the picker).
+            def click_translator_language(action)
+              current = (@menu_state_reader.translator_dropdown_selected || 0).to_i
+              return select_translator_language(action) if current == action[:index].to_i
+
+              @menu_session_mutator.update_menu(translator_dropdown_selected: action[:index])
             end
 
             def focus_translator_input

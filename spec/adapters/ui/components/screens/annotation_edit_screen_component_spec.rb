@@ -80,8 +80,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenCom
 
     output = terminal.writes.map { |write| write[:text] }.join
     expect(output).to include('Edit Annotation')
-    expect(output).to include('Selected Text Context')
-    expect(output).to include('Note Editor')
-    expect(output).to include('Editing note • line')
+    expect(output).to include('SELECTED TEXT')
+    expect(output).to include('Hello')
+    expect(output).to include('line 1, col 5')
+    expect(output).to include(Shoko::Adapters::Ui::Components::StatusBar::Palette::NOTES_FIELD_BG)
   end
 end

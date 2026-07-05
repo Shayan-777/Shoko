@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../constants/ui_constants'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/shared/terminal/text_metrics'
-require_relative '../menu_design/master_detail_shell'
-require_relative '../menu_design/search_field_renderer'
-require_relative '../menu_design/theme_tokens'
+require_relative '../menu_design/canvas_frame'
+require_relative '../menu_design/canvas_list'
 require_relative '../menu_design/icon_set'
+require_relative '../menu_design/view_accents'
+require_relative '../status_bar/palette'
 require_relative '../ui/text_utils'
 require 'time'
 
@@ -16,39 +16,27 @@ module Shoko
     module Ui
       module Components
         module Screens
-          # RSS reader.
-          #
-          # Rather than cramming feeds + articles + content into competing panes, it
-          # shows one spacious, full-width view at a time and drills between them
-          # (Articles -> Reading; H steps back to Feeds), echoing the in-book reader's
-          # focused feel. The Articles list is modelled on the in-book search result
-          # list the rest of the app uses — roomy multi-row entries (title · summary ·
-          # meta) with a left accent stripe on the active entry and a slim scrollbar —
-          # so it reads as the same clean, coherent surface. Everything sits in the
-          # shared menu shell (brand header, summary, footer); add-feed / filter use a
-          # centered field. The keymap is unchanged (ENTER drills in, H steps back,
-          # J/K move, 1/2/3 scope, S sync, A add, / filter, R/U/M/V act).
+          # RSS reader — lavender like the TOC, in the canvas grammar. It
+          # keeps its drill-down shape (Feeds -> Articles -> Reading; H steps
+          # back) and retells each level in the family language: articles as
+          # three-row blocks exactly like in-book search results, feeds as
+          # selection-strip rows with unread counts, and the reading view as
+          # calm prose on the canvas with a position badge. Add-feed and
+          # filter input live in the status bar.
           class RssReaderScreenComponent < BaseComponent
-            include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
 
-            Ansi = Shoko::Shared::Terminal::Ansi
+            Palette = StatusBar::Palette
             TextMetrics = Shoko::Shared::Terminal::TextMetrics
-            Region = Struct.new(:x, :y, :width, :height)
 
-            LIST_MAX_WIDTH = 98
-            READING_MAX_WIDTH = 84
-            FEEDS_MAX_WIDTH = 64
             ARTICLE_BLOCK_ROWS = 3 # title · summary · meta, like an in-book search result
-            SCROLLBAR_GAP = 2
-            COUNT_WIDTH = 4
+            READING_MAX_WIDTH = 84
 
             def initialize(dependencies: nil, menu_visual_profile: nil)
               super()
               @dependencies = dependencies
               @menu_visual_profile = menu_visual_profile
               @menu_state_reader = nil
-              @tokens = MenuDesign::ThemeTokens.new
             end
 
             def preferred_height(_available_height)
@@ -56,115 +44,127 @@ module Shoko
             end
 
             def do_render(surface, bounds)
-              shell = MenuDesign::MasterDetailShell.new(surface, bounds, tokens: @tokens)
-              layout = shell.build_layout(detail_visible: false)
-              render_frame(shell, layout)
-              area = workspace_area(layout)
-
-              if overlay_mode?
-                render_input(surface, bounds, area)
-              elsif feed_entries.empty?
-                render_note(surface, bounds, area, 'No feeds yet — press A to add a feed URL, then S to sync')
-              elsif reading?
-                render_reading_view(surface, bounds, area)
-              elsif focus?(:feeds)
-                render_feeds_view(surface, bounds, area)
-              else
-                render_articles_view(surface, bounds, area)
-              end
+              frame = MenuDesign::CanvasFrame.new(surface, bounds)
+              frame.paint
+              frame.render_rule(title: 'RSS Reader', accent: accent, meta: rule_meta)
+              render_status_line(frame)
+              render_workspace(surface, bounds, frame)
+              frame.render_hint(hint_text)
             end
 
             private
 
-            # ----- shell chrome -----
-
-            def render_frame(shell, layout)
-              shell.render_frame(
-                layout: layout,
-                title: 'RSS Reader',
-                hint: header_hint,
-                summary_left: status_message,
-                summary_left_color: status_color,
-                summary_right: summary_right,
-                footer: footer_text
-              )
+            def accent
+              MenuDesign::ViewAccents.for(:rss_reader)
             end
 
-            def workspace_area(layout)
-              frame = layout.primary_panel.frame
-              Region.new(frame.x, frame.y, frame.width, frame.height)
+            def hits
+              @dependencies.respond_to?(:menu_hit_registry) ? @dependencies.menu_hit_registry : nil
             end
 
-            # A centered column within the workspace, so each view reads as a calm,
-            # well-margined surface rather than edge-to-edge text.
-            def content_column(area, max_width)
-              width = [area.width, max_width].min
-              indent = area.x + [(area.width - width) / 2, 0].max
-              [indent, width]
+            def render_workspace(surface, bounds, frame)
+              if feed_entries.empty?
+                render_note(frame, 'No feeds yet — press A to add a feed URL, then S to sync')
+              elsif reading?
+                render_reading_view(surface, bounds, frame)
+              elsif focus?(:feeds)
+                render_feeds_view(surface, bounds, frame)
+              else
+                render_articles_view(surface, bounds, frame)
+              end
             end
 
-            # ----- articles list (the in-book-search-style result list) -----
+            # ----- chrome -----
 
-            def render_articles_view(surface, bounds, area)
-              indent, width = content_column(area, LIST_MAX_WIDTH)
-              render_view_heading(surface, bounds, indent, area.y, width,
-                                  left: articles_heading, right: article_position_label)
-              region = Region.new(indent, area.y + 2, width, [area.height - 2, 1].max)
-              return render_note(surface, bounds, region, empty_articles_text) if article_entries.empty?
-
-              render_article_blocks(surface, bounds, region)
+            def rule_meta
+              [scope_label.downcase, last_synced_label.downcase].reject(&:empty?).join(' · ')
             end
 
-            def render_article_blocks(surface, bounds, region)
-              capacity = [region.height / ARTICLE_BLOCK_ROWS, 1].max
-              total = article_entries.length
-              offset = window_offset(total, capacity, current_article_index)
-              scrollbar = total > capacity
-              text_width = region.width - (scrollbar ? SCROLLBAR_GAP : 0)
+            def render_status_line(frame)
+              message = status_message
+              return if message.empty?
 
+              frame.render_status(row: frame.body_top, left: message, left_fg: status_fg)
+            end
+
+            def status_rows
+              status_message.empty? ? 0 : 2
+            end
+
+            def workspace_top(frame)
+              frame.body_top + status_rows
+            end
+
+            def hint_text
+              return 'type in the bar below · ENTER apply · ESC cancel' if overlay_mode?
+              return 'J/K scroll · SPACE page · H back · R read · M star · Z zen · ESC menu' if reading?
+              return 'ENTER open · A add · D remove · S sync · ESC menu' if focus?(:feeds)
+
+              'ENTER read · H feeds · / filter · 1/2/3 scope · S sync · ESC menu'
+            end
+
+            # ----- articles (three-row blocks, the in-book search shape) -----
+
+            def render_articles_view(surface, bounds, frame)
+              top = workspace_top(frame)
+              height = [frame.body_bottom - top + 1, 0].max
+              return if height <= 0
+
+              render_view_heading(frame, top, left: articles_heading, right: article_position_label)
+              list_top = top + 2
+              list_height = [frame.body_bottom - list_top + 1, 0].max
+              return render_note(frame, empty_articles_text) if article_entries.empty?
+
+              render_article_blocks(surface, bounds, frame, list_top, list_height)
+            end
+
+            def render_article_blocks(surface, bounds, frame, top, height)
+              list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
+              list.register_wheel(top: top, height: height, action: { type: :list_wheel, list: :rss_articles })
+              capacity = [height / ARTICLE_BLOCK_ROWS, 1].max
+              offset = window_offset(article_entries.length, capacity, current_article_index)
               capacity.times do |slot|
                 article = article_entries[offset + slot]
                 break unless article
 
-                top = region.y + (slot * ARTICLE_BLOCK_ROWS)
-                render_article_block(surface, bounds, region.x, top, text_width, article, offset + slot)
+                render_article_block(list, article, index: offset + slot, row: top + (slot * ARTICLE_BLOCK_ROWS))
               end
-              render_scrollbar(surface, bounds, region, total, capacity, offset) if scrollbar
+              list.render_scrollbar(top: top, height: height, total: article_entries.length,
+                                    visible: capacity, offset: offset)
             end
 
-            def render_article_block(surface, bounds, col, row, width, article, index)
+            def render_article_block(list, article, index:, row:)
               selected = index == current_article_index
-              unread = article[:read] != true
-              stripe = selection_stripe(selected)
-              text_w = [width - stripe_width, 4].max
-              surface.write(bounds, row, col, "#{stripe}#{article_title_span(article, selected, unread, text_w)}")
-              surface.write(bounds, row + 1, col, "#{stripe}#{dim_span(article_summary(article), text_w)}")
-              surface.write(bounds, row + 2, col, "#{stripe}#{article_meta_span(article, text_w)}")
+              list.block(
+                row: row,
+                lines: article_block_lines(article, selected),
+                selected: selected,
+                action: { type: :list_row, list: :rss_articles, index: index }
+              )
             end
 
-            def article_title_span(article, selected, unread, width)
-              style = if selected
-                        "#{Ansi::BOLD}#{@tokens.accent}"
-                      else
-                        unread ? "#{Ansi::BOLD}#{@tokens.primary}" : @tokens.dim
-                      end
-              "#{style}#{truncate_text(article[:title].to_s, width)}#{@tokens.reset}"
+            def article_block_lines(article, selected)
+              [
+                { left: [[article[:title].to_s, article_title_fg(article, selected)]],
+                  right: article_state_segments(article) },
+                { left: [[article_summary(article), Palette::LANDING_DIM_FG]] },
+                { left: [["#{article[:feed_title]} · #{article[:published_label]}", Palette::LANDING_DIM_FG]] },
+              ]
             end
 
-            # "feed · date" with small unread/star state glyphs, the only pops of colour.
-            def article_meta_span(article, width)
-              base = "#{article[:feed_title]}  ·  #{article[:published_label]}"
-              state = article_state_glyphs(article)
-              meta_room = [width - (state.empty? ? 0 : 4), 4].max
-              meta = "#{@tokens.dim}#{truncate_text(base, meta_room)}#{@tokens.reset}"
-              state.empty? ? meta : "#{meta}  #{state}"
+            def article_title_fg(article, selected)
+              return Palette::LANDING_TITLE_FG if selected
+              return Palette::LANDING_TEXT_FG if article[:read] != true
+
+              Palette::LANDING_DIM_FG
             end
 
-            def article_state_glyphs(article)
-              glyphs = []
-              glyphs << "#{@tokens.accent}#{glyph(:unread)}#{@tokens.reset}" if article[:read] != true
-              glyphs << "#{@tokens.warning}#{glyph(:star)}#{@tokens.reset}" if article[:starred] == true
-              glyphs.join(' ')
+            def article_state_segments(article)
+              segments = []
+              segments << [glyph(:unread), accent] if article[:read] != true
+              segments << [' ', nil] if segments.any? && article[:starred] == true
+              segments << [glyph(:star), Palette::LIST_MATCH_FG] if article[:starred] == true
+              segments
             end
 
             def article_summary(article)
@@ -191,31 +191,36 @@ module Shoko
               end
             end
 
-            # ----- reading view (book-reader-like) -----
+            # ----- reading view -----
 
-            def render_reading_view(surface, bounds, area)
-              indent, width = content_column(area, READING_MAX_WIDTH)
+            def render_reading_view(surface, bounds, frame)
               article = selected_article_hash
-              region = Region.new(indent, area.y, width, area.height)
-              return render_note(surface, bounds, region, 'Select an article to read') unless article
+              return render_note(frame, 'Select an article to read') unless article
 
+              top = frame.body_top
+              height = [frame.body_bottom - top + 1, 1].max
+              width = [frame.content_width, READING_MAX_WIDTH].min
               lines = reading_lines(article, width)
-              inner_h = [area.height, 1].max
-              offset = current_scroll.clamp(0, [lines.length - inner_h, 0].max)
-              (lines[offset, inner_h] || []).each_with_index do |line, index|
-                surface.write(bounds, area.y + index, indent, line)
+              offset = current_scroll.clamp(0, [lines.length - height, 0].max)
+              write_reading_window(surface, bounds, frame, lines: lines, offset: offset, top: top, height: height)
+              render_reading_position(frame, lines.length, offset, height)
+              register_reading_wheel(frame, top, height)
+            end
+
+            def write_reading_window(surface, bounds, frame, lines:, offset:, top:, height:)
+              (lines[offset, height] || []).each_with_index do |segments, index|
+                surface.write(bounds, top + index, frame.content_x,
+                              frame.compose(left: segments, right: []))
               end
-              render_reading_scroll_hint(surface, bounds, region, lines.length, offset, inner_h)
             end
 
             def reading_lines(article, width)
               [
-                *wrap_styled(article[:title].to_s, width, "#{Ansi::BOLD}#{@tokens.primary}"),
-                "#{@tokens.dim}#{truncate_text(reading_meta(article), width)}#{@tokens.reset}",
-                "#{@tokens.divider}#{'─' * width}#{@tokens.reset}",
-                '',
-                *wrap_styled(article_body_text(article), width, @tokens.primary),
-                *reading_footer_lines(article, width),
+                *wrap_words(article[:title].to_s, width).map { |line| [[line, Palette::LANDING_TITLE_FG]] },
+                [[reading_meta(article), Palette::LANDING_DIM_FG]],
+                [],
+                *wrap_words(article_body_text(article), width).map { |line| [[line, Palette::LANDING_TEXT_FG]] },
+                *reading_footer_lines(article),
               ]
             end
 
@@ -224,84 +229,77 @@ module Shoko
                 .map(&:to_s).reject(&:empty?).join('  ·  ')
             end
 
-            def reading_footer_lines(article, width)
-              url = compact_url(article[:url])
+            def reading_footer_lines(article)
+              url = article[:url].to_s.strip.sub(%r{\Ahttps?://}, '')
               return [] if url.empty?
 
-              ['', "#{@tokens.dim}#{truncate_text(url, width)}#{@tokens.reset}"]
+              [[], [[url, Palette::LANDING_DIM_FG]]]
             end
 
-            def render_reading_scroll_hint(surface, bounds, region, total, offset, inner_h)
-              return unless total > inner_h
+            def render_reading_position(frame, total, offset, height)
+              return unless total > height
 
-              badge = "#{offset + 1}-#{[offset + inner_h, total].min} / #{total}"
-              col = region.x + region.width - visible_length(badge)
-              surface.write(bounds, region.y + region.height - 1, col, "#{@tokens.dim}#{badge}#{@tokens.reset}")
+              badge = "#{offset + 1}-#{[offset + height, total].min} / #{total}"
+              frame.render_status(row: frame.body_bottom, left: '', right: badge)
             end
 
-            def wrap_styled(text, width, style)
-              wrap_text(text.to_s, width).map { |line| "#{style}#{line}#{@tokens.reset}" }
+            def register_reading_wheel(frame, top, height)
+              return unless hits
+
+              hits.register(
+                col: frame.bounds.x, row: frame.bounds.y + top - 1,
+                width: frame.bounds.width, height: height,
+                action: { type: :list_wheel, list: :rss_reading }
+              )
             end
 
-            def article_body_text(article)
-              content = article[:content].to_s.strip
-              content.empty? ? article[:summary].to_s : content
-            end
+            # ----- feeds -----
 
-            def compact_url(url)
-              url.to_s.strip.sub(%r{\Ahttps?://}, '')
-            end
+            def render_feeds_view(surface, bounds, frame)
+              top = workspace_top(frame)
+              render_view_heading(frame, top, left: 'Feeds', right: feed_position_label)
+              list_top = top + 2
+              height = [frame.body_bottom - list_top + 1, 0].max
+              return if height <= 0
 
-            # ----- feeds list -----
-
-            def render_feeds_view(surface, bounds, area)
-              indent, width = content_column(area, FEEDS_MAX_WIDTH)
-              render_view_heading(surface, bounds, indent, area.y, width, left: 'Feeds',
-                                                                          right: feed_position_label)
-              region = Region.new(indent, area.y + 2, width, [area.height - 2, 1].max)
-              return render_note(surface, bounds, region, 'No feeds yet') if feed_entries.empty?
-
-              capacity = region.height
-              offset = window_offset(feed_entries.length, capacity, current_feed_index)
-              capacity.times do |slot|
+              list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
+              list.register_wheel(top: list_top, height: height, action: { type: :list_wheel, list: :rss_feeds })
+              offset = window_offset(feed_entries.length, height, current_feed_index)
+              height.times do |slot|
                 feed = feed_entries[offset + slot]
                 break unless feed
 
-                render_feed_line(surface, bounds, region.x, region.y + slot, region.width, feed, offset + slot)
+                render_feed_row(list, feed, index: offset + slot, row: list_top + slot)
               end
+              list.render_scrollbar(top: list_top, height: height, total: feed_entries.length,
+                                    visible: height, offset: offset)
             end
 
-            def render_feed_line(surface, bounds, col, row, width, feed, index)
+            def render_feed_row(list, feed, index:, row:)
               selected = index == current_feed_index
-              stripe = selection_stripe(selected)
-              count = feed_count_label(feed)
-              name_w = [width - stripe_width - visible_length(count) - 2, 4].max
-              name = pad_right(truncate_text(feed[:title].to_s, name_w), name_w)
-              surface.write(bounds, row, col,
-                            "#{stripe}#{feed_name_span(feed, selected)}#{name}#{@tokens.reset}  " \
-                            "#{feed_count_color(feed)}#{count}#{@tokens.reset}")
+              list.row(
+                row: row,
+                left: [[feed[:title].to_s, feed_name_fg(feed, selected)]],
+                right: [feed_count_segment(feed)],
+                selected: selected,
+                action: { type: :list_row, list: :rss_feeds, index: index }
+              )
             end
 
-            def feed_name_span(feed, selected)
-              return "#{Ansi::BOLD}#{@tokens.accent}" if selected
-              return @tokens.error unless feed[:sync_error].to_s.empty?
+            def feed_name_fg(feed, selected)
+              return Palette::LANDING_TITLE_FG if selected
+              return Palette::LANDING_QUIT_FG unless feed[:sync_error].to_s.empty?
 
-              @tokens.primary
+              Palette::LANDING_TEXT_FG
             end
 
-            def feed_count_color(feed)
-              feed_unread(feed).positive? ? @tokens.accent : @tokens.dim
-            end
+            def feed_count_segment(feed)
+              return ['!', Palette::LANDING_QUIT_FG] unless feed[:sync_error].to_s.empty?
 
-            def feed_count_label(feed)
-              return '!' unless feed[:sync_error].to_s.empty?
+              unread = (feed[:unread_count] || 0).to_i
+              return ["#{unread} unread", accent] if unread.positive?
 
-              unread = feed_unread(feed)
-              unread.positive? ? unread.to_s : (feed[:count] || 0).to_i.to_s
-            end
-
-            def feed_unread(feed)
-              (feed[:unread_count] || 0).to_i
+              [(feed[:count] || 0).to_i.to_s, Palette::LANDING_DIM_FG]
             end
 
             def feed_position_label
@@ -309,80 +307,22 @@ module Shoko
               "#{count} #{count == 1 ? 'feed' : 'feeds'}"
             end
 
-            # ----- shared drawing -----
+            # ----- shared -----
 
-            def render_view_heading(surface, bounds, col, row, width, left:, right:)
-              left_room = [width - visible_length(right) - 2, 4].max
-              heading = "#{Ansi::BOLD}#{@tokens.accent}#{truncate_text(left, left_room)}#{@tokens.reset}"
-              surface.write(bounds, row, col, heading)
-              return if right.to_s.empty?
-
-              surface.write(bounds, row, col + width - visible_length(right), "#{@tokens.dim}#{right}#{@tokens.reset}")
+            def render_view_heading(frame, row, left:, right:)
+              frame.render_status(row: row, left: left, left_fg: "#{Shoko::Shared::Terminal::Ansi::BOLD}#{accent}",
+                                  right: right)
             end
 
-            def render_note(surface, bounds, region, message)
-              row = region.y + [region.height / 2, 0].max
-              col = region.x + [(region.width - visible_length(message)) / 2, 0].max
-              surface.write(bounds, row, col, "#{@tokens.dim}#{truncate_text(message, region.width)}#{@tokens.reset}")
+            def render_note(frame, message)
+              row = frame.body_top + [frame.body_height / 2, 0].max - 1
+              frame.write_line(row, [[message, Palette::LANDING_DIM_FG]])
             end
 
-            # A left accent stripe down the active entry (the in-book search signature),
-            # or a blank of the same width so every entry's text lines up.
-            def selection_stripe(selected)
-              return '  ' unless selected
-
-              "#{@tokens.accent}#{stripe_glyph}#{@tokens.reset} "
-            end
-
-            def stripe_width = 2
-
-            def dim_span(text, width)
-              "#{@tokens.dim}#{truncate_text(text, width)}#{@tokens.reset}"
-            end
-
-            # Slim right-edge scrollbar (track + brighter thumb), matching the search list.
-            def render_scrollbar(surface, bounds, region, total, capacity, offset)
-              rows = region.height
-              size = [(capacity.to_f / total * rows).round, 1].max
-              room = rows - size
-              denom = [total - capacity, 1].max
-              start = room <= 0 ? 0 : ((offset.to_f / denom) * room).round.clamp(0, room)
-              col = region.x + region.width - 1
-              rows.times do |i|
-                in_thumb = i >= start && i < start + size
-                color = in_thumb ? @tokens.accent : @tokens.divider
-                surface.write(bounds, region.y + i, col, "#{color}#{scroll_glyph}#{@tokens.reset}")
-              end
-            end
-
-            # Keep the selected entry within the visible window (centred-ish, clamped).
             def window_offset(total, capacity, selected)
               return 0 if total <= capacity
 
               (selected - (capacity / 2)).clamp(0, total - capacity)
-            end
-
-            # ----- input overlay (add feed / filter) -----
-
-            def render_input(surface, bounds, area)
-              row = area.y + [(area.height / 2) - 1, 0].max
-              centered(surface, bounds, area, row, "#{@tokens.heading}#{overlay_label}#{@tokens.reset}")
-              centered(surface, bounds, area, row + 1, "#{@tokens.dim}#{overlay_prompt}#{@tokens.reset}")
-              render_input_field(surface, bounds, area, row + 3)
-            end
-
-            def render_input_field(surface, bounds, area, row)
-              width = [area.width / 2, 40].max.clamp(30, [area.width - 4, 30].max)
-              indent = area.x + [(area.width - width) / 2, 0].max
-              MenuDesign::SearchFieldRenderer.new(surface, bounds, tokens: @tokens).render(
-                label: '', query: overlay_text, cursor: overlay_cursor,
-                row: row, indent: indent, width: width, active: true, compact: true
-              )
-            end
-
-            def centered(surface, bounds, area, row, text)
-              col = area.x + [(area.width - visible_length(text)) / 2, 0].max
-              surface.write(bounds, row, col, text)
             end
 
             # ----- state readers -----
@@ -420,18 +360,9 @@ module Shoko
               @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
-            # ----- labels, glyphs, header/summary/footer -----
-
-            def overlay_label = feed_input_mode? ? 'Add Feed' : 'Filter Articles'
-            def overlay_prompt = feed_input_mode? ? 'Paste an RSS or Atom feed URL' : 'Filter by title, author, or feed'
-
-            def overlay_text
-              raw = feed_input_mode? ? menu_state_reader&.rss_feed_input : menu_state_reader&.rss_filter_query
-              raw.to_s
-            end
-
-            def overlay_cursor
-              (feed_input_mode? ? menu_state_reader&.rss_feed_input_cursor : menu_state_reader&.rss_filter_cursor).to_i
+            def article_body_text(article)
+              content = article[:content].to_s.strip
+              content.empty? ? article[:summary].to_s : content
             end
 
             def current_feed_title
@@ -455,40 +386,16 @@ module Shoko
               end
             end
 
-            def stripe_glyph = MenuDesign::IconSet.ascii_icons? ? '|' : '▌'
-            def scroll_glyph = MenuDesign::IconSet.ascii_icons? ? '|' : '█'
-
-            def header_hint
-              return 'ENTER apply · ESC cancel' if overlay_mode?
-              return 'H back · J/K scroll' if reading?
-              return 'ENTER open · ESC back' if focus?(:feeds)
-
-              'ENTER read · H feeds · S sync'
-            end
-
-            def summary_right
-              [scope_label, last_synced_label].reject(&:empty?).join('  ·  ')
-            end
-
-            def footer_text
-              return 'Type the feed URL, then ENTER to subscribe' if feed_input_mode?
-              return 'Filtering live as you type · ENTER done' if filter_mode?
-              return 'J/K scroll · H back · R read · M star · Q menu' if reading?
-              return 'J/K move · ENTER open · A add · D remove · Q menu' if focus?(:feeds)
-
-              'J/K move · ENTER read · H feeds · / filter · 1/2/3 scope · S sync · Q menu'
-            end
-
             def status_message
               menu_state_reader&.rss_message.to_s
             end
 
-            def status_color
+            def status_fg
               case menu_state_reader&.rss_status&.to_sym
-              when :error then @tokens.error
-              when :syncing then @tokens.accent
-              when :ready then @tokens.success
-              else @tokens.dim
+              when :error then Palette::LANDING_QUIT_FG
+              when :syncing then Palette::LIST_MATCH_FG
+              when :ready then Palette::TRANS_ACCENT_FG
+              else Palette::LANDING_DIM_FG
               end
             end
 
@@ -496,17 +403,13 @@ module Shoko
               text = menu_state_reader&.rss_last_synced_at.to_s.strip
               return '' if text.empty?
 
-              "Synced #{Time.parse(text).localtime.strftime('%H:%M')}"
+              "synced #{Time.parse(text).localtime.strftime('%H:%M')}"
             rescue ArgumentError
               unknown_last_synced_label
             end
 
             def unknown_last_synced_label
               ''
-            end
-
-            def visible_length(text)
-              TextMetrics.visible_length(text.to_s)
             end
           end
         end

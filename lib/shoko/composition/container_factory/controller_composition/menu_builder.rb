@@ -8,6 +8,7 @@ require 'shoko/adapters/input/controllers/menu/workflow_ports_adapter'
 require 'shoko/adapters/input/controllers/menu/intent_runtime_bridge'
 require 'shoko/adapters/ui/rendering/noop_terminal_state_writer'
 require 'shoko/adapters/ui/dependency_sets'
+require 'shoko/adapters/ui/state/menu_hit_registry'
 require_relative 'menu_state_controller_composer'
 
 module Shoko
@@ -110,6 +111,7 @@ module Shoko
             :page_calculator,
             :pagination_cache_preloader,
             :rss_reader_service,
+            :menu_hit_registry,
             :document
           ) do
             def self.resolve(container)
@@ -122,6 +124,7 @@ module Shoko
                 reader_view_state_store: container.resolve(:reader_view_state_store),
                 reader_pagination_store: container.resolve(:reader_pagination_store),
                 **resolve_lazy_services(container, LAZY_SERVICE_MAP),
+                menu_hit_registry: Shoko::Adapters::Ui::State::MenuHitRegistry.new,
                 document: reader_launch_state&.preloaded_document
               )
             end
@@ -137,6 +140,8 @@ module Shoko
                 dictionary_storage: dictionary_storage,
                 annotation_service: annotation_service,
                 catalog_service: catalog_service,
+                rss_reader_service: rss_reader_service,
+                menu_hit_registry: menu_hit_registry,
                 reader_launch_state: reader_launch_state,
                 document: document
               )

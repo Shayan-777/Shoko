@@ -1,29 +1,33 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../constants/ui_constants'
 require 'shoko/shared/terminal/text_sanitizer'
-require_relative '../menu_design/master_detail_shell'
-require_relative '../menu_design/progress_renderer'
-require_relative '../menu_design/search_field_renderer'
-require_relative '../menu_design/table_renderer'
+require_relative '../menu_design/canvas_frame'
+require_relative '../menu_design/canvas_list'
+require_relative '../menu_design/view_accents'
+require_relative '../status_bar/palette'
 require_relative '../ui/text_utils'
-require_relative '../ui/list_helpers'
 
 module Shoko
   module Adapters
     module Ui
       module Components
         module Screens
-          # Browse screen component that renders the searchable library list
-          # with a persistent inspector for the selected item.
+          # Browse — the searchable shelf, rendered in the canvas grammar as
+          # the menu-side sibling of the in-book search list: roomy two-row
+          # blocks (title, then author · format · size) with the family's
+          # selection strip, a slim scrollbar when the shelf overflows, and
+          # the search input living in the status bar exactly like in-book
+          # search. A book being opened grows a progress row under its block.
           class BrowseScreenComponent < BaseComponent
-            include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
 
-            DETAIL_KEY_WIDTH = 7
-            BROWSE_PREFERRED_WIDTH = 132
+            Palette = StatusBar::Palette
+
+            ROWS_PER_BOOK = 2
             UNREADABLE_METADATA = Object.new.freeze
+
+            attr_reader :filtered_epubs
 
             def initialize(catalog_service, observer_registry, dependencies = nil, menu_visual_profile: nil)
               super()
@@ -79,61 +83,175 @@ module Shoko
 
             def do_render(surface, bounds)
               @filtered_epubs ||= []
-              shell = MenuDesign::MasterDetailShell.new(surface, bounds)
-              layout = build_shell_layout(shell)
-              summary = summary_context
-
-              render_shell_frame(shell, layout, summary)
-              render_search(surface, bounds, layout)
-              shell.render_panels(layout: layout, primary_title: 'Results', secondary_title: 'Selection')
-
-              if @filtered_epubs.empty?
-                render_empty_results(surface, bounds, layout.primary_panel.content)
-              else
-                render_books_list(surface, bounds, layout.primary_panel.content)
-              end
-
-              render_selection_details(surface, bounds, layout.secondary_panel&.content)
+              frame = MenuDesign::CanvasFrame.new(surface, bounds)
+              frame.paint
+              frame.render_rule(title: 'Browse Library', accent: accent, meta: rule_meta)
+              render_status_line(frame)
+              render_books(surface, bounds, frame)
+              frame.render_hint(hint_text)
             end
 
             def preferred_height(_available_height)
               :fill
             end
 
-            UI = Adapters::Ui::Constants::Ui
-
-            BookRow = Data.define(:row, :book, :selected, :columns, :indent)
-
             private
 
-            def build_shell_layout(shell)
-              shell.build_layout(
-                prelude_rows: 1,
-                detail_visible: true,
-                desired_detail_width: 40,
-                min_primary_width: 38,
-                min_detail_width: 30,
-                stacked_detail_height: 8,
-                preferred_width: BROWSE_PREFERRED_WIDTH
-              )
+            def accent
+              MenuDesign::ViewAccents.for(:browse)
             end
 
-            def summary_context
-              count_text, status_text, status_color = summary_payload
-              { count_text: count_text, status_text: status_text, status_color: status_color }
+            def hits
+              @dependencies.respond_to?(:menu_hit_registry) ? @dependencies.menu_hit_registry : nil
             end
 
-            def render_shell_frame(shell, layout, summary)
-              shell.render_frame(
-                layout: layout,
-                title: 'Browse Library',
-                hint: 'ENTER open  / search  ESC back',
-                summary_left: summary[:count_text],
-                summary_right: summary[:status_text],
-                footer: footer_text,
-                summary_right_color: summary[:status_color]
-              )
+            def rule_meta
+              total = @filtered_epubs.length
+              "#{total} #{total == 1 ? 'book' : 'books'}"
             end
+
+            # Scan feedback (or the active filter) rides a status line between
+            # the rule and the list.
+            def render_status_line(frame)
+              left, left_fg = status_left
+              right = filter_note
+              return if left.empty? && right.empty?
+
+              frame.render_status(row: frame.body_top, left: left, left_fg: left_fg, right: right)
+            end
+
+            def status_left
+              message = sanitize_text(@catalog.scan_message)
+              case @catalog.scan_status
+              when :scanning
+                [message.empty? ? 'Scanning for books…' : message, accent]
+              when :error
+                [message.empty? ? 'Scan failed' : message, Palette::LANDING_QUIT_FG]
+              else
+                ['', nil]
+              end
+            end
+
+            def filter_note
+              query = sanitize_text(menu_state_reader&.search_query)
+              query.empty? ? '' : "filter: #{query}"
+            end
+
+            def render_books(surface, bounds, frame)
+              list_top = list_top_row(frame)
+              height = [frame.body_bottom - list_top + 1, 0].max
+              return if height <= 0
+              return render_empty(frame, list_top, height) if @filtered_epubs.empty?
+
+              render_book_blocks(surface, bounds, frame, top: list_top, height: height)
+            end
+
+            def list_top_row(frame)
+              status_present = @catalog.scan_status == :scanning || @catalog.scan_status == :error ||
+                               !filter_note.empty?
+              frame.body_top + (status_present ? 2 : 0)
+            end
+
+            def render_empty(frame, list_top, height)
+              message = @catalog.scan_status == :scanning ? 'Scanning for books…' : 'No matching books'
+              frame.write_line(list_top + [height / 2, 0].max - 1, [[message, Palette::LANDING_DIM_FG]])
+            end
+
+            def render_book_blocks(surface, bounds, frame, top:, height:)
+              list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
+              window = visible_window(height)
+              list.register_wheel(top: top, height: height, action: { type: :list_wheel, list: :browse })
+              render_block_window(list, frame, window, top)
+              render_overflow_scrollbar(list, top, height, window)
+            end
+
+            def render_block_window(list, frame, window, top)
+              row = top
+              window[:books].each_with_index do |book, offset|
+                index = window[:start] + offset
+                rows = book_block_rows(book, index == window[:selected])
+                break if row + rows.length - 1 > frame.body_bottom
+
+                render_book_block(list, frame, book: book, index: index, row: row,
+                                               selected: index == window[:selected], rows: rows)
+                row += rows.length + (loading_for?(book) ? 1 : 0)
+              end
+            end
+
+            def render_book_block(list, frame, book:, index:, row:, selected:, rows:)
+              list.block(row: row, lines: rows, selected: selected,
+                         action: { type: :list_row, list: :browse, index: index })
+              render_loading_row(frame, row + ROWS_PER_BOOK) if loading_for?(book)
+            end
+
+            # Rows for one book: bright title, then a dim author · format · size
+            # line — the in-book search block shape, retold for the shelf.
+            def book_block_rows(book, selected)
+              title_fg = selected ? Palette::LANDING_TITLE_FG : Palette::LANDING_TEXT_FG
+              [
+                { left: [[book_title(book), title_fg]] },
+                { left: [["#{book_author(book)}#{' · ' unless book_author(book).empty?}#{file_format(book['path'])}",
+                          Palette::LANDING_DIM_FG]],
+                  right: [[size_label(book), Palette::LANDING_DIM_FG]] },
+              ]
+            end
+
+            # The row a book being opened grows underneath: a slim accent
+            # progress stroke with the percentage and message riding after it.
+            def render_loading_row(frame, row)
+              return if row > frame.body_bottom
+
+              frame.write_line(row, loading_row_segments([frame.content_width / 3, 12].max))
+            end
+
+            def loading_row_segments(bar_width)
+              filled = (loading_progress.clamp(0.0, 1.0) * bar_width).round
+              message = sanitize_text(menu_state_reader&.loading_message)
+              [
+                ['  ', nil],
+                ['━' * filled, accent],
+                ['━' * (bar_width - filled), Palette::FAINT_FG],
+                ["  #{(loading_progress * 100).round}%", Palette::LANDING_DIM_FG],
+                [message.empty? ? '' : " · #{message}", Palette::LANDING_DIM_FG],
+              ]
+            end
+
+            def render_overflow_scrollbar(list, list_top, height, window)
+              blocks_visible = window[:capacity]
+              total = @filtered_epubs.length
+              return if total <= blocks_visible
+
+              list.render_scrollbar(top: list_top, height: height, total: total,
+                                    visible: blocks_visible, offset: window[:start])
+            end
+
+            def visible_window(height)
+              selected = selected_index(@filtered_epubs.length)
+              capacity = [(height - loading_reserve) / ROWS_PER_BOOK, 1].max
+              start = window_start(selected, capacity)
+              {
+                start: start,
+                books: @filtered_epubs[start, capacity] || [],
+                selected: selected,
+                capacity: capacity,
+              }
+            end
+
+            def window_start(selected, capacity)
+              return 0 if @filtered_epubs.length <= capacity
+
+              (selected - (capacity / 2)).clamp(0, @filtered_epubs.length - capacity)
+            end
+
+            def loading_reserve
+              menu_state_reader&.loading_active? ? 1 : 0
+            end
+
+            def hint_text
+              'ENTER open · / search · wheel scrolls · ESC back'
+            end
+
+            # ----- data helpers -----
 
             def filter_books
               @filtered_epubs = apply_search_filter(@catalog.entries || [], menu_state_reader&.search_query)
@@ -150,45 +268,28 @@ module Shoko
               end
             end
 
-            def summary_payload
-              total = @filtered_epubs.length
-              count_text = "Found #{total} #{total == 1 ? 'book' : 'books'}"
-              status = @catalog.scan_status
-              message = sanitize_text(@catalog.scan_message)
-              case status
-              when :scanning
-                [count_text, message.empty? ? 'Scanning library' : "Scanning: #{message}", COLOR_TEXT_WARNING]
-              when :error
-                [count_text, message.empty? ? 'Scan failed' : message, COLOR_TEXT_ERROR]
-              when :done
-                [count_text, message.empty? ? 'Library ready' : message, COLOR_TEXT_DIM]
+            def book_title(book)
+              meta = safe_metadata_for(book)
+              raw = meta_value(meta, :title) || book['name'] || 'Unknown'
+              sanitized = sanitize_text(raw)
+              sanitized.empty? ? 'Unknown' : sanitized
+            end
+
+            def book_author(book)
+              value = meta_value(safe_metadata_for(book), :author) ||
+                      meta_value(safe_metadata_for(book), :authors) || book['author']
+              normalize_author(value)
+            end
+
+            def normalize_author(value)
+              if value.is_a?(Array)
+                value.filter_map do |item|
+                  sanitized = sanitize_text(item)
+                  sanitized unless sanitized.empty?
+                end.join(', ')
               else
-                [count_text, '', COLOR_TEXT_DIM]
+                sanitize_text(value)
               end
-            end
-
-            def render_search(surface, bounds, layout)
-              MenuDesign::SearchFieldRenderer.new(surface, bounds).render(
-                label: 'Search',
-                query: menu_state_reader&.search_query || '',
-                cursor: menu_state_reader&.search_cursor,
-                row: layout.prelude_top,
-                indent: layout.shell_indent,
-                width: layout.shell_width,
-                active: menu_state_reader&.search_active? == true,
-                compact: true
-              )
-            end
-
-            def render_empty_results(surface, bounds, panel)
-              status = @catalog.scan_status
-              message = status == :scanning ? 'Scanning for books...' : 'No matching books'
-              row = panel.y + [panel.height / 2, 0].max
-              surface.write(bounds, row, panel.x, "#{COLOR_TEXT_DIM}#{message}#{Shoko::Shared::Terminal::Ansi::RESET}")
-            end
-
-            def display_author(meta, book)
-              normalize_author(meta_value(meta, :author) || meta_value(meta, :authors) || book['author'])
             end
 
             def safe_metadata_for(book)
@@ -207,22 +308,14 @@ module Shoko
               meta[key]
             end
 
-            def normalize_author(value)
-              if value.is_a?(Array)
-                names = value.filter_map do |item|
-                  sanitized = sanitize_text(item)
-                  sanitized unless sanitized.empty?
-                end
-                names.join(', ')
-              else
-                sanitize_text(value)
-              end
+            def file_format(path)
+              extension = File.extname(path.to_s).delete('.').upcase
+              extension.empty? ? 'BOOK' : extension
             end
 
-            def display_title(meta_title:, fallback_name:)
-              raw = meta_title || fallback_name || 'Unknown'
-              sanitized = sanitize_text(raw)
-              sanitized.empty? ? 'Unknown' : sanitized
+            def size_label(book)
+              bytes = book['size'] || @catalog.size_for(book['path'])
+              format('%.1f MB', bytes.to_f / (1024 * 1024))
             end
 
             def sanitize_text(value)
@@ -240,302 +333,6 @@ module Shoko
               current.clamp(0, total - 1)
             end
 
-            def footer_text
-              query = sanitize_text(menu_state_reader&.search_query)
-              query.empty? ? nil : "Filter: #{query}"
-            end
-
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
-
-            def menu_session_mutator
-              @menu_session_mutator ||= @dependencies&.menu_session_mutator
-            end
-
-            def render_selection_details(surface, bounds, panel)
-              return unless panel
-
-              book = selected_book
-              return render_empty_selection(surface, bounds, panel) unless book
-
-              context = { surface: surface, bounds: bounds, panel: panel }
-              detail = selected_book_detail(panel, book)
-              row = write_detail_title(context, detail)
-              row = write_detail_author(context, detail, row)
-              write_detail_lines(context, detail[:lines], row)
-            end
-
-            def render_empty_selection(surface, bounds, panel)
-              surface.write(bounds,
-                            panel.y,
-                            panel.x,
-                            "#{UI::COLOR_TEXT_DIM}No book selected#{Shoko::Shared::Terminal::Ansi::RESET}")
-            end
-
-            def selected_book_detail(panel, book)
-              meta = safe_metadata_for(book)
-              {
-                title: display_title(meta_title: meta_value(meta, :title), fallback_name: book['name']),
-                author: display_author(meta, book),
-                lines: detail_lines(book, panel.width),
-              }
-            end
-
-            def write_detail_title(context, detail)
-              title_style = "#{Shoko::Shared::Terminal::Ansi::BOLD}#{UI::COLOR_TEXT_ACCENT}"
-              write_wrapped_detail(context, context[:panel].y, detail[:title], style: title_style)
-            end
-
-            def write_detail_author(context, detail, row)
-              panel = context[:panel]
-              return row + 1 if detail[:author].empty? || row > panel.bottom
-
-              context[:surface].write(context[:bounds],
-                                      row,
-                                      panel.x,
-                                      "#{UI::COLOR_TEXT_DIM}#{detail[:author]}#{Shoko::Shared::Terminal::Ansi::RESET}")
-              row + 2
-            end
-
-            def write_detail_lines(context, lines, start_row)
-              panel = context[:panel]
-              row = start_row
-              lines.each do |line|
-                break if row > panel.bottom
-
-                context[:surface].write(context[:bounds],
-                                        row,
-                                        panel.x,
-                                        "#{UI::COLOR_TEXT_PRIMARY}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
-                row += 1
-              end
-            end
-
-            def write_wrapped_detail(context, row, text, style:)
-              panel = context[:panel]
-              wrap_text(text, panel.width).each do |line|
-                break if row > panel.bottom
-
-                context[:surface].write(context[:bounds],
-                                        row,
-                                        panel.x,
-                                        "#{style}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
-                row += 1
-              end
-              row
-            end
-
-            def detail_lines(book, width)
-              lines = []
-              append_detail(lines, 'Size', format_size(book['size'] || @catalog.size_for(book['path'])), width)
-              append_detail(lines, 'Format', file_format(book['path']), width)
-              append_detail(lines, 'File', File.basename(book['path'].to_s), width)
-              lines << ''
-              lines << "#{UI::COLOR_TEXT_DIM}Enter opens the selected book#{Shoko::Shared::Terminal::Ansi::RESET}"
-              lines
-            end
-
-            def append_detail(lines, label, value, width)
-              safe_value = sanitize_text(value)
-              safe_value = '—' if safe_value.empty?
-              value_width = [width - BrowseScreenComponent::DETAIL_KEY_WIDTH - 1, 8].max
-              wrap_text(safe_value, value_width).each_with_index do |part, index|
-                key = if index.zero?
-                        pad_right("#{label}:", BrowseScreenComponent::DETAIL_KEY_WIDTH)
-                      else
-                        ' ' * BrowseScreenComponent::DETAIL_KEY_WIDTH
-                      end
-                lines << "#{key}#{truncate_text(part, value_width)}"
-              end
-            end
-
-            def file_format(path)
-              extension = File.extname(path.to_s).delete('.').upcase
-              extension.empty? ? 'BOOK' : extension
-            end
-
-            def render_books_list(surface, bounds, panel)
-              columns = column_layout(panel.width)
-              render_books_header(surface, bounds, panel, columns)
-              render_visible_books(surface, bounds, panel, columns)
-            end
-
-            def render_books_header(surface, bounds, panel, columns)
-              MenuDesign::TableRenderer.new(surface, bounds).render_header(
-                row: panel.y,
-                indent: panel.x,
-                headers: %w[Title Size],
-                widths: [columns[:title], columns[:size]],
-                divider_char: '─'
-              )
-            end
-
-            def render_visible_books(surface, bounds, panel, columns)
-              start_index, visible_books, selected = visible_books_slice(panel)
-              return unless visible_books
-
-              render_visible_book_rows(surface:, bounds:, panel:, columns:, start_index:, selected:, visible_books:)
-            end
-
-            def render_visible_book(surface:, bounds:, panel:, columns:, book:, absolute_index:, selected:,
-                                    current_row:)
-              return panel.bottom + 1 if current_row > panel.bottom
-
-              render_book_item(
-                surface,
-                bounds,
-                build_book_row(
-                  book: book,
-                  columns: columns,
-                  indent: panel.x,
-                  row: current_row,
-                  absolute_index: absolute_index,
-                  selected: selected
-                )
-              )
-              advance_book_row(surface: surface, bounds: bounds, panel: panel, book: book, current_row: current_row)
-            end
-
-            def build_book_row(book:, columns:, indent:, row:, absolute_index:, selected:)
-              BookRow.new(
-                row: row,
-                book: book,
-                selected: absolute_index == selected,
-                columns: columns,
-                indent: indent
-              )
-            end
-
-            def render_book_item(surface, bounds, row)
-              MenuDesign::TableRenderer.new(surface, bounds).render_row(
-                row: row.row,
-                indent: row.indent,
-                cells: book_row_cells(row),
-                widths: [row.columns[:title], row.columns[:size]],
-                selected: row.selected
-              )
-            end
-
-            def book_row_cells(row)
-              path = row.book['path']
-              [
-                pad_right(truncate_text(book_title(row.book), row.columns[:title]), row.columns[:title]),
-                pad_left(book_size_label(row.book, path), row.columns[:size]),
-              ]
-            end
-
-            def book_title(book)
-              meta = safe_metadata_for(book)
-              display_title(meta_title: meta_value(meta, :title), fallback_name: book['name'])
-            end
-
-            def book_size_label(book, path)
-              format_size(book['size'] || @catalog.size_for(path))
-            end
-
-            def advance_book_row(surface:, bounds:, panel:, book:, current_row:)
-              progress_row = current_row + 1
-              return current_row + 1 unless loading_for?(book) && progress_row <= panel.bottom
-
-              current_row + 1 + draw_inline_progress(progress_context(surface, bounds, panel, progress_row))
-            end
-
-            def visible_books_slice(panel)
-              visible_rows = [panel.height - 2 - loading_progress_reserve, 0].max
-              return [nil, nil, nil] if visible_rows <= 0
-
-              selected = selected_index(@filtered_epubs.length)
-              start_index, visible_books = Ui::ListHelpers.slice_visible(@filtered_epubs, visible_rows, selected)
-              [start_index, visible_books, selected]
-            end
-
-            # Rows the inline loading indicator needs below the loading book (the progress bar, plus a
-            # message row when one is present). While a book is loading it is the selected book, which
-            # the visible window pins to the bottom row — leaving no room beneath it. Reserving those
-            # rows scrolls the book up just enough to keep its indicator on-screen instead of clipped.
-            def loading_progress_reserve
-              return 0 unless menu_state_reader&.loading_active?
-
-              loading_message.strip.empty? ? 1 : 2
-            end
-
-            def render_visible_book_rows(surface:, bounds:, panel:, columns:, start_index:, selected:, visible_books:)
-              current_row = panel.y + 2
-              visible_books.each_with_index do |book, offset|
-                current_row = render_visible_book(surface: surface,
-                                                  bounds: bounds,
-                                                  panel: panel,
-                                                  columns: columns,
-                                                  book: book,
-                                                  absolute_index: start_index + offset,
-                                                  selected: selected,
-                                                  current_row: current_row)
-                break if current_row > panel.bottom
-              end
-            end
-
-            def progress_context(surface, bounds, panel, row)
-              {
-                surface: surface,
-                bounds: bounds,
-                panel: panel,
-                row: row,
-                progress: loading_progress,
-                message: loading_message,
-              }
-            end
-
-            def draw_inline_progress(context)
-              return 0 if context[:row] > context[:panel].bottom
-
-              rows_used = render_progress_message(context)
-              return rows_used if next_progress_row(context, rows_used) > context[:panel].bottom
-
-              render_progress_bar(context, next_progress_row(context, rows_used))
-              rows_used + 1
-            end
-
-            def render_progress_message(context)
-              message_text = sanitize_text(context[:message])
-              return 0 if message_text.empty?
-
-              truncated = Shoko::Shared::Terminal::TextMetrics.truncate_to(message_text, context[:panel].width)
-              context[:surface].write(
-                context[:bounds],
-                context[:row],
-                context[:panel].x,
-                "#{UI::COLOR_TEXT_DIM}#{truncated}#{Shoko::Shared::Terminal::Ansi::RESET}"
-              )
-              1
-            end
-
-            def next_progress_row(context, rows_used)
-              context[:row] + rows_used
-            end
-
-            def render_progress_bar(context, row)
-              MenuDesign::ProgressRenderer.new(context[:surface], context[:bounds]).render(
-                row: row,
-                indent: context[:panel].x,
-                width: context[:panel].width,
-                progress: context[:progress],
-                filled_char: '━',
-                empty_char: '━'
-              )
-            end
-
-            def column_layout(content_width)
-              gap = 3
-              size_width = 9
-              { title: [content_width - size_width - gap, 16].max, size: size_width }
-            end
-
-            def format_size(bytes)
-              mb = (bytes.to_f / (1024 * 1024)).round(1)
-              format('%.1f MB', mb)
-            end
-
             def loading_for?(book)
               menu_state_reader&.loading_active? && menu_state_reader&.loading_path == book['path']
             end
@@ -544,8 +341,12 @@ module Shoko
               (menu_state_reader&.loading_progress || 0.0).to_f
             end
 
-            def loading_message
-              menu_state_reader&.loading_message.to_s
+            def menu_state_reader
+              @menu_state_reader ||= @dependencies&.menu_state_reader
+            end
+
+            def menu_session_mutator
+              @menu_session_mutator ||= @dependencies&.menu_session_mutator
             end
           end
         end

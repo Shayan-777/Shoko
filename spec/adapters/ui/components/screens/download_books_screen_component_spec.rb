@@ -27,24 +27,23 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DownloadBooksScreenComp
   let(:component) { described_class.new(dependencies: dependencies) }
 
   [
-    [:dark, 80, 24],
-    [:light, 80, 24],
-    [:dark, 120, 40],
-    [:light, 120, 40]
-  ].each do |mode, width, height|
-    it "renders coherent download layout in #{mode} mode at #{width}x#{height}" do
-      writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
+    [80, 24],
+    [120, 40]
+  ].each do |width, height|
+    it "renders the canvas download results at #{width}x#{height}" do
+      writes = render_component(component, width: width, height: height)
       text = rendered_text(writes)
 
       expect(text).to include('Download Books')
-      expect(text).to include('SEARCH GUTENDEX')
-      expect(text).to include('TITLE')
-      expect(text).to include('Gutendex | Filter: austen')
-      expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
+      expect(text).to include('source: gutendex')
+      expect(text).to include('Pride and Prejudice')
+      expect(text).to include('Jane Austen · en')
+      expect(text).to include('Ready')
+      expect(text).not_to include('│')
     end
   end
 
-  it 'renders the source selector options inside the download view when source selection is active' do
+  it 'renders the source picker as candidate rows when source selection is active' do
     allow(menu_state_reader).to receive_messages(
       mode: :download_source_select,
       download_results: [],
@@ -52,12 +51,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DownloadBooksScreenComp
       download_source_selected: 1
     )
 
-    writes = with_color_mode(:dark) { render_component(component, width: 80, height: 24) }
+    writes = render_component(component, width: 80, height: 24)
     text = rendered_text(writes)
 
-    expect(text).to include('Source')
     expect(text).to include('Gutendex')
     expect(text).to include('Libgen')
-    expect(text).to include('Choose a source and press Enter')
+    expect(text).to include('ENTER apply')
   end
 end

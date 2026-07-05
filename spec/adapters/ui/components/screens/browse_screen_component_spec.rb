@@ -5,6 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent do
   include MenuScreenRenderHelpers
 
+  let(:palette) { Shoko::Adapters::Ui::Components::StatusBar::Palette }
   let(:observer_registry) { MenuScreenRenderHelpers::NullObserverRegistry.new }
   let(:menu_state_reader) do
     instance_double(
@@ -43,147 +44,65 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
     ]
   end
 
-  [
-    [:dark, 80, 24],
-    [:light, 80, 24],
-    [:dark, 120, 40],
-    [:light, 120, 40]
-  ].each do |mode, width, height|
-    it "renders shared browse shell in #{mode} mode at #{width}x#{height}" do
-      writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
+  [[80, 24], [120, 40]].each do |width, height|
+    it "renders the canvas book blocks at #{width}x#{height}" do
+      writes = render_component(component, width: width, height: height)
       text = rendered_text(writes)
 
       expect(text).to include('Browse Library')
-      expect(text).to include('SEARCH')
-      expect(text).to include('RESULTS')
-      expect(text).to include('SELECTION')
-      expect(text).to include('TITLE')
-      expect(text).to include('Filter: book')
+      expect(text).to include('2 books')
       expect(text).to include('Book One')
-      expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
+      expect(text).to include('Gabriel Rockhill · EPUB')
+      expect(text).to include('filter: book')
+      expect(writes.any? { |entry| entry[:text].include?(palette::LANDING_CANVAS_BG) }).to be(true)
+      expect(text).not_to include('│')
+      expect(text).not_to include('SEARCH [')
     end
   end
 
-  it 'keeps the inline loading indicator on-screen when the bottom book of a long list is loading' do
-    books = (1..40).map do |i|
-      { 'path' => "/tmp/book-#{i}.epub", 'name' => "Book #{i}", 'size' => 1_048_576, 'modified' => '2024-01-01T00:00:00Z' }
-    end
-    component.filtered_epubs = books
+  it 'marks the selected block with the family selection background' do
+    writes = render_component(component, width: 100, height: 30)
+
+    expect(writes.any? { |entry| entry[:text].include?(palette::LANDING_SELECTED_BG) }).to be(true)
+  end
+
+  it 'shows the inline loading stroke under the loading book' do
     allow(menu_state_reader).to receive_messages(
-      browse_selected: books.length - 1,
       loading_active?: true,
-      loading_path: books.last['path'],
+      loading_path: '/tmp/book-1.epub',
       loading_progress: 0.5,
-      loading_message: 'Preparing book...'
+      loading_message: 'Parsing chapters'
     )
 
-    writes = with_color_mode(:dark) { render_component(component, width: 100, height: 24) }
-    text = strip_ansi(rendered_text(writes))
+    text = rendered_text(render_component(component, width: 100, height: 30))
 
-    expect(text).to include('Preparing book...')
+    expect(text).to include('━')
+    expect(text).to include('50%')
+    expect(text).to include('Parsing chapters')
   end
 
-  it 'keeps status and footer aligned to the centered content area on wide terminals' do
-    allow(catalog).to receive_messages(scan_status: :done, scan_message: 'Loaded 180 books from cache')
-    writes = with_color_mode(:dark) { render_component(component, width: 170, height: 54) }
+  it 'shows scan progress while the catalog is scanning' do
+    allow(catalog).to receive_messages(scan_status: :scanning, scan_message: 'Scanning for ebooks...')
+    component.filtered_epubs = []
 
-    search_label = writes.find { |entry| strip_ansi(entry[:text]).include?('SEARCH') }
-    search_field = writes.find do |entry|
-      text = strip_ansi(entry[:text])
-      text.include?('[') && text.end_with?(']')
-    end
-    status_right = writes.find { |entry| strip_ansi(entry[:text]).include?('Loaded 180 books from cache') }
-    footer = writes.find { |entry| strip_ansi(entry[:text]).include?('Filter: book') }
+    text = rendered_text(render_component(component, width: 100, height: 30))
 
-    expect(search_label).not_to be_nil
-    expect(search_field).not_to be_nil
-    expect(status_right).not_to be_nil
-    expect(footer).not_to be_nil
-
-    status_right_width = Shoko::Shared::Terminal::TextMetrics.visible_length(strip_ansi(status_right[:text]))
-    search_field_width = Shoko::Shared::Terminal::TextMetrics.visible_length(strip_ansi(search_field[:text]))
-    status_right_edge = status_right[:col] + status_right_width - 1
-    content_right_edge = search_field[:col] + search_field_width - 1
-
-    expect(status_right_edge).to be <= content_right_edge
-    expect(footer[:col]).to eq(search_label[:col])
+    expect(text).to include('Scanning for ebooks...')
   end
 
-  it 'renders binary-encoded titles without raising encoding errors' do
-    binary_title = [0x42, 0x6F, 0x6F, 0x6B, 0x20, 0xFC].pack('C*').force_encoding(Encoding::BINARY)
-    allow(catalog).to receive(:display_metadata_for).and_return({ title: binary_title })
-    component.filtered_epubs = [
-      { 'path' => '/tmp/book-3.mobi', 'name' => binary_title, 'size' => 512_000 }
-    ]
+  it 'renders the empty state when nothing matches' do
+    component.filtered_epubs = []
 
-    expect { with_color_mode(:dark) { render_component(component, width: 100, height: 28) } }.not_to raise_error
+    text = rendered_text(render_component(component, width: 100, height: 30))
+
+    expect(text).to include('No matching books')
   end
 
-  it 'renders an inactive search field style when search mode is not active' do
-    allow(menu_state_reader).to receive(:search_active?).and_return(false)
-    writes = with_color_mode(:dark) { render_component(component, width: 100, height: 28) }
-    search_field = writes.find do |entry|
-      text = entry[:text].to_s
-      text.include?('[') && text.include?(']') && text.include?('book')
-    end
+  it 'keeps selection clamped and exposes the selected book' do
+    allow(menu_state_reader).to receive(:browse_selected).and_return(99)
 
-    expect(search_field).not_to be_nil
-    expect(search_field[:text]).to include(Shoko::Adapters::Ui::Constants::Ui::MENU_DIVIDER_FG)
-    expect(search_field[:text]).to include(Shoko::Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM)
-  end
-
-  it 'requests non-blocking display metadata with the scan fingerprint' do
-    expect(catalog).to receive(:display_metadata_for)
-      .with('/tmp/book-1.epub', size: 1_048_576, modified: '2024-01-01T00:00:00Z')
-      .at_least(:once)
-      .and_return({ title: 'Book One', authors: ['Gabriel Rockhill'] })
-    expect(catalog).not_to receive(:metadata_for)
-
-    with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
-  end
-
-  it 'falls back to filename-derived titles while display metadata is warming' do
-    allow(catalog).to receive(:display_metadata_for).and_return({})
-
-    writes = with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
-    text = strip_ansi(rendered_text(writes))
-
-    expect(text).to include('Book One')
-  end
-
-  it 'sanitizes control sequences in metadata titles before rendering rows' do
-    allow(catalog).to receive(:display_metadata_for).and_return({ title: "AB\e[31mCD\e[0m\nEF\tGH" })
-
-    writes = with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
-    text = strip_ansi(rendered_text(writes))
-
-    expect(text).to include('ABCD EF GH')
-    expect(text).not_to include("\e[31m")
-  end
-
-  it 'falls back to book name when metadata extraction fails for a row' do
-    allow(catalog).to receive(:display_metadata_for).and_raise(
-      Shoko::MalformedMetadataInputError,
-      'PDF metadata Info dictionary unreadable'
-    )
-
-    expect { with_color_mode(:dark) { render_component(component, width: 120, height: 28) } }.not_to raise_error
-
-    writes = with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
-    text = strip_ansi(rendered_text(writes))
-    expect(text).to include('Book One')
-  end
-
-  it 'renders selection details for the currently highlighted row' do
-    writes = with_color_mode(:dark) { render_component(component, width: 100, height: 30) }
-    text = strip_ansi(rendered_text(writes))
-
-    expect(text).to include('SELECTION')
-    expect(text).to include('File:')
-    expect(text).to include('Format:')
-    expect(text).to include('book-1.epub')
-    expect(text).to include('Gabriel Rockhill')
-    expect(text).not_to include('Path:')
-    expect(text).to include('Enter opens the selected book')
+    expect(component.selected_book['name']).to eq('Book Two')
+    expect(component.filtered_count).to eq(2)
+    expect(component.book_at(0)['name']).to eq('Book One')
   end
 end

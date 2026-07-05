@@ -1,16 +1,12 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../constants/ui_constants'
 require 'shoko/shared/download_source_policy'
-require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/terminal/text_sanitizer'
-require_relative '../menu_design/frame_renderer'
-require_relative '../menu_design/layout'
-require_relative '../menu_design/progress_renderer'
-require_relative '../menu_design/search_field_renderer'
-require_relative '../menu_design/status_renderer'
-require_relative '../menu_design/table_renderer'
+require_relative '../menu_design/canvas_frame'
+require_relative '../menu_design/canvas_list'
+require_relative '../menu_design/view_accents'
+require_relative '../status_bar/palette'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 
@@ -19,14 +15,18 @@ module Shoko
     module Ui
       module Components
         module Screens
-          # Centralized download screen for Gutendex search + download flow.
+          # Download Books — remote search results as two-row blocks (title,
+          # then authors · language with the source-specific meta on the
+          # right), cyan like the dictionary family. The query lives in the
+          # status bar; TAB raises the source picker as a small candidate list
+          # under the rule; search/download progress rides an accent stroke on
+          # the status line.
           class DownloadBooksScreenComponent < BaseComponent
-            include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
 
-            UI = Adapters::Ui::Constants::Ui
+            Palette = StatusBar::Palette
 
-            BookItemCtx = Struct.new(:row, :book, :selected, :layout)
+            ROWS_PER_RESULT = 2
 
             def initialize(dependencies: nil, menu_visual_profile: nil)
               super()
@@ -37,16 +37,15 @@ module Shoko
             end
 
             def do_render(surface, bounds)
-              layout = layout_metrics(bounds)
-              frame = MenuDesign::FrameRenderer.new(surface, bounds)
-              frame.render_title(title: 'Download Books')
-              frame.render_divider
-
-              render_source(surface, bounds, layout)
-              render_search(surface, bounds, layout)
-              render_status(surface, bounds, layout)
-              render_results(surface, bounds, layout)
-              render_footer(surface, bounds, layout, frame: frame)
+              frame = MenuDesign::CanvasFrame.new(surface, bounds)
+              frame.paint
+              frame.render_rule(title: 'Download Books', accent: accent, meta: rule_meta)
+              list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
+              render_status_line(frame)
+              body_top = frame.body_top + 2
+              body_top = render_source_picker(list, frame, body_top) if source_selection_active?
+              render_results(list, frame, body_top)
+              frame.render_hint(hint_text)
             end
 
             def preferred_height(_available_height)
@@ -54,6 +53,161 @@ module Shoko
             end
 
             private
+
+            def accent
+              MenuDesign::ViewAccents.for(:download)
+            end
+
+            def hits
+              @dependencies.respond_to?(:menu_hit_registry) ? @dependencies.menu_hit_registry : nil
+            end
+
+            def rule_meta
+              "source: #{current_source_label.downcase} · #{result_count_text.downcase}"
+            end
+
+            def hint_text
+              return 'j/k choose source · ENTER apply · ESC cancel' if source_selection_active?
+              return 'type your query · ENTER search · ESC cancel' if search_active?
+
+              'ENTER download · / search · TAB source · n/p pages · ESC back'
+            end
+
+            # ----- status + progress -----
+
+            def render_status_line(frame)
+              label, label_fg = status_label
+              segments = [[label, label_fg]]
+              segments = progress_segments + [['  ', nil], [label, label_fg]] if download_progress.positive?
+              frame.write_line(frame.body_top, segments)
+            end
+
+            def progress_segments
+              width = 18
+              filled = (download_progress.clamp(0.0, 1.0) * width).round
+              [
+                ['━' * filled, accent],
+                ['━' * (width - filled), Palette::FAINT_FG],
+                ["  #{(download_progress * 100).round}%", Palette::LANDING_DIM_FG],
+              ]
+            end
+
+            def status_label
+              msg = safe_text(download_message)
+              case download_status
+              when :searching then [msg.empty? ? "Searching #{current_source_label}…" : msg, Palette::LIST_MATCH_FG]
+              when :downloading then [msg.empty? ? 'Downloading…' : msg, Palette::LIST_MATCH_FG]
+              when :error then [msg.empty? ? 'Request failed' : msg, Palette::LANDING_QUIT_FG]
+              when :done then [msg, Palette::TRANS_ACCENT_FG]
+              else [idle_status_text, Palette::LANDING_DIM_FG]
+              end
+            end
+
+            def idle_status_text
+              query = safe_text(search_query).strip
+              query.empty? ? 'Press / and type to search the catalog' : "Results for “#{query}”"
+            end
+
+            # ----- source picker -----
+
+            def render_source_picker(list, frame, top)
+              source_options.each_with_index do |source, index|
+                render_source_option(list, frame, source: source, index: index, row: top + index)
+              end
+              top + source_options.length + 1
+            end
+
+            def render_source_option(list, frame, source:, index:, row:)
+              selected = index == selected_source_index
+              active = source == current_source
+              list.row(
+                row: row,
+                left: [
+                  [active ? '● ' : '○ ', active ? accent : Palette::FAINT_FG],
+                  [Shoko::Shared::DownloadSourcePolicy.label_for(source),
+                   selected ? Palette::LANDING_TITLE_FG : Palette::LANDING_TEXT_FG],
+                ],
+                selected: selected,
+                action: { type: :list_row, list: :download_source, index: index },
+                width: [frame.content_width / 2, 24].max
+              )
+            end
+
+            # ----- results -----
+
+            def render_results(list, frame, top)
+              height = [frame.body_bottom - top + 1, 0].max
+              return if height <= 0
+
+              items = results
+              return render_empty(frame, top, height) if items.empty?
+
+              list.register_wheel(top: top, height: height, action: { type: :list_wheel, list: :download })
+              window = visible_window(items, height)
+              render_result_blocks(list, frame, window, top)
+              list.render_scrollbar(top: top, height: height, total: items.length,
+                                    visible: window[:capacity], offset: window[:start])
+            end
+
+            def render_result_blocks(list, frame, window, top)
+              window[:items].each_with_index do |book, offset|
+                index = window[:start] + offset
+                row = top + (offset * ROWS_PER_RESULT)
+                break if row + ROWS_PER_RESULT - 1 > frame.body_bottom
+
+                list.block(
+                  row: row,
+                  lines: result_rows(book, index == selected_index),
+                  selected: index == selected_index,
+                  action: { type: :list_row, list: :download, index: index }
+                )
+              end
+            end
+
+            def result_rows(book, selected)
+              fields = extract_book_fields(book)
+              title_fg = selected ? Palette::LANDING_TITLE_FG : Palette::LANDING_TEXT_FG
+              meta_label = libgen_result?(book) ? fields[:meta] : "#{fields[:meta]} DLs"
+              [
+                { left: [[fields[:title], title_fg]] },
+                { left: [[secondary_result_line(fields), Palette::LANDING_DIM_FG]],
+                  right: [[meta_label, Palette::LANDING_DIM_FG]] },
+              ]
+            end
+
+            def secondary_result_line(fields)
+              [fields[:authors], fields[:languages]].reject(&:empty?).join(' · ')
+            end
+
+            def render_empty(frame, top, height)
+              message, message_fg = empty_state
+              frame.write_line(top + [height / 2, 0].max, [[message, message_fg]])
+            end
+
+            def empty_state
+              case download_status
+              when :searching then ["Searching #{current_source_label}…", Palette::LIST_MATCH_FG]
+              when :error then [safe_text(download_message), Palette::LANDING_QUIT_FG]
+              else
+                if search_query.strip.empty?
+                  ['No search results yet', Palette::LANDING_DIM_FG]
+                else
+                  ['No results for your search', Palette::LANDING_DIM_FG]
+                end
+              end
+            end
+
+            def visible_window(items, height)
+              capacity = [height / ROWS_PER_RESULT, 1].max
+              start = if items.length <= capacity
+                        0
+                      else
+                        (selected_index - (capacity / 2)).clamp(0, items.length - capacity)
+                      end
+              { start: start, items: items[start, capacity] || [], capacity: capacity }
+            end
+
+            # ----- state -----
 
             def results
               menu_state_reader&.download_results || []
@@ -81,11 +235,6 @@ module Shoko
 
             def search_query
               menu_state_reader&.download_query || ''
-            end
-
-            def search_cursor
-              cursor = menu_state_reader&.download_cursor
-              cursor ? cursor.to_i : search_query.length
             end
 
             def search_active?
@@ -118,19 +267,16 @@ module Shoko
               Shoko::Shared::DownloadSourcePolicy.canonical_ids
             end
 
-            def menu_state_reader
-              return @menu_state_reader if @menu_state_reader
+            def result_count_text
+              shown = results.length
+              total = download_count
+              return "#{shown} of #{total}" if total.positive? && total != shown
 
-              @menu_state_reader = @dependencies&.menu_state_reader
+              "#{shown} #{shown == 1 ? 'result' : 'results'}"
             end
 
-            def config_reader
-              return @config_reader if @config_reader
+            # ----- result field extraction -----
 
-              @config_reader = @dependencies&.config_reader
-            end
-
-            # Data extraction helpers for download result rows.
             def extract_book_fields(book)
               {
                 title: safe_text(value_for(book, :title, 'title', 'Untitled')),
@@ -148,10 +294,6 @@ module Shoko
               default
             end
 
-            def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
-            end
-
             def result_meta(book)
               return safe_text(value_for(book, :extension, 'extension', '').to_s.upcase) if libgen_result?(book)
 
@@ -162,264 +304,17 @@ module Shoko
               value_for(book, :source, 'source', current_source) == :libgen
             end
 
-            # Layout and status helpers for the download screen.
-            def empty_state_message
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              case download_status
-              when :searching
-                "#{UI::COLOR_TEXT_WARNING}Searching #{current_source_label}...#{reset}"
-              when :error
-                "#{UI::COLOR_TEXT_ERROR}#{safe_text(download_message)}#{reset}"
-              else
-                idle_download_message(reset)
-              end
+            def safe_text(text)
+              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
+                                                                         preserve_tabs: false)
             end
 
-            def idle_download_message(reset)
-              if search_query.strip.empty?
-                "#{UI::COLOR_TEXT_DIM}No search results yet#{reset}"
-              else
-                "#{UI::COLOR_TEXT_DIM}No results for your search#{reset}"
-              end
+            def menu_state_reader
+              @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
-            def status_label
-              msg = safe_text(download_message)
-              return [msg.empty? ? 'Searching...' : msg, UI::COLOR_TEXT_WARNING] if download_status == :searching
-              return [msg.empty? ? 'Downloading...' : msg, UI::COLOR_TEXT_WARNING] if download_status == :downloading
-              return [msg.empty? ? 'Request failed' : msg, UI::COLOR_TEXT_ERROR] if download_status == :error
-              return [msg, UI::COLOR_TEXT_SUCCESS] if download_status == :done
-
-              ['', UI::COLOR_TEXT_DIM]
-            end
-
-            def button_string(label, active:)
-              bg = active ? UI::BUTTON_BG_ACTIVE : UI::BUTTON_BG_INACTIVE
-              fg = active ? UI::BUTTON_FG_ACTIVE : UI::BUTTON_FG_INACTIVE
-              "#{bg}#{fg} #{label} #{Shoko::Shared::Terminal::Ansi::RESET}"
-            end
-
-            def layout_metrics(bounds)
-              column_spec = column_layout([bounds.width - 8, 86].min)
-              content_width = column_spec[:content_width]
-              {
-                indent: MenuDesign::Layout.centered_indent(bounds, content_width),
-                content_width: content_width,
-                columns: column_spec[:columns],
-                gap: column_spec[:gap],
-              }.merge(download_layout_rows(bounds.height))
-            end
-
-            def download_layout_rows(height)
-              source_row = download_source_row(height)
-              search_row = source_row + 2 + source_option_row_count
-              status_row = search_row + 2
-              {
-                header_row: 1,
-                source_row: source_row,
-                source_options_row: source_row + 1,
-                search_row: search_row,
-                status_row: status_row,
-                progress_row: status_row + 1,
-                header_row_list: status_row + 2,
-                list_start_row: status_row + 4,
-                footer_row: download_footer_row(height, status_row),
-              }
-            end
-
-            def download_source_row(height)
-              [(height / 6) - 1, 3].max
-            end
-
-            def source_option_row_count
-              source_selection_active? ? source_options.length : 0
-            end
-
-            def download_footer_row(height, status_row)
-              [height - 2, status_row + 6].max
-            end
-
-            def column_layout(content_width)
-              gap = 3
-              columns = { author: 18, lang: 6, meta: 8 }
-              columns[:title] = [content_width - columns.values.sum - (gap * 3), 16].max
-              {
-                content_width: columns.values.sum + (gap * 3),
-                columns: columns,
-                gap: gap,
-              }
-            end
-
-            def draw_list_header(surface, bounds, layout, row)
-              return if row < 5
-
-              cols = layout[:columns]
-              headers = ['Title', 'Author', 'Lang', current_source == :libgen ? 'Fmt' : 'DLs']
-              MenuDesign::TableRenderer.new(surface, bounds).render_header(
-                row: row,
-                indent: layout[:indent],
-                headers: headers,
-                widths: [cols[:title], cols[:author], cols[:lang], cols[:meta]],
-                divider_char: '-'
-              )
-            end
-
-            def footer_text
-              shown = results.length
-              query = safe_text(search_query).strip
-              return 'Choose a source and press Enter' if source_selection_active?
-              return "#{current_source_label} | #{shown} #{shown == 1 ? 'result' : 'results'}" if query.empty?
-
-              "#{current_source_label} | Filter: #{query}"
-            end
-
-            def render_search(surface, bounds, layout)
-              MenuDesign::SearchFieldRenderer.new(surface, bounds).render(
-                label: "Search #{current_source_label}",
-                query: search_query,
-                cursor: search_cursor,
-                row: layout[:search_row],
-                indent: layout[:indent],
-                width: layout[:content_width],
-                active: search_active?
-              )
-            end
-
-            def render_source(surface, bounds, layout)
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              label = "#{UI::COLOR_TEXT_DIM}Source#{reset}"
-              value = button_string(current_source_label, active: true)
-              surface.write(bounds, layout[:source_row], layout[:indent], "#{label}  #{value}")
-              return unless source_selection_active?
-
-              render_source_options(surface, bounds, layout, reset)
-            end
-
-            def render_source_options(surface, bounds, layout, reset)
-              row = layout[:source_options_row]
-              source_options.each_with_index do |source, index|
-                surface.write(bounds, row + index, layout[:indent] + 2, source_option_text(source, index, reset))
-              end
-            end
-
-            def source_option_text(source, index, reset)
-              selected = index == selected_source_index
-              active = source == current_source
-              prefix = if selected
-                         "#{Shoko::Shared::Terminal::Ansi::BOLD}#{UI::MENU_SELECTION_BG}#{UI::MENU_SELECTION_TEXT}"
-                       else
-                         UI::COLOR_TEXT_PRIMARY
-                       end
-              marker = active ? '[x]' : '[ ]'
-              "#{prefix} #{marker} #{Shoko::Shared::DownloadSourcePolicy.label_for(source)} #{reset}"
-            end
-
-            def render_status(surface, bounds, layout)
-              MenuDesign::StatusRenderer.new(surface, bounds).render_status(
-                row: layout[:status_row],
-                indent: layout[:indent],
-                left: result_count_text,
-                right: status_label.first,
-                width: layout[:content_width],
-                left_color: UI::COLOR_TEXT_DIM,
-                right_color: status_label.last
-              )
-              render_progress(surface, bounds, layout) if download_progress.positive?
-            end
-
-            def result_count_text
-              shown = results.length
-              total = download_count
-              return "Showing #{shown} of #{total}" if total.positive? && total != shown
-
-              "Found #{shown} #{shown == 1 ? 'book' : 'books'}"
-            end
-
-            def render_progress(surface, bounds, layout)
-              row = layout[:progress_row]
-              return if row > bounds.bottom
-
-              MenuDesign::ProgressRenderer.new(surface, bounds).render(
-                row: row,
-                indent: layout[:indent],
-                width: layout[:content_width],
-                progress: download_progress,
-                filled_char: '=',
-                empty_char: '-'
-              )
-            end
-
-            def render_results(surface, bounds, layout)
-              return render_empty_state(surface, bounds, layout) if results.empty?
-
-              render_results_list(surface, bounds, layout, results)
-            end
-
-            def render_empty_state(surface, bounds, layout)
-              row = (bounds.height / 2).clamp(layout[:list_start_row], bounds.bottom - 2)
-              surface.write(bounds, row, layout[:indent], empty_state_message)
-            end
-
-            def render_results_list(surface, bounds, layout, items)
-              list_height = bounds.height - layout[:list_start_row] - 3
-              return if list_height <= 0
-
-              draw_list_header(surface, bounds, layout, layout[:header_row_list])
-              visible_book_rows(items, list_height, layout).each do |row|
-                render_book_item(surface, bounds, row)
-              end
-            end
-
-            def visible_book_rows(items, list_height, layout)
-              start_index, visible = Ui::ListHelpers.slice_visible(items, list_height, selected_index)
-              visible.each_with_index.filter_map do |book, offset|
-                build_book_row(layout, book, start_index, offset)
-              end
-            end
-
-            def build_book_row(layout, book, start_index, offset)
-              row = layout[:list_start_row] + offset
-              return nil if row > layout[:footer_row] - 1
-
-              DownloadBooksScreenComponent::BookItemCtx.new(
-                row: row,
-                book: book,
-                selected: (start_index + offset) == selected_index,
-                layout: layout
-              )
-            end
-
-            def render_book_item(surface, bounds, ctx)
-              cols = ctx.layout[:columns]
-              MenuDesign::TableRenderer.new(surface, bounds).render_row(
-                row: ctx.row,
-                indent: ctx.layout[:indent],
-                cells: book_row_cells(ctx.book, cols),
-                widths: [cols[:title], cols[:author], cols[:lang], cols[:meta]],
-                selected: ctx.selected
-              )
-            end
-
-            def book_row_cells(book, cols)
-              fields = extract_book_fields(book)
-              [
-                padded_book_cell(fields[:title], cols[:title]),
-                padded_book_cell(fields[:authors], cols[:author]),
-                padded_book_cell(fields[:languages], cols[:lang]),
-                pad_left(fields[:meta].to_s, cols[:meta]),
-              ]
-            end
-
-            def padded_book_cell(text, width)
-              pad_right(truncate_text(text, width), width)
-            end
-
-            def render_footer(_surface, bounds, layout, frame:)
-              row = layout[:footer_row]
-              return if row > bounds.bottom
-
-              clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(footer_text, layout[:content_width])
-              frame.render_footer(text: clipped, row: row, indent: layout[:indent])
+            def config_reader
+              @config_reader ||= @dependencies&.config_reader
             end
           end
         end

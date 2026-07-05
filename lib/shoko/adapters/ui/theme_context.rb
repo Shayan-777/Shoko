@@ -34,20 +34,14 @@ module Shoko
 
           private
 
+          # The menu owns its fixed slate palette (StatusBar::Palette), so the
+          # theme snapshot only carries the reader-side mode-dependent tokens.
           def token_snapshot(color_mode)
             color_mode == :light ? light_mode_tokens : dark_mode_tokens
           end
 
           def light_mode_tokens
             {
-              menu_surface_bg: Constants::Ui::MENU_SURFACE_BG_LIGHT,
-              menu_title_fg: Constants::Ui::MENU_TITLE_FG_LIGHT,
-              menu_muted_fg: Constants::Ui::MENU_MUTED_FG_LIGHT,
-              menu_divider_fg: Constants::Ui::MENU_DIVIDER_FG_LIGHT,
-              menu_selection_fg: Constants::Ui::MENU_SELECTION_FG_LIGHT,
-              menu_header_bg: Constants::Ui::MENU_HEADER_BG_LIGHT,
-              menu_selection_bg: Constants::Ui::MENU_SELECTION_BG_LIGHT,
-              menu_selection_text: Constants::Ui::MENU_SELECTION_TEXT_LIGHT,
               highlight_bg: Constants::Ui::HIGHLIGHT_BG_LIGHT,
               annotation_panel_bg: Constants::Ui::ANNOTATION_PANEL_BG_LIGHT,
             }.freeze
@@ -55,14 +49,6 @@ module Shoko
 
           def dark_mode_tokens
             {
-              menu_surface_bg: Constants::Ui::MENU_SURFACE_BG_DARK,
-              menu_title_fg: Constants::Ui::MENU_TITLE_FG_DARK,
-              menu_muted_fg: Constants::Ui::MENU_MUTED_FG_DARK,
-              menu_divider_fg: Constants::Ui::MENU_DIVIDER_FG_DARK,
-              menu_selection_fg: Constants::Ui::MENU_SELECTION_FG_DARK,
-              menu_header_bg: Constants::Ui::MENU_HEADER_BG_DARK,
-              menu_selection_bg: Constants::Ui::MENU_SELECTION_BG_DARK,
-              menu_selection_text: Constants::Ui::MENU_SELECTION_TEXT_DARK,
               highlight_bg: Constants::Ui::HIGHLIGHT_BG_DARK,
               annotation_panel_bg: Constants::Ui::ANNOTATION_PANEL_BG_DARK,
             }.freeze

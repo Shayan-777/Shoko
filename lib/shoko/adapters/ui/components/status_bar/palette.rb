@@ -139,6 +139,28 @@ module Shoko
             NOTES_SCROLL_TRACK_FG = "\e[38;2;158;164;186m" # scrollbar track (lighter)
             NOTES_SCROLL_THUMB_FG = "\e[38;2;96;142;236m"  # scrollbar thumb / wheel (deeper accent)
 
+            # Landing menu (the menu-mode home screen) — the family's first
+            # member outside the reader. The left rail shares the bar's slate so
+            # rail + bottom bar read as one continuous chrome, while the preview
+            # canvas sits one elevation step above it on the search list's
+            # surface; the two compartments meet with no divider line — the
+            # elevation change IS the boundary. Selection keeps the family's
+            # highlighted-row + brand-blue pointer language, and each menu entry
+            # carries the signature accent of the view it opens (amber
+            # browse/search, cyan dictionary/download, lavender RSS like the
+            # TOC, emerald translator), so the home screen quietly teaches the
+            # accent language used inside the book.
+            LANDING_RAIL_BG = BAR_BG            # rail chrome (continuous with the bar)
+            LANDING_CANVAS_BG = LIST_BG         # elevated preview canvas
+            LANDING_SELECTED_BG = LIST_SELECTED_BG # highlighted rail row
+            LANDING_RULE_FG = LIST_RULE_FG      # hairline rule on the canvas
+            LANDING_TITLE_FG = TITLE_FG         # selected labels / primary text
+            LANDING_TEXT_FG = LIST_TEXT_FG      # preview body text
+            LANDING_DIM_FG = LIST_DIM_FG        # secondary / hints / metadata
+            LANDING_FAINT_FG = FAINT_FG         # unselected rail icons
+            LANDING_POINTER_FG = LIST_POINTER_FG # selection pointer (brand blue)
+            LANDING_QUIT_FG = "\e[38;2;229;121;125m" # Quit's soft-red signature
+
             # Neutral brand accent used by non-reader (menu) views.
             BRAND_RGB = [137, 180, 250].freeze # soft blue
 

@@ -119,6 +119,8 @@ Naming/PredicateMethod:
     - start_sidebar_scroll_drag
     - cancel_via_ui
     - dispatch_to_mode
+    - handle
+    - handle_translator_mouse_event
 
 # Style
 Style/Documentation:

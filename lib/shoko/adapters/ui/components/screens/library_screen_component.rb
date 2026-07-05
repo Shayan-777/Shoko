@@ -1,36 +1,52 @@
 # frozen_string_literal: true
 
 require_relative 'base_screen_component'
-require_relative '../../constants/ui_constants'
-require_relative '../menu_design/master_detail_shell'
-require_relative '../menu_design/table_renderer'
+require_relative '../rect'
+require_relative '../menu_design/canvas_frame'
+require_relative '../menu_design/canvas_list'
+require_relative '../menu_design/canvas_well'
+require_relative '../menu_design/view_accents'
+require_relative '../status_bar/palette'
 require_relative '../ui/list_helpers'
 require_relative '../ui/spinner'
 require_relative '../ui/text_utils'
 require 'shoko/shared/prepagination_status'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/terminal/text_sanitizer'
+require 'time'
 
 module Shoko
   module Adapters
     module Ui
       module Components
         module Screens
-          # Library screen component that renders cached books with an optional
-          # metadata inspector.
+          # Library — the cached shelf on the canvas: numbered rows with the
+          # family's selection strip and a right-aligned "accessed ago" label;
+          # books being re-paginated show an animated spinner or queued dot in
+          # their number column. SPACE raises the inspector well — a raised
+          # card carrying the selected book's metadata — beside the list,
+          # separated from it purely by surface elevation.
           class LibraryScreenComponent < BaseScreenComponent
-            include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
+
+            Palette = StatusBar::Palette
 
             Item = Struct.new(:title, :authors, :year, :last_accessed, :size_bytes, :open_path, :epub_path)
 
             TIME_INTERVALS = [
-              { max: 3600, div: 60, singular: 'a minute ago', plural: '%d minutes ago' },
+              { max: 3600, div: 60, singular: 'a minute ago', plural: '%d min ago' },
               { max: 86_400, div: 3600, singular: 'an hour ago', plural: '%d hours ago' },
               { max: 604_800, div: 86_400, singular: 'yesterday', plural: '%d days ago' },
               { max: Float::INFINITY, div: 604_800, singular: 'a week ago', plural: '%d weeks ago' },
             ].freeze
-            DETAIL_KEY_WIDTH = 9
+
+            WELL_WIDTH = 34
+            WELL_GAP = 2
+            DETAIL_KEY_WIDTH = 10
+
+            Status = Shoko::Shared::PrepaginationStatus
+            TextMetrics = Shoko::Shared::Terminal::TextMetrics
+            Spinner = Shoko::Adapters::Ui::Components::Ui::Spinner
 
             def initialize(dependencies, menu_visual_profile: nil)
               super(dependencies)
@@ -41,74 +57,139 @@ module Shoko
               @menu_state_reader = nil
             end
 
-            Status = Shoko::Shared::PrepaginationStatus
-            TextMetrics = Shoko::Shared::Terminal::TextMetrics
-            Spinner = Shoko::Adapters::Ui::Components::Ui::Spinner
-
             def do_render(surface, bounds)
-              context = render_context(surface, bounds)
-              render_shell(context)
-              render_primary_panel(surface, bounds, context)
-              render_details_panel(surface, bounds, details_context(context))
+              frame = MenuDesign::CanvasFrame.new(surface, bounds)
+              frame.paint
+              items = load_items
+              selected = selected_index(items.length)
+              frame.render_rule(title: 'Library', accent: accent, meta: rule_meta(items))
+
+              render_list(surface, bounds, frame, items: items, selected: selected)
+              render_details_well(surface, bounds, frame, items[selected]) if details_open?
+              frame.render_hint(hint_text)
             end
 
-            UI = Adapters::Ui::Constants::Ui
+            def items
+              load_items
+            end
+
+            def invalidate_cache!
+              @items = nil
+            end
 
             private
 
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
+            def accent
+              MenuDesign::ViewAccents.for(:library)
             end
 
-            def render_context(surface, bounds)
-              items = load_items
-              selected = selected_index(items.length)
-              details_open = details_open?
-              shell = MenuDesign::MasterDetailShell.new(surface, bounds)
-              layout = shell.build_layout(
-                detail_visible: details_open,
-                desired_detail_width: 32,
-                min_primary_width: 34,
-                min_detail_width: 28,
-                stacked_detail_height: 9
-              )
-              { shell: shell, layout: layout, items: items, selected: selected, details_open: details_open }
+            def hits
+              @dependencies.respond_to?(:menu_hit_registry) ? @dependencies.menu_hit_registry : nil
             end
 
-            def render_shell(context)
-              items = context[:items]
-              details_open = context[:details_open]
-              context[:shell].render_frame(
-                layout: context[:layout],
-                title: 'Library',
-                hint: 'ENTER open  SPACE details  ESC back',
-                summary_left: "#{items.length} cached #{items.length == 1 ? 'book' : 'books'}",
-                summary_right: details_open ? 'Inspector visible' : 'SPACE shows metadata'
-              )
-              context[:shell].render_panels(
-                layout: context[:layout],
-                primary_title: 'Cached Books',
-                secondary_title: 'Details'
+            def rule_meta(items)
+              "#{items.length} cached"
+            end
+
+            def hint_text
+              return 'ENTER open · SPACE closes inspector · ESC back' if details_open?
+
+              'ENTER open · SPACE inspects · wheel scrolls · ESC back'
+            end
+
+            def list_width(frame)
+              return frame.content_width unless details_open?
+
+              [frame.content_width - WELL_WIDTH - WELL_GAP, 24].max
+            end
+
+            def render_list(surface, bounds, frame, items:, selected:)
+              top = frame.body_top
+              height = frame.body_height
+              return if height <= 0
+              return render_empty(frame, top, height) if items.empty?
+
+              list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
+              list.register_wheel(top: top, height: height, action: { type: :list_wheel, list: :library })
+              start_index, visible = Ui::ListHelpers.slice_visible(items, height, selected)
+              visible.each_with_index do |item, offset|
+                render_row(list, frame, item: item, index: start_index + offset,
+                                        row: top + offset, selected: start_index + offset == selected)
+              end
+              return if details_open?
+
+              list.render_scrollbar(top: top, height: height, total: items.length,
+                                    visible: height, offset: start_index)
+            end
+
+            def render_row(list, frame, item:, index:, row:, selected:)
+              status = prepagination_status_for(item)
+              title_fg = selected ? Palette::LANDING_TITLE_FG : Palette::LANDING_TEXT_FG
+              list.row(
+                row: row,
+                left: [[row_marker(status, index), Palette::LANDING_DIM_FG], ['  ', nil],
+                       [safe_text(item.title.to_s.empty? ? 'Untitled' : item.title), title_fg],
+                       [status_label(status), accent]],
+                right: [[relative_accessed_label(item.last_accessed), Palette::LANDING_DIM_FG]],
+                selected: selected,
+                action: { type: :list_row, list: :library, index: index },
+                width: list_width(frame)
               )
             end
 
-            def render_primary_panel(surface, bounds, context)
-              panel = context[:layout].primary_panel.content
-              if context[:items].empty?
-                render_empty(surface, bounds, panel)
-              else
-                render_library(surface, bounds, panel: panel, items: context[:items], selected: context[:selected])
+            def render_empty(frame, top, height)
+              frame.write_line(top + [height / 2, 0].max - 1, [['No cached books yet', Palette::LANDING_DIM_FG]])
+            end
+
+            # ----- inspector well -----
+
+            def render_details_well(surface, bounds, frame, item)
+              return unless item
+
+              rect = well_rect(frame, bounds)
+              return if rect.width < 20
+
+              well = MenuDesign::CanvasWell.new(surface, bounds, rect: rect)
+              well.paint(title: well.truncate(safe_text(item.title || 'Untitled')), accent: accent)
+              detail_lines(item, well.inner_width).each_with_index do |segments, offset|
+                break if offset >= well.inner_height
+
+                well.write_line(offset, segments)
               end
             end
 
-            def details_context(context)
-              {
-                panel: context[:layout].secondary_panel&.content,
-                item: context[:items][context[:selected]],
-                selected: context[:selected],
-                total: context[:items].length,
-              }
+            def well_rect(frame, bounds)
+              width = [WELL_WIDTH, bounds.width - frame.content_x - 24].min
+              Components::Rect.new(
+                x: frame.content_x + frame.content_width - width,
+                y: frame.body_top,
+                width: width,
+                height: [frame.body_height, 4].max
+              )
             end
+
+            def detail_lines(item, width)
+              rows = []
+              append_detail(rows, 'Authors', item.authors, width)
+              append_detail(rows, 'Year', item.year, width)
+              append_detail(rows, 'Accessed', relative_accessed_label(item.last_accessed), width)
+              append_detail(rows, 'Size', format_size(item.size_bytes), width)
+              append_detail(rows, 'Cache', compact_path(item.open_path), width)
+              append_detail(rows, 'EPUB', compact_path(item.epub_path), width)
+              rows
+            end
+
+            def append_detail(rows, label, value, width)
+              safe_value = safe_text(value.to_s.strip)
+              safe_value = '—' if safe_value.empty?
+              value_width = [width - DETAIL_KEY_WIDTH - 1, 8].max
+              wrap_text(safe_value, value_width).each_with_index do |part, index|
+                key = index.zero? ? pad_right("#{label}:", DETAIL_KEY_WIDTH) : (' ' * DETAIL_KEY_WIDTH)
+                rows << [[key, Palette::LANDING_DIM_FG], [truncate_text(part, value_width), nil]]
+              end
+            end
+
+            # ----- data + status helpers -----
 
             def load_items
               return @items if @items
@@ -148,184 +229,15 @@ module Shoko
             end
 
             def details_open?
-              reader = menu_state_reader
-              reader&.library_details_open? == true
+              menu_state_reader&.library_details_open? == true
             end
 
-            def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
-            end
-
-            public
-
-            def items
-              load_items
-            end
-
-            def invalidate_cache!
-              @items = nil
-            end
-
-            def render_details_panel(surface, bounds, context)
-              panel = context[:panel]
-              item = context[:item]
-              return unless panel && item
-
-              row = panel.y
-              details_lines(item, context[:selected], context[:total], panel.width).each do |line|
-                break if row > panel.bottom
-
-                text = "#{UI::COLOR_TEXT_PRIMARY}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
-                surface.write(bounds, row, panel.x, text)
-                row += 1
-              end
-            end
-
-            def details_lines(item, selected, total, inner_width)
-              title_lines(item, selected, total, inner_width) + detail_lines(item, inner_width)
-            end
-
-            def title_lines(item, selected, total, inner_width)
-              title = safe_text(item.title || 'Untitled')
-              wrap_text(title, inner_width).map do |line|
-                "#{Shoko::Shared::Terminal::Ansi::BOLD}#{UI::COLOR_TEXT_ACCENT}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
-              end + ["#{UI::COLOR_TEXT_DIM}Book #{selected + 1} of #{total}#{Shoko::Shared::Terminal::Ansi::RESET}", '']
-            end
-
-            def detail_lines(item, inner_width)
-              lines = []
-              append_detail(lines, 'Authors', item.authors, inner_width)
-              append_detail(lines, 'Year', item.year, inner_width)
-              append_detail(lines, 'Accessed', relative_accessed_label(item.last_accessed), inner_width)
-              append_detail(lines, 'Size', format_size(item.size_bytes), inner_width)
-              append_detail(lines, 'Cache', compact_path(item.open_path), inner_width)
-              append_detail(lines, 'EPUB', compact_path(item.epub_path), inner_width)
-              lines
-            end
-
-            def append_detail(lines, label, value, width)
-              safe_value = safe_text(value.to_s.strip)
-              safe_value = '—' if safe_value.empty?
-              value_width = [width - LibraryScreenComponent::DETAIL_KEY_WIDTH - 1, 8].max
-              wrapped = wrap_text(safe_value, value_width)
-              wrapped = ['—'] if wrapped.empty?
-              wrapped.each_with_index do |part, index|
-                key = if index.zero?
-                        pad_right("#{label}:", LibraryScreenComponent::DETAIL_KEY_WIDTH)
-                      else
-                        ' ' * LibraryScreenComponent::DETAIL_KEY_WIDTH
-                      end
-                lines << "#{key}#{truncate_text(part, value_width)}"
-              end
-            end
-
-            def compact_path(path)
-              value = path.to_s
-              return '—' if value.empty?
-
-              safe_text(File.basename(value))
-            end
-
-            def format_size(bytes)
-              format('%.1f MB', (bytes.to_f / (1024 * 1024)).round(1))
-            end
-
-            def relative_accessed_label(iso)
-              return '' unless iso
-
-              seconds = time_elapsed_seconds(iso)
-              seconds ? format_relative_time(seconds) : ''
-            end
-
-            def time_elapsed_seconds(iso)
-              (Time.now - Time.parse(iso)).to_i
-            end
-
-            def format_relative_time(seconds)
-              return 'a minute ago' if seconds < 60
-
-              interval = LibraryScreenComponent::TIME_INTERVALS.find { |entry| seconds < entry[:max] }
-              value = [seconds / interval[:div], 1].max
-              value == 1 ? interval[:singular] : format(interval[:plural], value)
-            end
-
-            def render_empty(surface, bounds, panel)
-              row = panel.y + [panel.height / 2, 0].max
-              text = "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}No cached books yet" \
-                     "#{Shoko::Shared::Terminal::Ansi::RESET}"
-              surface.write(bounds, row, panel.x, text)
-            end
-
-            def render_library(surface, bounds, context)
-              panel = context[:panel]
-              render_library_header(surface, bounds, panel)
-
-              library_rows(panel, context[:items], context[:selected]).each do |row|
-                render_library_row(surface, bounds, panel, row)
-              end
-            end
-
-            def render_library_header(surface, bounds, panel)
-              MenuDesign::TableRenderer.new(surface, bounds).render_header(
-                row: panel.y,
-                indent: panel.x,
-                headers: ['Title'],
-                widths: [panel.width],
-                divider_char: '─'
-              )
-            end
-
-            def library_rows(panel, items, selected)
-              visible_rows = [panel.height - 2, 0].max
-              return [] if visible_rows <= 0
-
-              start_index, visible = Ui::ListHelpers.slice_visible(items, visible_rows, selected)
-              visible.each_with_index.filter_map do |book, offset|
-                build_library_row(panel, book, start_index, offset, selected: selected)
-              end
-            end
-
-            def build_library_row(panel, book, start_index, offset, selected:)
-              row = panel.y + 2 + offset
-              return nil if row > panel.bottom
-
-              {
-                row: row,
-                book: book,
-                index: start_index + offset,
-                selected: (start_index + offset) == selected,
-              }
-            end
-
-            def render_library_row(surface, bounds, panel, row)
-              MenuDesign::TableRenderer.new(surface, bounds).render_row(
-                row: row[:row],
-                indent: panel.x,
-                cells: [pad_right(decorate_library_row(row, panel.width), panel.width)],
-                widths: [panel.width],
-                selected: row[:selected]
-              )
-            end
-
-            # Compose "<marker>  <title><status label>", reserving room for the
-            # status label so it survives long titles. Books being recalculated show
-            # an animated spinner in the index column; queued books a pending dot;
-            # finished/idle books their normal number.
-            def decorate_library_row(row, width)
-              status = prepagination_status_for(row[:book])
-              leading = row_marker(status, row[:index])
-              label = status_label(status)
-              reserved = TextMetrics.visible_length(leading) + 2 + TextMetrics.visible_length(label)
-              title = truncate_text(safe_text(row[:book].title || 'Untitled'), [width - reserved, 1].max)
-              "#{leading}  #{title}#{label}"
-            end
-
-            def prepagination_status_for(book)
+            def prepagination_status_for(item)
               reader = menu_state_reader
               return Status::READY unless reader.respond_to?(:prepaginate_active)
 
               Status.for_path(
-                book.epub_path,
+                item.epub_path,
                 paths: reader.prepaginate_paths,
                 done: reader.prepaginate_done,
                 active: reader.prepaginate_active == true
@@ -350,6 +262,50 @@ module Shoko
 
             def queued_glyph
               Spinner.ascii_icons? ? 'o' : '◦'
+            end
+
+            def relative_accessed_label(iso)
+              seconds = elapsed_seconds(iso)
+              return '' unless seconds
+              return 'just now' if seconds < 60
+
+              interval = TIME_INTERVALS.find { |entry| seconds < entry[:max] }
+              value = [seconds / interval[:div], 1].max
+              value == 1 ? interval[:singular] : format(interval[:plural], value)
+            end
+
+            # Timestamps come from user-editable JSON; an unparseable one only
+            # costs the "ago" label, never the row.
+            def elapsed_seconds(iso)
+              return nil if iso.to_s.empty?
+
+              (Time.now - Time.parse(iso.to_s)).to_i
+            rescue ArgumentError, TypeError => e
+              swallow_timestamp_error(e)
+            end
+
+            def swallow_timestamp_error(_error)
+              nil
+            end
+
+            def compact_path(path)
+              value = path.to_s
+              return '—' if value.empty?
+
+              safe_text(File.basename(value))
+            end
+
+            def format_size(bytes)
+              format('%.1f MB', (bytes.to_f / (1024 * 1024)).round(1))
+            end
+
+            def safe_text(text)
+              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
+                                                                         preserve_tabs: false)
+            end
+
+            def menu_state_reader
+              @menu_state_reader ||= @dependencies&.menu_state_reader
             end
           end
         end

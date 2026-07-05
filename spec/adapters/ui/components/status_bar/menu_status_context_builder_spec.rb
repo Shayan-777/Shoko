@@ -3,11 +3,12 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Components::StatusBar::MenuStatusContextBuilder do
-  MenuReaderDouble = Struct.new(:mode, :browse_selected)
+  MenuReaderDouble = Struct.new(:mode, :browse_selected, :search_query, :download_query,
+                                :dictionary_query, :rss_feed_input, :rss_filter_query)
 
-  def build(mode:, browse_selected: 0, library_count: 0, browse_selection: nil)
+  def build(mode:, browse_selected: 0, library_count: 0, browse_selection: nil, query: '')
     described_class.new(
-      menu_state_reader: MenuReaderDouble.new(mode, browse_selected),
+      menu_state_reader: MenuReaderDouble.new(mode, browse_selected, query, query, query, query, query),
       library_count: -> { library_count },
       browse_selection: browse_selection
     ).call
@@ -19,10 +20,22 @@ RSpec.describe Shoko::Adapters::Ui::Components::StatusBar::MenuStatusContextBuil
     expect(build(mode: :translator).badge.label).to eq('TRANSLATE')
   end
 
-  it 'collapses sub-modes onto their canonical view' do
-    expect(build(mode: :download_search).badge.label).to eq('DOWNLOAD')
+  it 'collapses non-input sub-modes onto their canonical view' do
+    expect(build(mode: :download_source_select).badge.label).to eq('DOWNLOAD')
     expect(build(mode: :annotation_editor).badge.label).to eq('NOTES')
-    expect(build(mode: :dictionary_search).badge.label).to eq('DICTIONARY')
+    expect(build(mode: :translator_source_dropdown).badge.label).to eq('TRANSLATE')
+  end
+
+  it 'hosts text-input modes in the bar with the typed query and caret' do
+    context = build(mode: :download_search, query: 'austen')
+
+    expect(context.badge.label).to eq('SEARCH')
+    expect(context.title).to eq('austen')
+    expect(context.caret).to be(true)
+
+    empty = build(mode: :rss_reader_feed_input)
+    expect(empty.badge.label).to eq('ADD FEED')
+    expect(empty.placeholder).to include('RSS or Atom')
   end
 
   it 'shows the library size on counted views' do

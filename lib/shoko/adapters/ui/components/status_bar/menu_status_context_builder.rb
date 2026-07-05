@@ -43,6 +43,21 @@ module Shoko
               annotation_detail: :annotations,
             }.freeze
 
+            # Text-input modes host their input in the bar, exactly like the
+            # reader's in-book search: badge names the input, the typed query
+            # follows with the steady caret, and a dim placeholder invites the
+            # first keystroke.
+            INPUT_MODES = {
+              search: { label: 'SEARCH', query: :search_query, placeholder: 'type to filter the shelf' },
+              download_search: { label: 'SEARCH', query: :download_query, placeholder: 'search the catalog' },
+              dictionary_search: { label: 'FILTER', query: :dictionary_query,
+                                   placeholder: 'filter the dictionary catalog' },
+              rss_reader_feed_input: { label: 'ADD FEED', query: :rss_feed_input,
+                                       placeholder: 'paste an RSS or Atom feed URL' },
+              rss_reader_filter: { label: 'FILTER', query: :rss_filter_query,
+                                   placeholder: 'filter by title, author, or feed' },
+            }.freeze
+
             COUNTED_VIEWS = %i[menu library].freeze
 
             def initialize(menu_state_reader:, library_count:, browse_selection: nil)
@@ -52,7 +67,11 @@ module Shoko
             end
 
             def call
-              view_key = canonical_view(@menu_state_reader&.mode)
+              mode = (@menu_state_reader&.mode || :menu).to_sym
+              input = INPUT_MODES[mode]
+              return input_context(input) if input
+
+              view_key = canonical_view(mode)
               return browse_context if view_key == :browse
 
               view = VIEWS[view_key] || VIEWS[:menu]
@@ -64,6 +83,17 @@ module Shoko
             end
 
             private
+
+            def input_context(input)
+              query = @menu_state_reader&.public_send(input[:query]).to_s
+              StatusContext.build(
+                badge: FormatBadge.view_badge(input[:label]),
+                title: query,
+                placeholder: input[:placeholder],
+                caret: true,
+                trailing: ['ENTER apply · ESC cancel']
+              )
+            end
 
             def canonical_view(mode)
               key = (mode || :menu).to_sym

@@ -95,47 +95,9 @@ module Shoko
           ICON_SEARCH = ''
           ICON_REFRESH = ''
 
-          SIDEBAR_BG = Shoko::Shared::Terminal::Ansi::BG_DARK
-          SIDEBAR_SELECTION_BG = Shoko::Shared::Terminal::Ansi::BG_BLUE
-          SIDEBAR_SELECTION_FG = Shoko::Shared::Terminal::Ansi::BRIGHT_WHITE
-
-          BUTTON_BG_ACTIVE = Shoko::Shared::Terminal::Ansi::BG_BRIGHT_GREEN
-          BUTTON_FG_ACTIVE = Shoko::Shared::Terminal::Ansi::BLACK
-          BUTTON_BG_INACTIVE = Shoko::Shared::Terminal::Ansi::BG_GREY
-          BUTTON_FG_INACTIVE = Shoko::Shared::Terminal::Ansi::WHITE
-
-          # Menu-specific slate/cyan editorial tokens.
-          MENU_SURFACE_BG_LIGHT = "\e[48;2;242;245;248m"
-          MENU_SURFACE_BG_DARK = "\e[48;2;26;32;40m"
-          MENU_SURFACE_BG = MENU_SURFACE_BG_DARK
-
-          MENU_TITLE_FG_LIGHT = "\e[38;2;11;79;107m"
-          MENU_TITLE_FG_DARK = Shoko::Shared::Terminal::Ansi::BRIGHT_CYAN
-          MENU_TITLE_FG = MENU_TITLE_FG_DARK
-
-          MENU_MUTED_FG_LIGHT = "\e[38;2;94;108;124m"
-          MENU_MUTED_FG_DARK = COLOR_TEXT_DIM
-          MENU_MUTED_FG = MENU_MUTED_FG_DARK
-
-          MENU_DIVIDER_FG_LIGHT = "\e[38;2;138;150;166m"
-          MENU_DIVIDER_FG_DARK = Shoko::Shared::Terminal::Ansi::GRAY
-          MENU_DIVIDER_FG = MENU_DIVIDER_FG_DARK
-
-          MENU_SELECTION_FG_LIGHT = "\e[38;2;8;101;143m"
-          MENU_SELECTION_FG_DARK = COLOR_TEXT_ACCENT
-          MENU_SELECTION_FG = MENU_SELECTION_FG_DARK
-
-          MENU_HEADER_BG_LIGHT = "\e[48;2;225;236;244m"
-          MENU_HEADER_BG_DARK = "\e[48;2;18;44;58m"
-          MENU_HEADER_BG = MENU_HEADER_BG_DARK
-
-          MENU_SELECTION_BG_LIGHT = "\e[48;2;208;232;246m"
-          MENU_SELECTION_BG_DARK = "\e[48;2;23;63;83m"
-          MENU_SELECTION_BG = MENU_SELECTION_BG_DARK
-
-          MENU_SELECTION_TEXT_LIGHT = "\e[38;2;6;67;95m"
-          MENU_SELECTION_TEXT_DARK = "\e[38;2;180;235;255m"
-          MENU_SELECTION_TEXT = MENU_SELECTION_TEXT_DARK
+          # Reader-side tokens that flip with the theme's light/dark mode.
+          # (The menu keeps its own fixed slate palette — StatusBar::Palette —
+          # the way editor status bars stay one color across themes.)
           COLOR_MODE_PAIRS = [
             [:HIGHLIGHT_BG_ACTIVE, HIGHLIGHT_BG_LIGHT, HIGHLIGHT_BG_DARK],
             [:HIGHLIGHT_BG_SAVED, HIGHLIGHT_BG_LIGHT, HIGHLIGHT_BG_DARK],
@@ -143,14 +105,6 @@ module Shoko
             [:SEARCH_HIGHLIGHT_FG, SEARCH_HIGHLIGHT_FG_LIGHT, SEARCH_HIGHLIGHT_FG_DARK],
             [:ANNOTATION_PANEL_BG, ANNOTATION_PANEL_BG_LIGHT, ANNOTATION_PANEL_BG_DARK],
             [:ANNOTATION_HEADER_FG, ANNOTATION_HEADER_FG_LIGHT, ANNOTATION_HEADER_FG_DARK],
-            [:MENU_SURFACE_BG, MENU_SURFACE_BG_LIGHT, MENU_SURFACE_BG_DARK],
-            [:MENU_TITLE_FG, MENU_TITLE_FG_LIGHT, MENU_TITLE_FG_DARK],
-            [:MENU_MUTED_FG, MENU_MUTED_FG_LIGHT, MENU_MUTED_FG_DARK],
-            [:MENU_DIVIDER_FG, MENU_DIVIDER_FG_LIGHT, MENU_DIVIDER_FG_DARK],
-            [:MENU_SELECTION_FG, MENU_SELECTION_FG_LIGHT, MENU_SELECTION_FG_DARK],
-            [:MENU_HEADER_BG, MENU_HEADER_BG_LIGHT, MENU_HEADER_BG_DARK],
-            [:MENU_SELECTION_BG, MENU_SELECTION_BG_LIGHT, MENU_SELECTION_BG_DARK],
-            [:MENU_SELECTION_TEXT, MENU_SELECTION_TEXT_LIGHT, MENU_SELECTION_TEXT_DARK],
           ].freeze
 
           def self.apply_color_mode(mode)
