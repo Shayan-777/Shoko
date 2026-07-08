@@ -8,7 +8,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::LibraryScreenComponent 
 
   let(:palette) { Shoko::Adapters::Ui::Components::StatusBar::Palette }
   let(:menu_state_reader) do
-    instance_double('MenuStateReader', browse_selected: 0, library_details_open?: false)
+    instance_double('MenuStateReader', library_selected: 0, library_details_open?: false)
   end
   let(:catalog_service) do
     instance_double(

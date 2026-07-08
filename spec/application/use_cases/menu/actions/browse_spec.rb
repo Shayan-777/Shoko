@@ -91,4 +91,26 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Browse do
       end
     end
   end
+
+  describe 'browse and library selections are independent' do
+    let(:menu_browse_inspection) do
+      instance_double('Inspection',
+                      browse_item_count: 10, library_item_count: 10,
+                      selected_library_path: '/open.cache', selected_library_source_path: selected_source)
+    end
+
+    def delta(step)
+      Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: step)
+    end
+
+    it 'tracks the library cursor separately from the browse cursor' do
+      action.call(:move_browse_selection_down, delta(1))
+      action.call(:move_library_selection_down, delta(1))
+      action.call(:move_library_selection_down, delta(1))
+
+      snapshot = menu_session_store.load
+      expect(snapshot.browse_selected).to eq(1)
+      expect(snapshot.library_selected).to eq(2)
+    end
+  end
 end

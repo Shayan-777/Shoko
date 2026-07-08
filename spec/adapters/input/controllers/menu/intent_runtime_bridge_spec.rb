@@ -7,6 +7,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::IntentRuntimeBridge do
     double(
       'MenuStateReader',
       browse_selected: 0,
+      library_selected: 0,
       download_results: [{ 'path' => '/books/a.epub' }],
       download_selected: 0,
       mode: :annotation_editor,

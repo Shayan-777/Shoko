@@ -105,7 +105,7 @@ module Shoko
 
             def selected_library_item
               items = @library_screen.items
-              index = (@menu_state_reader.browse_selected || 0).to_i
+              index = (@menu_state_reader.library_selected || 0).to_i
               items[index]
             end
 

@@ -72,8 +72,8 @@ module Shoko
 
             def move_library_selection(delta)
               max_index = [@menu_browse_inspection.library_item_count.to_i - 1, 0].max
-              current = (current_menu.browse_selected || 0).to_i
-              update_menu(browse_selected: (current + delta).clamp(0, max_index))
+              current = (current_menu.library_selected || 0).to_i
+              update_menu(library_selected: (current + delta).clamp(0, max_index))
               :handled
             end
 

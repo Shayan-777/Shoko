@@ -224,7 +224,7 @@ module Shoko
             def selected_index(total)
               return 0 if total <= 0
 
-              current = (menu_state_reader&.browse_selected || 0).to_i
+              current = (menu_state_reader&.library_selected || 0).to_i
               current.clamp(0, total - 1)
             end
 

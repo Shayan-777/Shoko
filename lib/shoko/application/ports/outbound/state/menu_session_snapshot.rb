@@ -28,7 +28,7 @@ module Shoko
             def wipe_cache_config? = wipe_cache_config == true
             def wipe_cache_progress? = wipe_cache_progress == true
             def current_menu_mode = mode
-            def selected_library_index = browse_selected
+            def selected_library_index = library_selected
             def selected_annotation_record = selected_annotation
             def selected_annotation_book_path = selected_annotation_book
             def annotation_editor_text = annotation_edit_text

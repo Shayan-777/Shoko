@@ -243,8 +243,20 @@ module Shoko
           def build_menu_screen
             Screens::MenuScreenComponent.new(
               @menu_ui_dependencies,
-              menu_visual_profile: @menu_visual_profile
+              menu_visual_profile: @menu_visual_profile,
+              preview_screen_provider: ->(key) { preview_screen_for(key) }
             )
+          end
+
+          # The landing preview renders the real destination view for the
+          # highlighted rail entry, so the canvas shows the true site rather
+          # than a stand-in. It reuses the very screen instances the shell
+          # opens, so a preview and its opened view are always identical. Quit
+          # has no view; the landing screen renders its farewell instead.
+          def preview_screen_for(key)
+            return nil if key == :quit
+
+            fetch_screen(key)
           end
 
           def build_browse_screen

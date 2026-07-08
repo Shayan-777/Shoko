@@ -149,7 +149,7 @@ module Shoko
             end
 
             def switch_mode(mode)
-              payload = { mode: mode, browse_selected: 0 }
+              payload = { mode: mode, browse_selected: 0, library_selected: 0 }
               payload[:settings_selected] = 1 if mode == :settings
               payload[:library_details_open] = false if mode == :library
               update_menu(payload)

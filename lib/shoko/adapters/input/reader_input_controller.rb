@@ -95,10 +95,7 @@ module Shoko
           ctrl = ui_controller
           return unless ctrl
 
-          keys.each do |key|
-            result = annotation_overlay_result_for(ctrl, key)
-            next unless result
-          end
+          keys.each { |key| annotation_overlay_result_for(ctrl, key) }
         end
 
         def activate_for_mode(mode)
@@ -241,7 +238,6 @@ module Shoko
           register_read_bindings
           register_popup_menu_bindings
           register_help_bindings
-          register_library_bindings
           register_dictionary_bindings
           register_in_book_search_bindings
           register_toc_bindings
@@ -269,10 +265,6 @@ module Shoko
         def register_help_bindings
           bindings = { __default__: IntentBinding.new(:close_help_overlay) }
           @dispatcher.register_mode(:help, bindings)
-        end
-
-        def register_library_bindings
-          nil
         end
 
         def register_annotation_editor_bindings

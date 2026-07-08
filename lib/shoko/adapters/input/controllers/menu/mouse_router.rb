@@ -51,7 +51,7 @@ module Shoko
             # list key -> the cursor field a first click selects through.
             CURSOR_FIELDS = {
               browse: :browse_selected,
-              library: :browse_selected,
+              library: :library_selected,
               settings: :settings_selected,
               dictionary: :dictionary_selected,
               download: :download_selected,

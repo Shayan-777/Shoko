@@ -11,69 +11,71 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::MenuScreenComponent do
     instance_double('MenuStateReader', selected: selected, translator_source_lang: 'auto',
                                        translator_target_lang: 'en')
   end
-  let(:catalog_service) do
-    instance_double('CatalogService',
-                    entries: [{ 'name' => 'Moby-Dick', 'size' => 1_200_000 }],
-                    scan_status: :done,
-                    scan_message: '',
-                    cached_library_entries: [])
-  end
-  let(:annotation_service) { instance_double('AnnotationService', list_all: {}) }
-  let(:rss_reader_service) { instance_double('RssReaderService', snapshot: { feeds: [], articles: [] }) }
-  let(:config_reader) { instance_double('ConfigReader', load: nil) }
   let(:dependencies) do
     instance_double('Dependencies',
                     menu_state_reader: menu_state_reader,
-                    catalog_service: catalog_service,
-                    annotation_service: annotation_service,
-                    rss_reader_service: rss_reader_service,
-                    config_reader: config_reader)
+                    menu_hit_registry: nil)
   end
   let(:selected) { 0 }
-  let(:component) { described_class.new(dependencies) }
+
+  # Real destination views are exercised by their own specs; here a stand-in
+  # view writes a recognizable marker (and, when handed a registry, tries to
+  # register a row region) so we can assert the preview renders the *actual*
+  # view read-only rather than a hand-built card.
+  def fake_view(marker, registry: nil)
+    view = Object.new
+    view.define_singleton_method(:render) do |surface, bounds|
+      registry&.register(col: 1, row: 4, width: 4, height: 1, action: { type: :list_row })
+      surface.write(bounds, 4, 4, marker)
+    end
+    view
+  end
+
+  let(:provider_views) { {} }
+  let(:component) do
+    described_class.new(dependencies, preview_screen_provider: ->(key) { provider_views[key] })
+  end
 
   describe 'preview canvas (rail visible)' do
     before { component.canvas_mode = true }
 
-    it 'renders the live preview for the selection on the canvas surface' do
-      writes = render_component(component, width: 84, height: 30)
-      text = rendered_text(writes)
+    it 'renders the real destination view for the highlighted entry' do
+      provider_views[:browse] = fake_view('THE-REAL-BROWSE-VIEW')
 
-      expect(text).to include('Browse Library')
-      expect(text).to include('Moby-Dick')
-      expect(text).to include('1 book')
-      expect(text).to include('ENTER browse the shelf')
-      expect(writes.any? { |entry| entry[:text].include?(palette::LANDING_CANVAS_BG) }).to be(true)
+      text = rendered_text(render_component(component, width: 84, height: 30))
+
+      expect(text).to include('THE-REAL-BROWSE-VIEW')
     end
 
-    it 'moves the preview with the selection' do
+    it 'moves the preview to the highlighted entry' do
+      provider_views[:settings] = fake_view('THE-REAL-SETTINGS-VIEW')
       allow(menu_state_reader).to receive(:selected).and_return(6)
 
       text = rendered_text(render_component(component, width: 84, height: 30))
 
-      expect(text).to include('Settings')
-      expect(text).to include('ENTER adjust settings')
+      expect(text).to include('THE-REAL-SETTINGS-VIEW')
     end
 
-    it 'renders every entry preview without divider glyphs' do
-      described_class::MENU_ITEMS.each_index do |index|
-        entry_component = described_class.new(dependencies)
-        entry_component.canvas_mode = true
-        allow(menu_state_reader).to receive(:selected).and_return(index)
+    it 'renders the preview read-only — the previewed view registers no hit regions' do
+      registry = Shoko::Adapters::Ui::State::MenuHitRegistry.new
+      allow(dependencies).to receive(:menu_hit_registry).and_return(registry)
+      provider_views[:browse] = fake_view('BROWSE', registry: registry)
+      registry.begin_frame!
 
-        text = rendered_text(render_component(entry_component, width: 76, height: 26))
+      render_component(component, width: 84, height: 30)
 
-        expect(text).not_to include('│')
-        expect(text).not_to include('┃')
-      end
+      expect(registry.hit(1, 4)).to be_nil
     end
 
-    it 'survives a failing preview provider and still renders the canvas' do
-      allow(catalog_service).to receive(:entries).and_raise(StandardError, 'boom')
+    it 'shows the quit farewell for the entry that has no view' do
+      allow(menu_state_reader).to receive(:selected).and_return(7)
 
-      text = rendered_text(render_component(component, width: 84, height: 30))
+      writes = render_component(component, width: 84, height: 30)
+      text = rendered_text(writes)
 
-      expect(text).to include('Browse')
+      expect(text).to include('Quit')
+      expect(text).to include('ENTER quit')
+      expect(writes.any? { |entry| entry[:text].include?(palette::LANDING_CANVAS_BG) }).to be(true)
     end
   end
 

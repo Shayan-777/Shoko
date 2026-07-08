@@ -104,7 +104,7 @@ module Shoko
           end
 
           def selected_library_index
-            browse_selected
+            library_selected
           end
 
           def selected_annotation_record

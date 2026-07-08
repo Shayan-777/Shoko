@@ -28,6 +28,7 @@ module Shoko
             selected
             mode
             browse_selected
+            library_selected
             library_details_open
             settings_selected
             wipe_cache_cached
@@ -77,6 +78,7 @@ module Shoko
             selected: 0,
             mode: :menu,
             browse_selected: 0,
+            library_selected: 0,
             library_details_open: false,
             settings_selected: 1,
             wipe_cache_cached: true,

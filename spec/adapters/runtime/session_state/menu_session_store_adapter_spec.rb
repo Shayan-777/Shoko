@@ -47,6 +47,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter d
     store.save(store.load.with(
                  mode: :browse,
                  browse_selected: 4,
+                 library_selected: 7,
                  search_active: true,
                  library_details_open: true,
                  selected_annotation: { id: 'ann-1' },
@@ -54,7 +55,8 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter d
                ))
 
     expect(store.current_menu_mode).to eq(:browse)
-    expect(store.selected_library_index).to eq(4)
+    # The library index tracks its own cursor, independent of browse_selected.
+    expect(store.selected_library_index).to eq(7)
     expect(store.search_active?).to be(true)
     expect(store.library_details_open?).to be(true)
     expect(store.selected_annotation_record).to eq({ id: 'ann-1' })

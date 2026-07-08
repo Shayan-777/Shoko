@@ -4,10 +4,9 @@ require_relative 'base_screen_component'
 require_relative '../menu_design/icon_set'
 require_relative '../menu_design/layout'
 require_relative '../menu_design/canvas_frame'
+require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
 require_relative 'landing/layout'
-require_relative 'landing/preview_content'
-require_relative 'landing/preview_panel'
 require 'shoko/application/ports/inbound/menu_catalog'
 
 module Shoko
@@ -18,23 +17,31 @@ module Shoko
           # The landing menu — the canvas half of the app's home screen.
           #
           # The shell (MainMenuComponent) owns the rail; beside it this screen
-          # renders the live preview of whichever rail entry is highlighted, in
-          # the shared canvas grammar. When the shell hides the rail on narrow
-          # terminals it renders the compact centered list instead.
+          # renders a live preview of whichever rail entry is highlighted. The
+          # preview IS the real destination view, rendered read-only on the
+          # shared canvas, so the landing screen shows the true site behind each
+          # entry rather than a stand-in. Quit has no view, so it shows a
+          # farewell card. When the shell hides the rail on narrow terminals
+          # this screen renders the compact centered list instead.
           class MenuScreenComponent < BaseScreenComponent
             MENU_ITEMS = Shoko::Application::Ports::Inbound::MenuCatalog.main_menu_items
+            Palette = StatusBar::Palette
 
             # Set by the shell each frame: true when the rail is visible and
             # these bounds are the preview canvas.
             attr_writer :canvas_mode
 
-            def initialize(dependencies = nil, menu_visual_profile: nil)
+            # +preview_screen_provider+ maps a rail entry key to the real screen
+            # component that opening it renders (nil for entries with no view,
+            # e.g. Quit). The shell injects it so this screen can render the
+            # true destination view as the preview.
+            def initialize(dependencies = nil, menu_visual_profile: nil, preview_screen_provider: nil)
               super()
               @dependencies = dependencies
               @menu_visual_profile = menu_visual_profile
               @menu_state_reader = nil
               @canvas_mode = nil
-              @preview_content = Landing::PreviewContent.new(dependencies)
+              @preview_screen_provider = preview_screen_provider
             end
 
             def do_render(surface, bounds)
@@ -60,13 +67,55 @@ module Shoko
               Landing::Layout.wide?(bounds)
             end
 
+            # ----- live preview: the highlighted entry's real destination view -----
+
+            # Render the actual view for the highlighted entry so the canvas
+            # shows exactly what opening it will show. It renders read-only: the
+            # view's row/wheel hit regions are dropped for the frame so only the
+            # rail stays interactive under the pointer.
             def render_preview(surface, bounds, selected)
-              preview = @preview_content.build(MENU_ITEMS[selected].key, rows: preview_row_budget(bounds))
-              Landing::PreviewPanel.new(surface, bounds).render(preview)
+              item = MENU_ITEMS[selected]
+              screen = @preview_screen_provider&.call(item.key)
+              return render_farewell(surface, bounds, item) unless screen
+
+              registry = hit_registry
+              return screen.render(surface, bounds) unless registry
+
+              registry.suspend { screen.render(surface, bounds) }
             end
 
-            def preview_row_budget(bounds)
-              [bounds.height - MenuDesign::CanvasFrame::BODY_TOP - 1, 3].max
+            # Entries with no destination view (Quit) get a farewell on the same
+            # canvas grammar; the degenerate no-provider case shows a bare card.
+            def render_farewell(surface, bounds, item)
+              frame = MenuDesign::CanvasFrame.new(surface, bounds)
+              frame.paint
+              return if frame.content_width < 8
+
+              frame.render_rule(title: item.label, accent: MenuDesign::ViewAccents.for(item.key))
+              render_farewell_body(frame) if item.key == :quit
+              frame.render_hint(item.key == :quit ? 'ENTER quit' : 'ENTER opens')
+            end
+
+            def render_farewell_body(frame)
+              dim = Palette::LANDING_DIM_FG
+              lines = [
+                ['Close Shoko.', nil],
+                ['', nil],
+                ['Progress, bookmarks and annotations are', dim],
+                ['saved automatically. See you next chapter.', dim],
+              ]
+              lines.each_with_index do |(text, foreground), offset|
+                row = frame.body_top + offset
+                break if row > frame.body_bottom
+
+                frame.write_line(row, [[text, foreground]])
+              end
+            end
+
+            def hit_registry
+              return nil unless @dependencies.respond_to?(:menu_hit_registry)
+
+              @dependencies.menu_hit_registry
             end
 
             # ----- compact fallback (small terminals) -----
@@ -86,11 +135,10 @@ module Shoko
             # Compact rows sit on the terminal's own background (no canvas),
             # so only the selection takes color: brand-blue pointer + bold.
             def compact_row(item, selected:)
-              palette = StatusBar::Palette
               return "#{' ' * selection_slot_width}#{menu_item_text(item)}" unless selected
 
-              "#{palette::RESET}#{palette::LANDING_POINTER_FG}#{MenuDesign::IconSet.selection_pointer}" \
-                "#{palette::RESET}#{palette::BOLD}#{menu_item_text(item)}#{palette::RESET}"
+              "#{Palette::RESET}#{Palette::LANDING_POINTER_FG}#{MenuDesign::IconSet.selection_pointer}" \
+                "#{Palette::RESET}#{Palette::BOLD}#{menu_item_text(item)}#{Palette::RESET}"
             end
 
             def compact_layout_metrics(bounds)

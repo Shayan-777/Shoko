@@ -24,6 +24,7 @@ module Shoko
           def initialize
             @regions = []
             @pointer = nil
+            @suspended = false
           end
 
           # Called once per frame by the root menu component before children render.
@@ -33,9 +34,21 @@ module Shoko
 
           # Register a clickable region in terminal coordinates (1-based).
           def register(col:, row:, width:, height:, action:)
-            return if width <= 0 || height <= 0
+            return if @suspended || width <= 0 || height <= 0
 
             @regions << Region.new(col: col, row: row, width: width, height: height, action: action)
+          end
+
+          # Drops every registration made inside the block. The landing screen
+          # renders a view read-only as its live preview: the view paints, but
+          # its row/wheel regions must not enter the hit map — only the rail
+          # stays interactive. Re-entrant so nested suspends stay balanced.
+          def suspend
+            previous = @suspended
+            @suspended = true
+            yield
+          ensure
+            @suspended = previous
           end
 
           # Resolve a click; later registrations win (they render on top).
