@@ -44,6 +44,20 @@ module Shoko
           temp_path = tempfile.path
           tempfile.close
           File.rename(temp_path, path)
+          fsync_directory(File.dirname(path))
+        end
+
+        # The tempfile's bytes are fsync'd above, but the atomic rename is a
+        # directory-metadata change: without fsync'ing the containing
+        # directory a crash or power loss can lose the rename even though the
+        # data was flushed, leaving the target missing or zero-length (which
+        # the file-backed stores then read as a corrupt sidecar). Best-effort —
+        # some platforms (e.g. Windows) cannot fsync a directory handle, and
+        # that must never fail an otherwise-successful write.
+        def self.fsync_directory(dir)
+          File.open(dir, &:fsync)
+        rescue SystemCallError, IOError, NotImplementedError
+          # best-effort: platforms that cannot fsync a directory handle skip it
         end
 
         def self.cleanup_tempfile(tempfile, path)
@@ -76,6 +90,7 @@ module Shoko
 
         private_class_method :prepare_tempfile,
                              :commit_tempfile,
+                             :fsync_directory,
                              :cleanup_tempfile,
                              :storage_error,
                              :raise_storage_error

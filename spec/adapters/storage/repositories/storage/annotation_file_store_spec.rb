@@ -107,6 +107,23 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::AnnotationFileSt
     expect(store.get('book.epub').map { |a| a[:text] }).to eq(['t'])
   end
 
+  it 'quarantines a corrupt store so pre-corruption bytes survive the healing write' do
+    # A sync conflict (Dropbox/rsync, a second instance) leaves annotations.json
+    # corrupt but still carrying the user's data. Opening the book heals the
+    # file on the next save; the corrupt original must be preserved for
+    # recovery, never silently clobbered.
+    corrupt = '{"book.epub": [ truncated by a sync conflict'
+    write_store(corrupt)
+    store = described_class.new(file_writer: file_writer)
+
+    store.add('other.epub', build_draft(text: 'new', note: 'n', anchor: { quote: 'new' }, chapter_index: 0))
+
+    quarantines = Dir.glob(File.join(ENV.fetch('XDG_CONFIG_HOME'), 'shoko', 'annotations.json.corrupt-*'))
+    expect(quarantines.size).to eq(1)
+    expect(File.read(quarantines.first)).to eq(corrupt)
+    expect(store.get('other.epub').map { |annotation| annotation[:text] }).to eq(['new'])
+  end
+
   it 'persists annotations in a versioned envelope' do
     store = described_class.new(file_writer: file_writer)
     store.add('book.epub', build_draft(text: 't', note: 'n', anchor: { quote: 't' }, chapter_index: 0))

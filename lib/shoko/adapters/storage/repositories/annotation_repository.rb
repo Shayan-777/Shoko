@@ -32,7 +32,7 @@ module Shoko
 
           def initialize(file_writer:, logger: nil, storage: nil)
             super(logger: logger)
-            @storage = storage || Storage::AnnotationFileStore.new(file_writer: file_writer)
+            @storage = storage || Storage::AnnotationFileStore.new(file_writer: file_writer, logger: logger)
           end
 
           # Add a new annotation for a specific book

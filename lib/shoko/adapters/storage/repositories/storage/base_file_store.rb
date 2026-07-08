@@ -33,16 +33,17 @@ module Shoko
             # record shape changes.
             SCHEMA_VERSION = 1
 
-            def initialize(file_writer:)
+            def initialize(file_writer:, logger: nil)
               @file_writer = file_writer
+              @logger = logger
             end
 
             protected
 
-            attr_reader :file_writer
+            attr_reader :file_writer, :logger
 
             def load_all
-              unwrap(FileStoreUtils.load_json_or_empty(file_path))
+              unwrap(FileStoreUtils.load_json_or_empty(file_path, logger: @logger))
             end
 
             def save_all(entries)

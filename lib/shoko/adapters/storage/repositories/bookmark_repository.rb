@@ -25,7 +25,7 @@ module Shoko
 
           def initialize(file_writer:, logger: nil)
             super(logger: logger)
-            @storage = Storage::BookmarkFileStore.new(file_writer: file_writer)
+            @storage = Storage::BookmarkFileStore.new(file_writer: file_writer, logger: logger)
           end
 
           # Add a bookmark for a specific book
