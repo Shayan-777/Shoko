@@ -24,6 +24,23 @@ module MenuScreenRenderHelpers
       .join
   end
 
+  # Every write laid onto a character grid (1-based [row][col]), the way the
+  # terminal itself stacks them: a later write covers an earlier one. Specs
+  # that care about overlap — a scrollbar landing on a row's last column —
+  # must read the grid, since `rendered_text` only concatenates the writes.
+  def rendered_grid(writes, width:, height:)
+    grid = Array.new(height + 1) { +(' ' * width) }
+    writes.each do |entry|
+      next unless entry[:row].between?(1, height)
+
+      strip_ansi(entry[:text]).each_char.with_index do |char, offset|
+        col = entry[:col] + offset
+        grid[entry[:row]][col - 1] = char if col.between?(1, width)
+      end
+    end
+    grid
+  end
+
   def strip_ansi(text)
     text.to_s.gsub(ANSI_RE, '')
   end

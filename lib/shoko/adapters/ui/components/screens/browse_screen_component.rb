@@ -14,17 +14,26 @@ module Shoko
       module Components
         module Screens
           # Browse — the searchable shelf, rendered in the canvas grammar as
-          # the menu-side sibling of the in-book search list: roomy two-row
-          # blocks (title, then author · format · size) with the family's
-          # selection strip, a slim scrollbar when the shelf overflows, and
-          # the search input living in the status bar exactly like in-book
-          # search. A book being opened grows a progress row under its block.
+          # the menu-side sibling of the in-book search list: roomy blocks
+          # (title, then author · format, with the size right-aligned) wearing
+          # the family's selection strip, a slim scrollbar when the shelf
+          # overflows, and the search input living in the status bar exactly
+          # like in-book search. A book being opened grows a progress row
+          # under its block.
+          #
+          # Neither a title nor an author list is ever cut off: each flows onto
+          # as many rows as it needs, stopping a clear channel short of the
+          # column the sizes right-align into. Blocks therefore vary in height,
+          # so the window is measured in rows rather than counted in books.
           class BrowseScreenComponent < BaseComponent
             include Ui::TextUtils
 
             Palette = StatusBar::Palette
 
-            ROWS_PER_BOOK = 2
+            ROWS_PER_BOOK = 2 # the shortest a block can be: one title row plus its meta row
+            META_COLUMN = 9 # the right-hand column the size labels fill
+            META_GAP = 4 # the channel held clear between a block's text and that column
+            MIN_TEXT_WIDTH = 16
             UNREADABLE_METADATA = Object.new.freeze
 
             attr_reader :filtered_epubs
@@ -36,6 +45,7 @@ module Shoko
               @dependencies = dependencies
               @menu_visual_profile = menu_visual_profile
               @filtered_epubs = []
+              @block_lines = {}
               @menu_state_reader = nil
               @menu_session_mutator = nil
 
@@ -83,6 +93,7 @@ module Shoko
 
             def do_render(surface, bounds)
               @filtered_epubs ||= []
+              @block_lines = {}
               frame = MenuDesign::CanvasFrame.new(surface, bounds)
               frame.paint
               frame.render_rule(title: 'Browse Library', accent: accent, meta: rule_meta)
@@ -159,7 +170,7 @@ module Shoko
 
             def render_book_blocks(surface, bounds, frame, top:, height:)
               list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
-              window = visible_window(height)
+              window = visible_window(list, height)
               list.register_wheel(top: top, height: height, action: { type: :list_wheel, list: :browse })
               render_block_window(list, frame, window, top)
               render_overflow_scrollbar(list, top, height, window)
@@ -167,33 +178,67 @@ module Shoko
 
             def render_block_window(list, frame, window, top)
               row = top
-              window[:books].each_with_index do |book, offset|
-                index = window[:start] + offset
-                rows = book_block_rows(book, index == window[:selected])
-                break if row + rows.length - 1 > frame.body_bottom
+              window[:blocks].each_with_index do |block, offset|
+                break if offset.positive? && row + block[:lines].length - 1 > frame.body_bottom
 
-                render_book_block(list, frame, book: book, index: index, row: row,
-                                               selected: index == window[:selected], rows: rows)
-                row += rows.length + (loading_for?(book) ? 1 : 0)
+                row += render_book_block(list, frame, block: block, row: row,
+                                                      selected: block[:index] == window[:selected])
               end
             end
 
-            def render_book_block(list, frame, book:, index:, row:, selected:, rows:)
-              list.block(row: row, lines: rows, selected: selected,
-                         action: { type: :list_row, list: :browse, index: index })
-              render_loading_row(frame, row + ROWS_PER_BOOK) if loading_for?(book)
+            # Draws one block, plus the progress row a book being opened grows
+            # underneath it; returns the rows the entry consumed. Only a block
+            # taller than the whole body is clipped, and then by the body's own
+            # last row — never by cutting a word off.
+            def render_book_block(list, frame, block:, row:, selected:)
+              lines = block[:lines].first(frame.body_bottom - row + 1)
+              list.block(row: row, lines: lines, selected: selected,
+                         action: { type: :list_row, list: :browse, index: block[:index] })
+              return lines.length unless loading_for?(block[:book])
+
+              render_loading_row(frame, row + lines.length)
+              lines.length + 1
             end
 
-            # Rows for one book: bright title, then a dim author · format · size
-            # line — the in-book search block shape, retold for the shelf.
-            def book_block_rows(book, selected)
+            # Rows for one book: the bright title, then a dim author · format
+            # line. Each breaks between words onto as many rows as it needs —
+            # nothing on the shelf is ever cut off — which is why blocks vary
+            # in height. The in-book search block shape, retold for the shelf.
+            def book_block_rows(book, selected, width)
               title_fg = selected ? Palette::LANDING_TITLE_FG : Palette::LANDING_TEXT_FG
-              [
-                { left: [[book_title(book), title_fg]] },
-                { left: [["#{book_author(book)}#{' · ' unless book_author(book).empty?}#{file_format(book['path'])}",
-                          Palette::LANDING_DIM_FG]],
-                  right: [[size_label(book), Palette::LANDING_DIM_FG]] },
-              ]
+              title_rows = wrap_words(book_title(book), width).map { |line| { left: [[line, title_fg]] } }
+              [*title_rows, *meta_rows(book, width)]
+            end
+
+            # The size label fills the metadata column exactly, so the channel
+            # to its left stays the same width on every row of the shelf. It
+            # rides the first row of the author line, however far that flows.
+            def meta_rows(book, width)
+              author = book_author(book)
+              line = "#{author}#{' · ' unless author.empty?}#{file_format(book['path'])}"
+              wrap_words(line, width).each_with_index.map do |text, offset|
+                row = { left: [[text, Palette::LANDING_DIM_FG]] }
+                next row unless offset.zero?
+
+                row.merge(right: [[pad_left(size_label(book), META_COLUMN), Palette::LANDING_DIM_FG]])
+              end
+            end
+
+            # Every row of a block ends at the same column: the text stops a
+            # clear channel short of the metadata column the sizes right-align
+            # into, so no title or author list ever runs alongside a size. A
+            # terminal too narrow to afford the channel keeps its text instead.
+            def text_column(list)
+              available = list.text_width
+              return available if available <= MIN_TEXT_WIDTH
+
+              (available - META_COLUMN - META_GAP).clamp(MIN_TEXT_WIDTH, available)
+            end
+
+            # Blocks are measured before they are drawn, so each visible book's
+            # rows are laid out exactly once per frame.
+            def block_lines(list, index, selected)
+              @block_lines[index] ||= book_block_rows(@filtered_epubs[index], index == selected, text_column(list))
             end
 
             # The row a book being opened grows underneath: a slim accent
@@ -217,30 +262,54 @@ module Shoko
             end
 
             def render_overflow_scrollbar(list, list_top, height, window)
-              blocks_visible = window[:capacity]
+              blocks_visible = window[:blocks].length
               total = @filtered_epubs.length
-              return if total <= blocks_visible
+              return if blocks_visible.zero? || total <= blocks_visible
 
               list.render_scrollbar(top: list_top, height: height, total: total,
                                     visible: blocks_visible, offset: window[:start])
             end
 
-            def visible_window(height)
+            def visible_window(list, height)
               selected = selected_index(@filtered_epubs.length)
-              capacity = [(height - loading_reserve) / ROWS_PER_BOOK, 1].max
-              start = window_start(selected, capacity)
-              {
-                start: start,
-                books: @filtered_epubs[start, capacity] || [],
-                selected: selected,
-                capacity: capacity,
-              }
+              budget = [height - loading_reserve, 1].max
+              start = fitting_start(list, selected, budget)
+              { start: start, blocks: window_blocks(list, start, selected, budget), selected: selected }
             end
 
-            def window_start(selected, capacity)
+            # A wrapped title makes its block taller than the nominal two rows,
+            # which can push the selected book past the fold. Start from the
+            # centered guess, then walk the top of the window down until the
+            # selected block's last row lands inside the budget.
+            def fitting_start(list, selected, budget)
+              start = nominal_start(selected, budget)
+              rows = (start..selected).sum { |index| block_lines(list, index, selected).length }
+              while start < selected && rows > budget
+                rows -= block_lines(list, start, selected).length
+                start += 1
+              end
+              start
+            end
+
+            def nominal_start(selected, budget)
+              capacity = [budget / ROWS_PER_BOOK, 1].max
               return 0 if @filtered_epubs.length <= capacity
 
               (selected - (capacity / 2)).clamp(0, @filtered_epubs.length - capacity)
+            end
+
+            # As many whole blocks as the row budget holds, from +start+ down.
+            # The first is taken whatever its height: a book whose title alone
+            # outgrows the window still has to be readable.
+            def window_blocks(list, start, selected, budget)
+              rows_left = budget
+              (start...@filtered_epubs.length).each_with_object([]) do |index, blocks|
+                lines = block_lines(list, index, selected)
+                break blocks if blocks.any? && lines.length > rows_left
+
+                rows_left -= lines.length
+                blocks << { index: index, book: @filtered_epubs[index], lines: lines }
+              end
             end
 
             def loading_reserve

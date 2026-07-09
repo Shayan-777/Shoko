@@ -7,7 +7,6 @@ require_relative '../menu_design/canvas_list'
 require_relative '../menu_design/canvas_well'
 require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
-require_relative '../ui/list_helpers'
 require_relative '../ui/spinner'
 require_relative '../ui/text_utils'
 require 'shoko/shared/prepagination_status'
@@ -26,6 +25,13 @@ module Shoko
           # their number column. SPACE raises the inspector well — a raised
           # card carrying the selected book's metadata — beside the list,
           # separated from it purely by surface elevation.
+          #
+          # A title is never cut off: it flows onto as many rows as it needs,
+          # indented under the number column and stopping a clear channel short
+          # of the column the "accessed ago" labels right-align into — the
+          # Browse shelf's grammar, applied to the cache. Rows therefore vary
+          # in height, so the window is measured in rows rather than counted in
+          # books.
           class LibraryScreenComponent < BaseScreenComponent
             include Ui::TextUtils
 
@@ -44,6 +50,14 @@ module Shoko
             WELL_GAP = 2
             DETAIL_KEY_WIDTH = 10
 
+            MARKER_WIDTH = 3 # the number / spinner / queued-dot column
+            MARKER_GAP = 2 # the space after it, which wrapped title rows indent past
+            MARKER_COLUMN = MARKER_WIDTH + MARKER_GAP
+            ACCESSED_COLUMN = 12 # the right-hand column the "accessed ago" labels fill
+            ACCESSED_GAP = 4 # the channel held clear between a row's text and that column
+            STATUS_GAP = 2 # the space before the re-pagination note
+            MIN_TITLE_WIDTH = 16
+
             Status = Shoko::Shared::PrepaginationStatus
             TextMetrics = Shoko::Shared::Terminal::TextMetrics
             Spinner = Shoko::Adapters::Ui::Components::Ui::Spinner
@@ -54,12 +68,14 @@ module Shoko
               @menu_visual_profile = menu_visual_profile
               @catalog = dependencies&.catalog_service
               @items = nil
+              @row_lines = {}
               @menu_state_reader = nil
             end
 
             def do_render(surface, bounds)
               frame = MenuDesign::CanvasFrame.new(surface, bounds)
               frame.paint
+              @row_lines = {}
               items = load_items
               selected = selected_index(items.length)
               frame.render_rule(title: 'Library', accent: accent, meta: rule_meta(items))
@@ -111,34 +127,154 @@ module Shoko
 
               list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
               list.register_wheel(top: top, height: height, action: { type: :list_wheel, list: :library })
-              start_index, visible = Ui::ListHelpers.slice_visible(items, height, selected)
-              visible.each_with_index do |item, offset|
-                render_row(list, frame, item: item, index: start_index + offset,
-                                        row: top + offset, selected: start_index + offset == selected)
-              end
-              return if details_open?
-
-              list.render_scrollbar(top: top, height: height, total: items.length,
-                                    visible: height, offset: start_index)
+              width = title_column(list, frame)
+              window = visible_window(selected: selected, budget: height, width: width)
+              render_window(list, frame, window: window, top: top, width: width, selected: selected)
+              render_overflow_scrollbar(list, window, top: top, height: height, total: items.length)
             end
 
-            def render_row(list, frame, item:, index:, row:, selected:)
-              status = prepagination_status_for(item)
-              title_fg = selected ? Palette::LANDING_TITLE_FG : Palette::LANDING_TEXT_FG
-              list.row(
-                row: row,
-                left: [[row_marker(status, index), Palette::LANDING_DIM_FG], ['  ', nil],
-                       [safe_text(item.title.to_s.empty? ? 'Untitled' : item.title), title_fg],
-                       [status_label(status), accent]],
-                right: [[relative_accessed_label(item.last_accessed), Palette::LANDING_DIM_FG]],
-                selected: selected,
-                action: { type: :list_row, list: :library, index: index },
-                width: list_width(frame)
-              )
+            def render_window(list, frame, window:, top:, width:, selected:)
+              row = top
+              window[:indexes].each_with_index do |index, offset|
+                lines = row_lines(index, width, selected)
+                break if offset.positive? && row + lines.length - 1 > frame.body_bottom
+
+                row += render_item_row(list, frame, lines: lines, index: index, row: row, selected: index == selected)
+              end
+            end
+
+            # Draws one entry, clipped only by the body's last row — never by
+            # cutting a title off. Returns the rows it consumed.
+            def render_item_row(list, frame, lines:, index:, row:, selected:)
+              visible = lines.first(frame.body_bottom - row + 1)
+              list.block(row: row, lines: visible, selected: selected,
+                         action: { type: :list_row, list: :library, index: index },
+                         width: list_width(frame))
+              visible.length
+            end
+
+            # The inspector well takes the list's right edge, and the scrollbar
+            # with it.
+            def render_overflow_scrollbar(list, window, top:, height:, total:)
+              shown = window[:indexes].length
+              return if details_open? || shown.zero? || total <= shown
+
+              list.render_scrollbar(top: top, height: height, total: total,
+                                    visible: shown, offset: window[:start])
             end
 
             def render_empty(frame, top, height)
               frame.write_line(top + [height / 2, 0].max - 1, [['No cached books yet', Palette::LANDING_DIM_FG]])
+            end
+
+            # ----- flowed rows -----
+
+            # Rows for one cached book: the marker column, then the title
+            # flowing between words onto as many rows as it needs, with the
+            # re-pagination note trailing it and the "accessed ago" label
+            # riding the first row.
+            def item_rows(item, index, selected, width)
+              status = prepagination_status_for(item)
+              title_fg = selected ? Palette::LANDING_TITLE_FG : Palette::LANDING_TEXT_FG
+              title_rows(title_of(item), status_label(status), width, title_fg).each_with_index.map do |row, offset|
+                next { left: [[' ' * MARKER_COLUMN, nil], *row] } unless offset.zero?
+
+                { left: [[row_marker(status, index), Palette::LANDING_DIM_FG], [' ' * MARKER_GAP, nil], *row],
+                  right: [[accessed_label(item), Palette::LANDING_DIM_FG]] }
+              end
+            end
+
+            # The title flows; the re-pagination note trails its last row,
+            # dropping onto a row of its own when no room is left beside it.
+            def title_rows(title, label, width, title_fg)
+              rows = wrap_words(title, width).map { |line| [[line, title_fg]] }
+              return rows if label.empty?
+              return rows << [[label, accent]] unless label_fits?(rows.last, label, width)
+
+              rows[-1] += [[' ' * STATUS_GAP, nil], [label, accent]]
+              rows
+            end
+
+            def label_fits?(row, label, width)
+              used = row.sum { |text, _fg| TextMetrics.visible_length(text.to_s) }
+              used + STATUS_GAP + TextMetrics.visible_length(label) <= width
+            end
+
+            # A title stops a clear channel short of the "accessed ago" column,
+            # so no title ever runs alongside a timestamp. A list too narrow to
+            # afford the channel keeps its title text instead.
+            def title_column(list, frame)
+              available = [list.text_width(list_width(frame)) - MARKER_COLUMN, 1].max
+              return available if available <= MIN_TITLE_WIDTH
+
+              (available - ACCESSED_COLUMN - ACCESSED_GAP).clamp(MIN_TITLE_WIDTH, available)
+            end
+
+            # Rows are measured before they are drawn, so each visible book's
+            # rows are laid out exactly once per frame.
+            def row_lines(index, width, selected)
+              @row_lines[index] ||= item_rows(load_items[index], index, index == selected, width)
+            end
+
+            def title_of(item)
+              safe_text(item.title.to_s.strip.empty? ? 'Untitled' : item.title)
+            end
+
+            # The label fills the column exactly, so the channel to its left
+            # stays the same width on every row of the shelf.
+            def accessed_label(item)
+              pad_left(relative_accessed_label(item.last_accessed), ACCESSED_COLUMN)
+            end
+
+            # ----- the window, measured in rows -----
+
+            def visible_window(selected:, budget:, width:)
+              rows = [budget, 1].max
+              start = window_start(selected, rows, width)
+              { start: start, indexes: window_indexes(start: start, budget: rows, width: width, selected: selected) }
+            end
+
+            # The shelf's own scroll feel, retold for rows: it stays put while
+            # everything down to the selection fits from the top, then anchors
+            # the selection to the last row as the selection walks down.
+            def window_start(selected, budget, width)
+              return 0 if rows_through(selected, budget, width) <= budget
+
+              start = selected
+              used = row_lines(selected, width, selected).length
+              while start.positive?
+                height = row_lines(start - 1, width, selected).length
+                break if used + height > budget
+
+                used += height
+                start -= 1
+              end
+              start
+            end
+
+            # Rows the entries down to the selection occupy, giving up once the
+            # budget is blown — a long shelf is never measured end to end.
+            def rows_through(selected, budget, width)
+              total = 0
+              (0..selected).each do |index|
+                total += row_lines(index, width, selected).length
+                break if total > budget
+              end
+              total
+            end
+
+            # As many whole entries as the row budget holds, from +start+ down.
+            # The first is taken whatever its height: a book whose title alone
+            # outgrows the list still has to be readable.
+            def window_indexes(start:, budget:, width:, selected:)
+              rows_left = budget
+              (start...load_items.length).each_with_object([]) do |index, indexes|
+                height = row_lines(index, width, selected).length
+                break indexes if indexes.any? && height > rows_left
+
+                rows_left -= height
+                indexes << index
+              end
             end
 
             # ----- inspector well -----
@@ -246,16 +382,16 @@ module Shoko
 
             def row_marker(status, index)
               case status
-              when Status::IN_PROGRESS then pad_left(Spinner.glyph, 3)
-              when Status::QUEUED then pad_left(queued_glyph, 3)
-              else pad_left((index + 1).to_s, 3)
+              when Status::IN_PROGRESS then pad_left(Spinner.glyph, MARKER_WIDTH)
+              when Status::QUEUED then pad_left(queued_glyph, MARKER_WIDTH)
+              else pad_left((index + 1).to_s, MARKER_WIDTH)
               end
             end
 
             def status_label(status)
               case status
-              when Status::IN_PROGRESS then '  · recalculating'
-              when Status::QUEUED then '  · queued'
+              when Status::IN_PROGRESS then '· recalculating'
+              when Status::QUEUED then '· queued'
               else ''
               end
             end

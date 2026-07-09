@@ -92,15 +92,16 @@ module Shoko
 
             # Left segments flow, right segments snap to the content's right
             # edge; the left side truncates first so the right cluster (sizes,
-            # counts, ages) always survives. Every span sits on the canvas.
-            def compose(left:, right: [], background: nil, width: content_width)
+            # counts, ages) always survives. +reserve+ holds that many trailing
+            # columns clear of text — still background-filled, so the strip
+            # reads as one surface — which is how a row keeps its width while
+            # leaving air beside a scrollbar. Every span sits on the canvas.
+            def compose(left:, right: [], background: nil, width: content_width, reserve: 0)
               bg = background || Palette::LANDING_CANVAS_BG
-              right_width = segments_width(right)
-              budget = [width - right_width - (right_width.positive? ? MIN_SEGMENT_GAP : 0), 0].max
-              left_text, left_width = compose_segments(left, budget, bg)
-              gap = [width - left_width - right_width, 0].max
-              right_text, = compose_segments(right, right_width, bg)
-              "#{left_text}#{seg(' ' * gap, nil, background: bg)}#{right_text}#{Palette::RESET}"
+              inner = [width - reserve, 0].max
+              trailing = [width - inner, 0].max
+              pad = trailing.positive? ? seg(' ' * trailing, nil, background: bg) : ''
+              "#{compose_inner(left, right, inner, bg)}#{pad}#{Palette::RESET}"
             end
 
             def seg(text, foreground, background: nil)
@@ -124,6 +125,18 @@ module Shoko
               meta_part = clipped_meta.empty? ? '' : " #{clipped_meta}"
               fill = [content_width - width_of("── #{clipped_title} #{meta_part} ──"), 1].max
               [clipped_title, meta_part, fill]
+            end
+
+            # The left/right pair laid down across +inner+ columns. The right
+            # cluster is measured first and clipped to the room it actually
+            # has, so an over-wide label can never spill past the strip.
+            def compose_inner(left, right, inner, background)
+              right_width = [segments_width(right), inner].min
+              budget = [inner - right_width - (right_width.positive? ? MIN_SEGMENT_GAP : 0), 0].max
+              left_text, left_width = compose_segments(left, budget, background)
+              right_text, right_drawn = compose_segments(right, right_width, background)
+              gap = [inner - left_width - right_drawn, 0].max
+              "#{left_text}#{seg(' ' * gap, nil, background: background)}#{right_text}"
             end
 
             def compose_segments(segments, budget, background)
