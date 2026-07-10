@@ -36,9 +36,17 @@ module Shoko
             @logger = deps.logger
           end
 
-          # @return [Symbol] :completed (also when there was nothing to do)
+          # @return [Symbol] :completed (also when there was genuinely nothing
+          #   to do), or :failed when the library could not even be enumerated
+          #   — that batch did no work, so it must not count as done or the
+          #   warmup would persist the size signature and never retry at this
+          #   size. Per-book pagination failures do NOT fail the batch: one
+          #   corrupt book must never abort the rest, and its only cost is a
+          #   recalculation when it is opened.
           def run(width:, height:)
             paths = candidate_paths
+            return :failed if paths.nil?
+
             process_books(paths, width, height) if paths.any?
             :completed
           ensure
@@ -55,13 +63,15 @@ module Shoko
             end
           end
 
+          # @return [Array<String>, nil] nil when discovery itself failed —
+          #   distinct from an empty library, which is a successful no-op.
           def candidate_paths
             entries = Array(@catalog_service.cached_library_entries)
             paths = entries.filter_map { |entry| book_path_from(entry) }.uniq
             paths.select { |path| cached?(path) }
           rescue Shoko::Error => e
             log('candidate_paths_failed', e)
-            []
+            nil
           end
 
           def book_path_from(entry)

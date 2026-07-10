@@ -115,7 +115,8 @@ module Shoko
             Shoko::Adapters::Storage::RecentFilesRepository.new(
               recent_file_path: Shoko::Adapters::Storage::RecentFilesRepository.default_recent_file_path,
               atomic_file_writer: c.resolve(:atomic_file_writer),
-              wall_clock: c.resolve(:wall_clock)
+              wall_clock: c.resolve(:wall_clock),
+              logger: c.resolve(:logger)
             )
           end
         end

@@ -57,7 +57,12 @@ module Shoko
             signature = "#{width}x#{height}"
             return :unchanged if config.last_paginated_size.to_s == signature
 
+            # Re-arm both cancel latches for this session: the runner's latch
+            # (set by every menu exit) persists until this deliberate restart,
+            # so a cancel can never leak into the next session and kill its
+            # batch at spawn.
             @cancelled = false
+            @batch_runner.reset_cancellation
             worker.submit { supervise_batch(width, height, signature) }
             :started
           # resilient-boundary

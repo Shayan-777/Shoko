@@ -34,41 +34,45 @@ module Shoko
                 raise ArgumentError, "draft must be #{Shoko::Core::Models::AnnotationDraft}"
               end
 
-              data = load_all
-              key = path.to_s
-              list = data[key] || []
               ann = build_annotation_record(draft)
-              list << ann
-              data[key] = list
-              save_all(data)
+              with_update_lock do
+                data = load_all_for_update
+                key = path.to_s
+                (data[key] ||= []) << ann
+                save_all(data)
+              end
               ann
             end
 
             def update(path, id, note)
-              data = load_all
-              key = path.to_s
-              list = data[key] || []
-              ann = list.find { |a| a['id'] == id }
-              return false unless ann
+              with_update_lock do
+                data = load_all_for_update
+                key = path.to_s
+                list = data[key] || []
+                ann = list.find { |a| a['id'] == id }
+                return false unless ann
 
-              ann['note'] = sanitize_body(note)
-              ann['updated_at'] = Time.now.iso8601
-              data[key] = list
-              save_all(data)
-              ann
+                ann['note'] = sanitize_body(note)
+                ann['updated_at'] = Time.now.iso8601
+                data[key] = list
+                save_all(data)
+                ann
+              end
             end
 
             def delete(path, id)
-              data = load_all
-              key = path.to_s
-              list = data[key] || []
-              removed = list.find { |a| a['id'] == id }
-              return nil unless removed
+              with_update_lock do
+                data = load_all_for_update
+                key = path.to_s
+                list = data[key] || []
+                removed = list.find { |a| a['id'] == id }
+                return nil unless removed
 
-              list.reject! { |a| a['id'] == id }
-              list.empty? ? data.delete(key) : data[key] = list
-              save_all(data)
-              removed
+                list.reject! { |a| a['id'] == id }
+                list.empty? ? data.delete(key) : data[key] = list
+                save_all(data)
+                removed
+              end
             end
 
             private

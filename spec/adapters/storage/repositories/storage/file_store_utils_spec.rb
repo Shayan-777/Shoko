@@ -82,4 +82,63 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::FileStoreUtils d
       expect(quarantine_files).to be_empty
     end
   end
+
+  describe '.load_json_for_update' do
+    it 'returns an empty hash for a missing file (a first write starts empty)' do
+      expect(described_class.load_json_for_update(store_path)).to eq({})
+    end
+
+    it 'quarantines content corruption and returns empty, like the read path' do
+      File.write(store_path, 'not json')
+
+      expect(described_class.load_json_for_update(store_path)).to eq({})
+      expect(quarantine_files.size).to eq(1)
+    end
+
+    it 'raises StorageError on an access error so the mutation aborts instead of flattening the store' do
+      File.write(store_path, JSON.generate('book.epub' => %w[a]))
+      allow(File).to receive(:read).with(store_path).and_raise(Errno::EACCES)
+
+      expect { described_class.load_json_for_update(store_path) }
+        .to raise_error(Shoko::StorageError, /load_for_update/)
+      expect(File.exist?(store_path)).to be(true)
+      expect(quarantine_files).to be_empty
+    end
+  end
+
+  describe '.with_update_lock' do
+    it 'serializes concurrent blocks via the sidecar lock' do
+      concurrently_inside = 0
+      max_inside = 0
+      guard = Mutex.new
+      threads = 4.times.map do
+        Thread.new do
+          described_class.with_update_lock(store_path) do
+            guard.synchronize { concurrently_inside += 1; max_inside = [max_inside, concurrently_inside].max }
+            sleep(0.01)
+            guard.synchronize { concurrently_inside -= 1 }
+          end
+        end
+      end
+      threads.each(&:join)
+
+      expect(max_inside).to eq(1)
+    end
+
+    it 'lets block errors propagate untouched and releases the lock' do
+      expect do
+        described_class.with_update_lock(store_path) { raise Shoko::StorageError.new('save', store_path) }
+      end.to raise_error(Shoko::StorageError, /save/)
+
+      # The lock is free again: a follow-up mutation proceeds.
+      expect(described_class.with_update_lock(store_path) { :ran }).to eq(:ran)
+    end
+
+    it 'translates lock acquisition failures into StorageError' do
+      allow(File).to receive(:open).and_raise(Errno::EACCES)
+
+      expect { described_class.with_update_lock(store_path) { :never } }
+        .to raise_error(Shoko::StorageError, /storage_lock/)
+    end
+  end
 end

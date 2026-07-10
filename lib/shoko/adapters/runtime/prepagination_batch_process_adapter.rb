@@ -20,6 +20,9 @@ module Shoko
         include Shoko::Application::Ports::Outbound::PrepaginationBatchRunner
 
         DEFAULT_SHOKO_BIN = File.expand_path('../../../../bin/shoko', __dir__)
+        # Grace period between the abnormal-path TERM and the KILL escalation.
+        KILL_ESCALATION_SECONDS = 2.0
+        REAP_POLL_INTERVAL_SECONDS = 0.05
 
         def initialize(logger: nil, shoko_bin: DEFAULT_SHOKO_BIN, ruby_bin: RbConfig.ruby)
           @logger = logger
@@ -37,15 +40,23 @@ module Shoko
         # resilient-boundary
         rescue StandardError => e
           record_batch_error(e)
+          abort_run
           :failed
         end
 
+        # Latches until #reset_cancellation (see the port contract): a spawn
+        # racing the cancel is killed in register_child, and later runs are
+        # refused until the supervisor deliberately starts a new session.
         def cancel_batch
           pid = @mutex.synchronize do
             @cancelled = true
             @pid
           end
           terminate(pid) if pid
+        end
+
+        def reset_cancellation
+          @mutex.synchronize { @cancelled = false }
         end
 
         private
@@ -126,6 +137,45 @@ module Shoko
           Process.wait2(pid)
         rescue Errno::ECHILD => e
           record_batch_error(e)
+        end
+
+        # Abnormal exit from run_batch (the pipe read or the event callback
+        # raised): nobody is left to read the child's stdout or observe its
+        # exit, so it must be stopped and reaped here — otherwise it would keep
+        # burning CPU on pagination for a result no one will use, then linger
+        # as a zombie.
+        def abort_run
+          pid = @mutex.synchronize { @pid }
+          return unless pid
+
+          terminate(pid)
+          reap_with_escalation(pid)
+          @mutex.synchronize { @pid = nil }
+        end
+
+        # TERM is advisory; a child stuck in uninterruptible work is force-
+        # killed after a bounded grace period so the supervising worker thread
+        # can never hang on the reap.
+        def reap_with_escalation(pid)
+          deadline = monotonic_now + KILL_ESCALATION_SECONDS
+          until Process.waitpid(pid, Process::WNOHANG)
+            return force_kill(pid) if monotonic_now >= deadline
+
+            sleep(REAP_POLL_INTERVAL_SECONDS)
+          end
+        rescue Errno::ECHILD => e
+          record_batch_error(e)
+        end
+
+        def force_kill(pid)
+          Process.kill('KILL', pid)
+          await_exit(pid)
+        rescue Errno::ESRCH, Errno::EPERM => e
+          record_batch_error(e)
+        end
+
+        def monotonic_now
+          Process.clock_gettime(Process::CLOCK_MONOTONIC)
         end
 
         def terminate(pid)

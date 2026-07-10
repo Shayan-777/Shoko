@@ -23,9 +23,19 @@ module Shoko
           #
           # Subclasses whose on-disk record shape changed across versions set a
           # higher SCHEMA_VERSION and override #migrate_entries to upgrade older
-          # payloads at load time. Because the upgrade runs inside #load_all, it
-          # flows through both reads and the read-modify-write of add/update/
-          # delete, so the next save persists the current shape.
+          # payloads at load time. Because the upgrade runs inside both load
+          # variants, it flows through reads and the read-modify-write of add/
+          # update/delete, so the next save persists the current shape.
+          #
+          # Mutations are transactions: subclasses wrap the whole
+          # load-modify-save in #with_update_lock (an exclusive cross-process
+          # sidecar flock) and read their baseline via #load_all_for_update,
+          # which aborts on access errors instead of degrading to empty —
+          # otherwise a transient read failure would let the save replace the
+          # user's whole store with an empty baseline. Plain reads stay
+          # lock-free (#load_all): every save is an atomic rename, so a reader
+          # always sees a complete file, and a read must degrade rather than
+          # block opening the book.
           class BaseFileStore
             # Version assumed for a pre-envelope bare-hash file.
             LEGACY_VERSION = 1
@@ -44,6 +54,19 @@ module Shoko
 
             def load_all
               unwrap(FileStoreUtils.load_json_or_empty(file_path, logger: @logger))
+            end
+
+            # Baseline read at the start of a mutation: access errors raise
+            # (see FileStoreUtils.load_json_for_update) so the coming save can
+            # never flatten a healthy-but-unreadable store.
+            def load_all_for_update
+              unwrap(FileStoreUtils.load_json_for_update(file_path, logger: @logger))
+            end
+
+            # Holds the store's sidecar flock for the duration of the block;
+            # every mutation runs its full read-modify-write inside it.
+            def with_update_lock(&)
+              FileStoreUtils.with_update_lock(file_path, &)
             end
 
             def save_all(entries)

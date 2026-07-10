@@ -62,7 +62,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
       canonical_recent_path: '/books/a.epub'
     )
   end
-  let(:logger) { instance_double('Logger', debug: nil, error: nil, respond_to?: true) }
+  let(:logger) { instance_double('Logger', debug: nil, error: nil, warn: nil, respond_to?: true) }
 
   subject(:service) do
     described_class.new(
@@ -98,5 +98,20 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
     expect(menu_runtime).to have_received(:switch_mode).with(:browse)
     expect(reader_launch_state.preloaded_document).to be_nil
     expect(reader_launch_state.background_worker).to be_nil
+  end
+
+  it 'still launches the reader when recording recent history fails' do
+    # Recent history is ancillary: a corrupt recent.json (or a failing disk)
+    # must never veto opening the book.
+    allow(recent_files_repository).to receive(:add)
+      .and_raise(Shoko::StorageError.new('recent_files_add', '/recent.json', 'disk on fire'))
+
+    expect do
+      service.run_reader(path: '/tmp/a.epub', ensure_reader_document_for: ->(_path) { true })
+    end.not_to raise_error
+
+    expect(menu_runtime).to have_received(:run_reader)
+    expect(logger).to have_received(:warn)
+      .with('menu.run_reader.recent_history_failed', hash_including(error: 'Shoko::StorageError'))
   end
 end

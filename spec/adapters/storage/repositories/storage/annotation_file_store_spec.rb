@@ -124,6 +124,44 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::AnnotationFileSt
     expect(store.get('other.epub').map { |annotation| annotation[:text] }).to eq(['new'])
   end
 
+  it 'does not lose updates when two threads mutate concurrently' do
+    # Every mutation runs its whole read-modify-write under the sidecar
+    # flock; without it, two adds can read the same baseline and one
+    # annotation silently vanishes.
+    store = described_class.new(file_writer: Shoko::Adapters::Storage::AtomicFileWriter)
+    adds_per_thread = 5
+    barrier = Queue.new
+    threads = 2.times.map do |thread_index|
+      Thread.new do
+        barrier.pop
+        adds_per_thread.times do |i|
+          store.add('book.epub', build_draft(text: "t#{thread_index}-#{i}", note: 'n', chapter_index: 0))
+        end
+      end
+    end
+    2.times { barrier << true }
+    threads.each(&:join)
+
+    expect(store.get('book.epub').length).to eq(2 * adds_per_thread)
+  end
+
+  it 'aborts a mutation on an access error instead of flattening the store' do
+    # A transiently unreadable file (permissions, remounting disk) must fail
+    # the add loudly; degrading to an empty baseline here would let the save
+    # destroy every annotation the user ever made.
+    store = described_class.new(file_writer: file_writer)
+    store.add('book.epub', build_draft(text: 'precious', note: 'n', chapter_index: 0))
+    path = File.join(ENV.fetch('XDG_CONFIG_HOME'), 'shoko', 'annotations.json')
+    allow(File).to receive(:read).with(path).and_raise(Errno::EACCES)
+
+    expect do
+      store.add('other.epub', build_draft(text: 'new', note: 'n', chapter_index: 0))
+    end.to raise_error(Shoko::StorageError)
+
+    allow(File).to receive(:read).with(path).and_call_original
+    expect(store.get('book.epub').map { |a| a[:text] }).to eq(['precious'])
+  end
+
   it 'persists annotations in a versioned envelope' do
     store = described_class.new(file_writer: file_writer)
     store.add('book.epub', build_draft(text: 't', note: 'n', anchor: { quote: 't' }, chapter_index: 0))

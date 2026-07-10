@@ -110,9 +110,20 @@ module Shoko
 
             private
 
+            # Recording history is ancillary: a broken recent.json or a failing
+            # disk must never veto opening the book, so any error stops here
+            # and the launch continues with only a log entry.
             def remember_recent_path(reader_path)
               recent_path = @path_resolution.canonical_recent_path(reader_path)
               @recent_files_repository&.add(recent_path) if recent_path
+            # resilient-boundary
+            rescue StandardError => e
+              record_recent_history_error(e, reader_path)
+            end
+
+            def record_recent_history_error(error, reader_path)
+              @logger&.warn('menu.run_reader.recent_history_failed',
+                            error: error.class.name, message: error.message, path: reader_path)
             end
 
             def mark_reader_running(reader_path)

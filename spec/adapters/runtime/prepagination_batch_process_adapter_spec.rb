@@ -79,4 +79,44 @@ RSpec.describe Shoko::Adapters::Runtime::PrepaginationBatchProcessAdapter do
 
     expect { adapter.cancel_batch }.not_to raise_error
   end
+
+  it 'latches after a cancel: later runs are refused until reset_cancellation' do
+    # The latch covers a cancel that raced a not-yet-spawned run; the
+    # supervisor re-arms with reset_cancellation when it starts a new session.
+    adapter, @child_file = adapter_for_child("puts '{\"event\":\"report\",\"done\":1}'")
+
+    adapter.cancel_batch
+
+    expect(adapter.run_batch(width: 80, height: 24, on_event: ->(event) { event })).to eq(:cancelled)
+  end
+
+  it 'accepts runs again after reset_cancellation (a cancel must not kill every future batch)' do
+    adapter, @child_file = adapter_for_child("puts '{\"event\":\"report\",\"done\":1}'")
+
+    expect(adapter.run_batch(width: 80, height: 24, on_event: ->(event) { event })).to eq(:completed)
+    adapter.cancel_batch
+    adapter.reset_cancellation
+
+    expect(adapter.run_batch(width: 80, height: 24, on_event: ->(event) { event })).to eq(:completed)
+  end
+
+  it 'terminates and reaps the child when the event callback raises' do
+    # An abnormal exit leaves nobody reading the pipe or observing the child;
+    # without the cleanup it would keep paginating for a result no one will
+    # use, then linger as a zombie.
+    adapter, @child_file = adapter_for_child(<<~RUBY)
+      $stdout.sync = true
+      puts '{"event":"start","total":1,"paths":[]}'
+      sleep 30
+    RUBY
+
+    started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    status = adapter.run_batch(width: 80, height: 24, on_event: ->(_event) { raise 'callback bug' })
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
+
+    expect(status).to eq(:failed)
+    expect(elapsed).to be < 10.0
+    # Reaped, not just killed: no child (zombie or live) remains.
+    expect { Process.waitpid(-1, Process::WNOHANG) }.to raise_error(Errno::ECHILD)
+  end
 end

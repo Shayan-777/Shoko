@@ -7,6 +7,7 @@ require 'time'
 require_relative '../../application/ports/outbound/recent_files_repository'
 require_relative 'atomic_file_writer'
 require_relative 'config_paths'
+require_relative 'repositories/storage/file_store_utils'
 require_relative '../../shared/text_sanitizer'
 require_relative '../../shared/errors'
 
@@ -14,6 +15,13 @@ module Shoko
   module Adapters
     module Storage
       # Instance-based adapter for recent files persistence.
+      #
+      # Recent history is an ancillary sidecar, so it follows the same failure
+      # discipline as the annotation/bookmark/progress stores: reads degrade to
+      # empty (content corruption is quarantined first so the history stays
+      # recoverable), while mutations run their whole read-modify-write under
+      # the sidecar flock and abort on access errors — a transiently unreadable
+      # file must never be flattened to a one-entry baseline by the next save.
       class RecentFilesRepository
         include Application::Ports::Outbound::RecentFilesRepository
 
@@ -23,32 +31,35 @@ module Shoko
           File.join(ConfigPaths.config_root, 'recent.json')
         end
 
-        def initialize(recent_file_path:, atomic_file_writer:, wall_clock:, file_utils: FileUtils)
+        def initialize(recent_file_path:, atomic_file_writer:, wall_clock:, file_utils: FileUtils, logger: nil)
           raise ArgumentError, 'wall_clock must respond to #utc_now' unless wall_clock.respond_to?(:utc_now)
 
           @recent_file_path = recent_file_path.to_s
           @atomic_file_writer = atomic_file_writer
           @wall_clock = wall_clock
           @file_utils = file_utils
+          @logger = logger
         end
 
         def add(path)
           cleaned_path = path.to_s.strip
           raise ArgumentError, 'path is required' if cleaned_path.empty?
 
-          recent_files = load.reject { |file| file['path'] == cleaned_path }
-          save([new_entry(cleaned_path), *recent_files].first(MAX_RECENT_FILES))
+          entry = new_entry(cleaned_path)
+          Repositories::Storage::FileStoreUtils.with_update_lock(@recent_file_path) do
+            recent_files = load_for_update.reject { |file| file['path'] == cleaned_path }
+            save([entry, *recent_files].first(MAX_RECENT_FILES))
+          end
         rescue StandardError => e
           raise_storage_error('recent_files_add', e)
         end
 
+        # Reads never raise: an unusable recent.json costs the recent list,
+        # not the menu or a book launch.
         def load
-          return [] unless File.exist?(@recent_file_path)
-
-          entries = JSON.parse(File.read(@recent_file_path))
-          validate_entries!(entries).map { |row| sanitize_entry(row) }
-        rescue StandardError => e
-          raise_storage_error('recent_files_load', e)
+          read_valid_entries
+        rescue SystemCallError, IOError
+          []
         end
 
         def clear
@@ -58,6 +69,28 @@ module Shoko
         end
 
         private
+
+        # Mutation-time baseline read: access errors abort the mutation.
+        def load_for_update
+          read_valid_entries
+        rescue SystemCallError, IOError => e
+          raise Shoko::StorageError.new('recent_files_load', @recent_file_path, e.message)
+        end
+
+        # Parses and validates the stored entries. Content corruption —
+        # unparseable JSON or a wrong-shape payload — is quarantined (the file
+        # still holds user history worth recovering) and reads as empty, so the
+        # next add writes a clean file. Access errors propagate to the caller,
+        # which decides whether to degrade (read) or abort (mutation).
+        def read_valid_entries
+          return [] unless File.exist?(@recent_file_path)
+
+          entries = JSON.parse(File.read(@recent_file_path))
+          validate_entries!(entries).map { |row| sanitize_entry(row) }
+        rescue JSON::ParserError, Shoko::StorageError => e
+          Repositories::Storage::FileStoreUtils.quarantine_corrupt_file(@recent_file_path, @logger, reason: e.message)
+          []
+        end
 
         def save(recent)
           @file_utils.mkdir_p(File.dirname(@recent_file_path))

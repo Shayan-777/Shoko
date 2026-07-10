@@ -23,13 +23,13 @@ module Shoko
                 raise ArgumentError, 'bookmark_data must be BookmarkData'
               end
 
-              all = load_all
-              path = bookmark_data.path.to_s
-              list = all[path] || []
               entry = bookmark_entry(bookmark_data)
-              list << entry
-              all[path] = list
-              save_all(all)
+              with_update_lock do
+                all = load_all_for_update
+                path = bookmark_data.path.to_s
+                (all[path] ||= []) << entry
+                save_all(all)
+              end
               entry
             end
 
@@ -44,18 +44,20 @@ module Shoko
             end
 
             def delete(path, bookmark)
-              all = load_all
-              key = path.to_s
-              list = all[key] || []
               # Delete by matching serialized representation
               predicate = bookmark_predicate(bookmark)
-              removed = list.find(&predicate)
-              return nil unless removed
+              with_update_lock do
+                all = load_all_for_update
+                key = path.to_s
+                list = all[key] || []
+                removed = list.find(&predicate)
+                return nil unless removed
 
-              list.reject!(&predicate)
-              list.empty? ? all.delete(key) : all[key] = list
-              save_all(all)
-              removed
+                list.reject!(&predicate)
+                list.empty? ? all.delete(key) : all[key] = list
+                save_all(all)
+                removed
+              end
             end
 
             private

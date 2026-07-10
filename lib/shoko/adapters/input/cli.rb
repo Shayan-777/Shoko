@@ -32,7 +32,9 @@ module Shoko
                   prepaginate_factory: nil, input: $stdin, output: $stdout)
             options, args = parse_options(argv)
             log_config = build_log_config(options)
-            return run_prepagination_batch(options, log_config, prepaginate_factory) if options[:prepaginate_batch]
+            if options[:prepaginate_batch]
+              return run_prepagination_batch(options, log_config, prepaginate_factory, process_control)
+            end
 
             target_path, action = resolve_target_path(args.first, log_config: log_config,
                                                                   folder_import_factory: folder_import_factory,
@@ -98,13 +100,17 @@ module Shoko
           end
 
           # Runs the pre-pagination batch in this (child) process at reduced
-          # OS priority so the interactive parent always wins the CPU.
-          def run_prepagination_batch(options, log_config, prepaginate_factory)
+          # OS priority so the interactive parent always wins the CPU. The
+          # batch outcome is the parent's only signal — it reads this process's
+          # exit status — so a failed batch must exit non-zero or the menu
+          # warmup would persist the size signature for work that never ran.
+          def run_prepagination_batch(options, log_config, prepaginate_factory, process_control)
             raise ArgumentError, '--prepaginate-batch is not supported by this entry point' unless prepaginate_factory
 
             deprioritize_current_process
             width, height = options[:prepaginate_batch]
-            prepaginate_factory.call(log_config: log_config).run(width: width, height: height)
+            status = prepaginate_factory.call(log_config: log_config).run(width: width, height: height)
+            process_control.terminate(1) if status == :failed
             nil
           end
 

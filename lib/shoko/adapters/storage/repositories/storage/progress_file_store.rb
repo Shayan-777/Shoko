@@ -15,11 +15,13 @@ module Shoko
             SCHEMA_VERSION = 1
 
             def save(path, chapter_index, line_offset, anchor = nil)
-              all = load_all
               payload = { 'chapter' => chapter_index, 'line_offset' => line_offset, 'timestamp' => Time.now.iso8601 }
               payload['anchor'] = anchor if anchor
-              all[path.to_s] = payload
-              save_all(all)
+              with_update_lock do
+                all = load_all_for_update
+                all[path.to_s] = payload
+                save_all(all)
+              end
               payload
             end
 
