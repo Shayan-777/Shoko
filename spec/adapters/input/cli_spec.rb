@@ -225,6 +225,44 @@ RSpec.describe Shoko::Adapters::Input::CLI do
       expect(output.string).to include('--log PATH')
       expect(process_control).to have_received(:terminate).with(1)
     end
+
+    describe 'the --prepaginate-batch child entry' do
+      let(:prepaginate_factory) { instance_double('PrepaginateFactory') }
+      let(:batch) { instance_double('LibraryPrepaginationBatch') }
+
+      before do
+        allow(described_class).to receive(:deprioritize_current_process)
+        allow(prepaginate_factory).to receive(:call).and_return(batch)
+      end
+
+      def run_batch_cli
+        described_class.run(
+          ['--prepaginate-batch', '120x40'],
+          app_factory: app_factory,
+          process_control: process_control,
+          prepaginate_factory: prepaginate_factory
+        )
+      end
+
+      it 'runs the batch at the parsed size and exits cleanly on completion' do
+        allow(batch).to receive(:run).with(width: 120, height: 40).and_return(:completed)
+
+        run_batch_cli
+
+        expect(process_control).not_to have_received(:terminate)
+      end
+
+      it 'exits non-zero when the batch failed, so the parent never records it as done' do
+        # The parent menu warmup only sees this process's exit status; a zero
+        # exit for a failed batch would persist the size signature and
+        # suppress every retry at that terminal size.
+        allow(batch).to receive(:run).with(width: 120, height: 40).and_return(:failed)
+
+        run_batch_cli
+
+        expect(process_control).to have_received(:terminate).with(1)
+      end
+    end
   end
 
   describe '.logger_output' do

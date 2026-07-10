@@ -130,4 +130,23 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch do
       expect(progress_writer.events).to eq([[:finish]])
     end
   end
+
+  context 'when library discovery itself fails' do
+    let(:catalog_service) { instance_double('CatalogService') }
+
+    before do
+      allow(catalog_service).to receive(:cached_library_entries)
+        .and_raise(Shoko::StorageError.new('catalog_scan', '/library', 'boom'))
+    end
+
+    it 'fails the batch — no work ran, so it must not count as done' do
+      # The parent warmup persists the terminal-size signature on :completed;
+      # reporting a failed discovery as done would suppress every retry at
+      # this size.
+      expect(batch.run(width: 100, height: 40)).to eq(:failed)
+
+      expect(page_calculator).not_to have_received(:build_dynamic_map!)
+      expect(progress_writer.events).to eq([[:finish]])
+    end
+  end
 end

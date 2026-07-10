@@ -44,13 +44,14 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationWarmup d
     Class.new do
       include Shoko::Application::Ports::Outbound::PrepaginationBatchRunner
 
-      attr_reader :calls, :cancelled
+      attr_reader :calls, :cancelled, :reset_count
 
       def initialize(events, status)
         @events = events
         @status = status
         @calls = []
         @cancelled = false
+        @reset_count = 0
       end
 
       def run_batch(width:, height:, on_event:)
@@ -61,6 +62,11 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationWarmup d
 
       def cancel_batch
         @cancelled = true
+      end
+
+      def reset_cancellation
+        @reset_count += 1
+        @cancelled = false
       end
     end.new(batch_events, batch_status)
   end
@@ -218,6 +224,24 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationWarmup d
       warmup.cancel
 
       expect(batch_runner.cancelled).to be(true)
+    end
+
+    context 'when the batch was cancelled by a menu exit' do
+      let(:batch_status) { :cancelled }
+
+      it 'does not poison the next session: start re-arms the runner' do
+        # The runner's cancel latch persists past the menu exit that set it;
+        # without the start-time reset every later batch would be killed at
+        # spawn for the life of the process.
+        warmup.start
+        warmup.cancel
+
+        expect(warmup.start).to eq(:started)
+
+        expect(batch_runner.reset_count).to eq(2)
+        expect(batch_runner.cancelled).to be(false)
+        expect(batch_runner.calls.length).to eq(2)
+      end
     end
   end
 end

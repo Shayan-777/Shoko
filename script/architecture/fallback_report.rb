@@ -92,7 +92,11 @@ FALLBACK_LITERAL_EXEMPT_FILES = [
   # `load_json_or_empty`: a corrupt/truncated/externally-synced sidecar store
   # (annotations/bookmarks/progress) is semantically "no data yet" — {} is the
   # correct domain answer, so one bad file never blocks opening the book.
-  'adapters/storage/repositories/storage/file_store_utils.rb'
+  'adapters/storage/repositories/storage/file_store_utils.rb',
+  # `load`: recent.json reads follow the same sidecar discipline — an
+  # unreadable history file is "no recent entries right now"; mutations go
+  # through `load_for_update`, which raises instead.
+  'adapters/storage/recent_files_repository.rb'
 ].freeze
 
 def reject_exempt(offenders, exempt_files)

@@ -14,8 +14,10 @@ module Shoko
       # stdout, which this adapter parses and forwards to the caller.
       #
       # The caller invokes #run_batch from a background worker thread, where
-      # the blocking pipe reads release the GIL and cost nothing; #cancel_batch
-      # may be called from any thread and simply terminates the child.
+      # the blocking pipe reads release the GIL and cost nothing. #cancel_batch
+      # may be called from any thread: it terminates the child and latches, so
+      # runs are refused until #reset_cancellation re-arms the runner (the
+      # port documents this pairing).
       class PrepaginationBatchProcessAdapter
         include Shoko::Application::Ports::Outbound::PrepaginationBatchRunner
 

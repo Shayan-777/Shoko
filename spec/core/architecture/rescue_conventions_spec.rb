@@ -168,6 +168,14 @@ RSpec.describe 'Rescue and fallback conventions' do
     # recent.json and rss_reader.json already rescue identically at their load.
     'adapters/storage/repositories/storage/file_store_utils.rb',
 
+    # `load`: recent.json follows the same sidecar read discipline as
+    # file_store_utils above — a transiently unreadable history file is
+    # semantically "no recent entries right now", and the read-only path must
+    # never block the menu or a launch. Mutations do NOT share this rescue:
+    # `load_for_update` translates the same access errors into StorageError
+    # so a save can never flatten the history.
+    'adapters/storage/recent_files_repository.rb',
+
     # `parse_xml`: parse-utility contract returns nil when REXML rejects the
     # input; the nil drives the wrapped-fragment fallback.
     'adapters/book_sources/epub/parser/opf/navigation_document_scanner.rb',
