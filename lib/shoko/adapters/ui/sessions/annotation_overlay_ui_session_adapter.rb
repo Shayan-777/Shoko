@@ -26,7 +26,7 @@ module Shoko
 
           def refresh_theme(color_mode:)
             overlay = annotation_editor_overlay
-            overlay&.update_color_mode(color_mode) if overlay.respond_to?(:update_color_mode)
+            overlay&.update_color_mode(color_mode)
             success_outcome(:handled, :annotation_theme_refreshed)
           rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
             log_error('annotation.session.refresh_theme', e)

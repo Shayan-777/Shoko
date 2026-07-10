@@ -213,7 +213,7 @@ module Shoko
             @notes_ui_session.end_compose
             exit_compose_mode
             clear_selection
-            @state_controller.refresh_annotations if @state_controller.respond_to?(:refresh_annotations)
+            @state_controller.refresh_annotations
             publish_pages
             @notes_ui_session.apply_selection(current_index.clamp(0, [notes.length - 1, 0].max))
           rescue Shoko::Error => e
@@ -278,7 +278,7 @@ module Shoko
 
             @notes_ui_session.close
             deactivate_notes_mode
-            @state_controller.jump_to_annotation(note) if @state_controller.respond_to?(:jump_to_annotation)
+            @state_controller.jump_to_annotation(note)
             set_message('Jumped to note', 2)
           end
 

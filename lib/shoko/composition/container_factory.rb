@@ -21,8 +21,6 @@ require_relative '../adapters/output/terminal/terminal_session_adapter'
 require_relative '../adapters/storage/repositories/cached_library_repository'
 require_relative '../adapters/storage/repositories/display_metadata_cache_repository'
 require_relative '../adapters/ui/render_registry'
-require_relative '../core/events/domain_event_bus'
-require_relative '../core/events/event_factory'
 require_relative '../adapters/runtime/inline_executor_adapter'
 require_relative '../adapters/storage/config_storage_adapter'
 require_relative '../adapters/storage/json_cache_store'
@@ -55,7 +53,6 @@ require_relative '../adapters/ui/rendering_factory'
 require_relative '../adapters/output/terminal/null_terminal_capabilities'
 require_relative '../adapters/output/layout/default_layout_metrics'
 require_relative '../adapters/runtime/session_state/app_config_store_adapter'
-require_relative '../application/state/event_bus'
 require_relative '../application/state/schema_registry'
 require_relative '../application/state/observer_state_store'
 require_relative '../core/reading/schema'
@@ -85,7 +82,6 @@ require_relative '../adapters/runtime/session_state/render_state_writer_adapter'
 require_relative '../adapters/runtime/session_state/notification_writer_adapter'
 require_relative '../adapters/runtime/session_state/reader_launch_state_adapter'
 require_relative '../adapters/runtime/session_state/menu_launch_state_adapter'
-require_relative '../adapters/runtime/session_state/event_publisher_adapter'
 require_relative '../adapters/output/formatting/wrapped_lines_provider_adapter'
 require_relative '../adapters/ui/rendering/noop_terminal_state_writer'
 require_relative '../adapters/ui/view_models/reader_view_model_builder'
@@ -115,13 +111,13 @@ module Shoko
         # @return [DependencyContainer]
         def create_default_container(log_config: {})
           container = DependencyContainer.new
-          event_bus = register_infrastructure(container, log_config)
+          register_infrastructure(container, log_config)
           apply_runtime_configuration(container)
           register_core_ports(container)
           register_repositories(container)
           register_domain_services(container)
           register_application_services(container)
-          register_state_management(container, event_bus)
+          register_state_management(container)
           register_library_services(container)
           apply_test_configuration(container)
           container

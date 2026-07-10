@@ -3,6 +3,8 @@
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
+require_relative 'ui/panel_spans'
+require_relative 'ui/list_helpers'
 require_relative 'dictionary/entry_formatter'
 require 'shoko/shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
@@ -26,6 +28,7 @@ module Shoko
         class DictionaryLookupPopupComponent < BaseComponent
           include BottomLeftPanel
           include OverlayMouseTarget
+          include Ui::PanelSpans
 
           Palette = StatusBar::Palette
 
@@ -34,9 +37,6 @@ module Shoko
           MAX_WIDTH = 76
           MIN_WIDTH = 30
           POINTER = '▸ '
-
-          DIM = "\e[2m"
-          STYLE_RESET = "\e[22;23;24m" # reset bold/italic/underline only (keep fg/bg)
 
           attr_reader :result, :entry_index, :selected_index, :fuzzy_mode
 
@@ -208,8 +208,8 @@ module Shoko
             word = truncate(match.word.to_s, word_width)
             gap = [width - visible_length(POINTER) - visible_length(word) - visible_length(pct), 1].max
 
-            "#{candidate_pointer(selected, bg)}#{cand_seg(word, Palette::DICT_HEADWORD_FG, bg)}" \
-              "#{cand_seg(' ' * gap, Palette::DICT_DIM_FG, bg)}#{cand_seg(pct, Palette::DICT_NUM_FG, bg)}#{Palette::RESET}"
+            "#{candidate_pointer(selected, bg)}#{cell(word, Palette::DICT_HEADWORD_FG, bg)}" \
+              "#{cell(' ' * gap, Palette::DICT_DIM_FG, bg)}#{cell(pct, Palette::DICT_NUM_FG, bg)}#{Palette::RESET}"
           end
 
           def candidate_background(selected, hovered)
@@ -220,19 +220,16 @@ module Shoko
           end
 
           def candidate_pointer(selected, background)
-            return cand_seg(POINTER, Palette::DICT_POINTER_FG, background) if selected
+            return cell(POINTER, Palette::DICT_POINTER_FG, background) if selected
 
-            cand_seg('  ', Palette::DICT_DIM_FG, background)
+            cell('  ', Palette::DICT_DIM_FG, background)
           end
 
           def ensure_candidate_visible!(visible)
             @selected_index = @selected_index.clamp(0, [@fuzzy_matches.length - 1, 0].max)
-            if @selected_index < @fuzzy_scroll
-              @fuzzy_scroll = @selected_index
-            elsif @selected_index >= @fuzzy_scroll + visible
-              @fuzzy_scroll = @selected_index - visible + 1
-            end
-            @fuzzy_scroll = @fuzzy_scroll.clamp(0, [@fuzzy_matches.length - visible, 0].max)
+            @fuzzy_scroll = Ui::ListHelpers.scroll_to_reveal(
+              @selected_index, scroll: @fuzzy_scroll, visible: visible, total: @fuzzy_matches.length
+            )
           end
 
           # ----- shared geometry + drawing -----
@@ -264,15 +261,6 @@ module Shoko
               "#{seg(" #{'·' * fill} ", rule_fg)}#{seg(meta, Palette::DICT_DIM_FG)}#{seg(suffix, rule_fg)}#{Palette::RESET}"
           end
 
-          # Wrap a formatter-produced line in the teal panel background and pad it
-          # to the card width (styles inside the line resolve over DICT_SENSE_FG).
-          def body_line(text, width)
-            base = "#{Palette::RESET}#{Palette::DICT_BG}#{Palette::DICT_SENSE_FG}"
-            safe = text.to_s.gsub(Palette::RESET, base)
-            pad = [width - visible_length(safe), 0].max
-            "#{base}#{safe}#{' ' * pad}#{Palette::RESET}"
-          end
-
           def render_scroll_markers(surface, bounds, layout, total)
             return unless total > layout[:visible]
 
@@ -287,17 +275,11 @@ module Shoko
             @scroll = @selected_index.clamp(0, max)
           end
 
-          def seg(text, foreground)
-            "#{Palette::RESET}#{Palette::DICT_BG}#{foreground}#{text}"
-          end
-
-          def cand_seg(text, foreground, background)
-            "#{Palette::RESET}#{background}#{foreground}#{text}"
-          end
-
-          def dim_line(text)
-            "#{DIM}#{text}#{STYLE_RESET}"
-          end
+          # PanelSpans palette hooks. The dim face relies on the surrounding
+          # panel style, so panel_dim_fg stays empty.
+          def panel_bg = Palette::DICT_BG
+          def panel_dim_fg = ''
+          def panel_body_fg = Palette::DICT_SENSE_FG
 
           def pair_label
             src = @result.source_lang.to_s.strip
@@ -305,14 +287,6 @@ module Shoko
             return nil if src.empty? && tgt.empty?
 
             "#{src.empty? ? '?' : src.downcase}→#{tgt.empty? ? '?' : tgt.downcase}"
-          end
-
-          def visible_length(text)
-            Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          end
-
-          def truncate(text, width)
-            Shoko::Shared::Terminal::TextMetrics.truncate_to(text.to_s, [width.to_i, 0].max)
           end
         end
       end

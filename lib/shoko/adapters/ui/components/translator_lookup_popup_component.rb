@@ -4,7 +4,9 @@ require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
 require_relative 'ui/cursor_blink'
-require 'shoko/shared/terminal/text_metrics'
+require_relative 'ui/panel_spans'
+require_relative 'ui/list_helpers'
+require_relative 'ui/text_utils'
 require 'shoko/shared/language_directory'
 require_relative 'status_bar/palette'
 
@@ -38,6 +40,7 @@ module Shoko
           include BottomLeftPanel
           include OverlayMouseTarget
           include Ui::CursorBlink
+          include Ui::PanelSpans
 
           Palette = StatusBar::Palette
           LanguageDirectory = Shoko::Shared::LanguageDirectory
@@ -69,9 +72,6 @@ module Shoko
           BUTTON_WIDTH = BUTTON_TEXT_WIDTH + 2 # plus one padding space each side
           CLOSE_GLYPH = '✕'
           CLOSE_WIDTH = 3 # the red "✕" close box: the glyph plus a padding space each side
-
-          DIM = "\e[2m"
-          STYLE_RESET = "\e[22;23;24m"
 
           attr_reader :source_lang, :target_lang, :picker_side, :picker_index, :cursor
 
@@ -163,7 +163,7 @@ module Shoko
           def render_editor(surface, bounds)
             width = card_width(bounds)
             text_width = [width - PAD - RIGHT_GAP, 8].max
-            source_rows = wrap_indices(@query, text_width)
+            source_rows = Ui::TextUtils.wrap_indexed(@query, text_width)
             target_lines = target_display_lines(text_width)
             layout = editor_layout(bounds, width, source_rows.length, target_lines.length)
             return unless layout
@@ -328,7 +328,8 @@ module Shoko
           def render_target(surface, bounds, layout, width, lines)
             layout[:target_rows].times do |offset|
               line = lines[@scroll + offset]
-              surface.write(bounds, layout[:divider_row] + 1 + offset, layout[:col], body_line(line.to_s, width))
+              surface.write(bounds, layout[:divider_row] + 1 + offset, layout[:col],
+                            body_line(line.to_s, width, pad: PAD))
             end
             render_target_scroll_markers(surface, bounds, layout, lines.length)
           end
@@ -338,7 +339,7 @@ module Shoko
             return error_lines if translation_error?
             return [dim_line('No translation')] if translated_text.empty?
 
-            lines = wrap(translated_text, width).map { |line| text_line(line) }
+            lines = Ui::TextUtils.wrap_prose(translated_text, width).map { |line| text_line(line) }
             lines << dim_line('↵ to re-translate') if stale?
             note = detected_note
             lines.push('', dim_line(note)) if note
@@ -350,7 +351,7 @@ module Shoko
           end
 
           def translation_error?
-            @result.respond_to?(:error?) && @result.error?
+            !@result.nil? && @result.error?
           end
 
           def error_lines
@@ -366,7 +367,7 @@ module Shoko
           def detected_note
             return nil unless @source_lang.strip.casecmp?(LanguageDirectory::AUTO)
 
-            code = @result.respond_to?(:detected_source_lang) ? @result.detected_source_lang.to_s.strip : ''
+            code = @result&.detected_source_lang.to_s.strip
             return nil if code.empty?
 
             "Detected: #{LanguageDirectory.name_for(code)}"
@@ -524,7 +525,7 @@ module Shoko
 
           def render_candidates(surface, bounds, layout, candidates, width)
             if candidates.empty?
-              empty = body_line(dim_line('No languages match'), width)
+              empty = body_line(dim_line('No languages match'), width, pad: PAD)
               surface.write(bounds, layout[:rule_row] + 1, layout[:col], empty)
               return
             end
@@ -630,7 +631,7 @@ module Shoko
 
           def render_picker_scrollbar(surface, bounds, layout, total_items)
             rows = layout[:visible]
-            thumb = scrollbar_thumb(rows, total_items)
+            thumb = Ui::ListHelpers.scrollbar_thumb(total: total_items, visible: rows, scroll: @picker_scroll)
             top = layout[:rule_row] + 1
             col = layout[:col] + layout[:width] - 1
             rows.times do |offset|
@@ -640,45 +641,25 @@ module Shoko
             end
           end
 
-          def scrollbar_thumb(rows, total_items)
-            total = [total_items, 1].max
-            size = (rows.to_f / total * rows).round.clamp(1, rows)
-            room = rows - size
-            denom = [total - rows, 1].max
-            start = room <= 0 ? 0 : ((@picker_scroll.to_f / denom) * room).round.clamp(0, room)
-            { size: size, start: start }
-          end
-
           def ensure_candidate_visible!(total, visible)
             @picker_index = @picker_index.clamp(0, [total - 1, 0].max)
-            if @picker_index < @picker_scroll
-              @picker_scroll = @picker_index
-            elsif @picker_index >= @picker_scroll + visible
-              @picker_scroll = @picker_index - visible + 1
-            end
-            @picker_scroll = @picker_scroll.clamp(0, [total - visible, 0].max)
+            @picker_scroll = Ui::ListHelpers.scroll_to_reveal(
+              @picker_index, scroll: @picker_scroll, visible: visible, total: total
+            )
           end
+
+          # ----- PanelSpans palette hooks -----
+
+          def panel_bg = Palette::TRANS_BG
+          def panel_field_bg = Palette::TRANS_FIELD_BG
+          def panel_dim_fg = Palette::TRANS_DIM_FG
+          def panel_rule_fg = Palette::TRANS_RULE_FG
+          def panel_body_fg = Palette::TRANS_TEXT_FG
 
           # ----- shared geometry + drawing -----
 
           def card_width(bounds)
             fit_to_left_margin(bounds, MIN_WIDTH, MAX_WIDTH).first
-          end
-
-          # Top hairline rule: "── <left> ········· <right> ──" from pre-styled
-          # [span, visible_length] pairs. The editor face passes right_cap: '' so its
-          # close box sits flush in the top-right corner with no trailing hairline.
-          def render_rule(surface, bounds, row, width, left, right, right_cap: ' ──')
-            return if row < 1
-
-            left_span, left_len = left
-            right_span, right_len = right
-            rule_fg = Palette::TRANS_RULE_FG
-            fill = [width - left_len - right_len - right_cap.length - 5, 1].max
-
-            text = "#{seg('── ', rule_fg)}#{left_span}#{seg(" #{'·' * fill} ", rule_fg)}" \
-                   "#{right_span}#{seg(right_cap, rule_fg)}#{Palette::RESET}"
-            surface.write(bounds, row, 1, text)
           end
 
           # Record the screen columns the source/target labels occupy on the rule,
@@ -722,124 +703,13 @@ module Shoko
             code.to_s.strip.casecmp?(LanguageDirectory::AUTO) ? 'AUTO' : code.to_s.strip.upcase
           end
 
-          # A translation/body line over the panel background: a left margin matching
-          # the source text, then the (already-styled) line, padded out to the width.
-          def body_line(text, width)
-            base = "#{Palette::RESET}#{Palette::TRANS_BG}#{Palette::TRANS_TEXT_FG}"
-            safe = text.to_s.gsub(Palette::RESET, base)
-            pad = [width - PAD - visible_length(safe), 0].max
-            "#{base}#{' ' * PAD}#{safe}#{' ' * pad}#{Palette::RESET}"
-          end
-
           def text_line(text)
             "#{Palette::TRANS_TEXT_FG}#{text}"
-          end
-
-          def dim_line(text)
-            "#{DIM}#{Palette::TRANS_DIM_FG}#{text}#{STYLE_RESET}"
-          end
-
-          def seg(text, foreground)
-            "#{Palette::RESET}#{Palette::TRANS_BG}#{foreground}#{text}"
-          end
-
-          def field_seg(text, foreground)
-            "#{Palette::RESET}#{Palette::TRANS_FIELD_BG}#{foreground}#{text}"
-          end
-
-          def cell(text, foreground, background)
-            "#{Palette::RESET}#{background}#{foreground}#{text}"
-          end
-
-          # Word-wrap that honors hard newlines (Shift/Alt+Enter) and preserves every
-          # character (the break space rides the end of its line), recording each row's
-          # start index so the flat caret can be mapped onto a (row, column). Each "\n"
-          # forces a new row and is consumed as the break. Returns [{ text:, start: }].
-          def wrap_indices(text, width)
-            width = [width.to_i, 1].max
-            rows = []
-            index = 0
-            length = text.length
-            loop do
-              newline = text.index("\n", index)
-              line_end = newline || length
-              wrap_segment(rows, text, index, line_end, width)
-              break unless newline
-
-              index = newline + 1
-            end
-            rows
-          end
-
-          # Wrap one physical line [start, line_end) into rows; always adds at least one
-          # row (empty for a blank line), and returns line_end.
-          def wrap_segment(rows, text, start, line_end, width)
-            if start == line_end
-              rows << { text: '', start: start }
-              return line_end
-            end
-
-            index = start
-            index = append_wrapped_row(rows, text, index, width, line_end) while index < line_end
-            line_end
-          end
-
-          def append_wrapped_row(rows, text, cursor, width, line_end)
-            remaining = line_end - cursor
-            if remaining <= width
-              rows << { text: text[cursor...line_end], start: cursor }
-              return line_end
-            end
-
-            window = text[cursor, width]
-            brk = window.rindex(' ')
-            take = brk && brk.positive? ? brk + 1 : width
-            rows << { text: text[cursor, take], start: cursor }
-            cursor + take
-          end
-
-          # Plain word-wrap (translation pane); honors hard newlines.
-          def wrap(text, width)
-            width = [width.to_i, 1].max
-            text.to_s.split("\n").flat_map { |paragraph| wrap_paragraph(paragraph, width) }
-          end
-
-          def wrap_paragraph(paragraph, width)
-            words = paragraph.strip.split(/\s+/)
-            return [''] if words.empty?
-
-            words.each_with_object([]) do |word, lines|
-              if lines.empty? || visible_length("#{lines.last} #{word}") > width
-                lines.concat(split_long_word(word, width))
-              else
-                lines[-1] = "#{lines.last} #{word}"
-              end
-            end
-          end
-
-          def split_long_word(word, width)
-            return [word] if visible_length(word) <= width
-
-            word.chars.each_with_object(['']) do |char, lines|
-              if visible_length("#{lines.last}#{char}") > width
-                lines << char
-              else
-                lines[-1] = "#{lines.last}#{char}"
-              end
-            end
           end
 
           def ljust(text, width)
             pad = [width - visible_length(text), 0].max
             "#{text}#{' ' * pad}"
-          end
-
-          def visible_length(text)
-            Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          end
-
-          def truncate(text, width)
-            Shoko::Shared::Terminal::TextMetrics.truncate_to(text.to_s, [width.to_i, 0].max)
           end
         end
       end

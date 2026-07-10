@@ -3,7 +3,6 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::State::StateStore do
-  let(:event_bus) { instance_double(Shoko::Application::State::EventBus, emit_event: nil) }
   let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:config_dir) { @tmpdir || Dir.tmpdir }
   let(:config_file) { File.join(config_dir, 'config.json') }
@@ -38,7 +37,6 @@ RSpec.describe Shoko::Application::State::StateStore do
   end
   let(:store) do
     described_class.new(
-      event_bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities,
       schema_registry: schema_registry
@@ -214,7 +212,7 @@ RSpec.describe Shoko::Application::State::StateStore do
     end
 
     it 'allows subclasses to customize invalid transition handling' do
-      silent_store = silent_store_class.new(event_bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+      silent_store = silent_store_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
       expect { silent_store.update({ %i[reader left_page] => -1 }) }.not_to raise_error
 
       expect(silent_store.last_invalid_transition).to include(

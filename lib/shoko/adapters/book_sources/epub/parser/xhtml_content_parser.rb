@@ -97,7 +97,7 @@ module Shoko
           end
 
           def usable_resolver(style_resolver)
-            style_resolver if style_resolver.respond_to?(:any_rules?) && style_resolver.any_rules?
+            style_resolver if style_resolver&.any_rules?
           end
 
           def build_blocks(body)

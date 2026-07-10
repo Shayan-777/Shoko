@@ -3,7 +3,8 @@
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
-require 'shoko/shared/terminal/text_metrics'
+require_relative 'ui/panel_spans'
+require_relative 'ui/list_helpers'
 require_relative 'status_bar/palette'
 
 module Shoko
@@ -31,6 +32,7 @@ module Shoko
         class TocLookupPopupComponent < BaseComponent
           include BottomLeftPanel
           include OverlayMouseTarget
+          include Ui::PanelSpans
 
           Palette = StatusBar::Palette
 
@@ -224,7 +226,7 @@ module Shoko
           # the in-book search list.
           def render_scrollbar(surface, bounds, layout)
             rows = layout[:visible]
-            thumb = scrollbar_thumb(rows)
+            thumb = Ui::ListHelpers.scrollbar_thumb(total: @entries.length, visible: rows, scroll: @scroll_offset)
             top = layout[:rule_row] + 1
             col = layout[:col] + layout[:width] - 1
             rows.times do |offset|
@@ -234,31 +236,14 @@ module Shoko
             end
           end
 
-          def scrollbar_thumb(rows)
-            total = [@entries.length, 1].max
-            size = (rows.to_f / total * rows).round.clamp(1, rows)
-            room = rows - size
-            denom = [total - rows, 1].max
-            start = room <= 0 ? 0 : ((@scroll_offset.to_f / denom) * room).round.clamp(0, room)
-            { size: size, start: start }
-          end
-
           def ensure_selection_visible!(visible)
-            if @selected_index < @scroll_offset
-              @scroll_offset = @selected_index
-            elsif @selected_index >= @scroll_offset + visible
-              @scroll_offset = @selected_index - visible + 1
-            end
-            clamp_scroll!(visible)
+            @scroll_offset = Ui::ListHelpers.scroll_to_reveal(
+              @selected_index, scroll: @scroll_offset, visible: visible, total: @entries.length
+            )
           end
 
           def clamp_selection!
             @selected_index = @entries.empty? ? 0 : @selected_index.clamp(0, @entries.length - 1)
-          end
-
-          def clamp_scroll!(visible)
-            max = [@entries.length - [visible, 1].max, 0].max
-            @scroll_offset = @scroll_offset.clamp(0, max)
           end
 
           def normalize_entries(raw)
@@ -284,22 +269,7 @@ module Shoko
             count == 1 ? singular : plural
           end
 
-          # A span carrying its own complete style over the panel background.
-          def cell(text, foreground, background)
-            "#{Palette::RESET}#{background}#{foreground}#{text}"
-          end
-
-          def seg(text, foreground)
-            "#{Palette::RESET}#{Palette::TOC_BG}#{foreground}#{text}"
-          end
-
-          def visible_length(text)
-            Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          end
-
-          def truncate(text, width)
-            Shoko::Shared::Terminal::TextMetrics.truncate_to(text.to_s, [width.to_i, 0].max)
-          end
+          def panel_bg = Palette::TOC_BG
         end
       end
     end

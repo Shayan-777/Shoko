@@ -18,7 +18,6 @@ module Shoko
         end
 
         def register_domain_services(container)
-          register_domain_event_factory(container)
           register_reader_domain_services(container)
           register_annotation_services(container)
           register_dictionary_services(container)
@@ -113,15 +112,6 @@ module Shoko
 
         private
 
-        def register_domain_event_factory(container)
-          container.register_singleton(:domain_event_factory) do |c|
-            Shoko::Core::Events::EventFactory.new(
-              wall_clock: c.resolve(:wall_clock),
-              id_generator: c.resolve(:id_generator)
-            )
-          end
-        end
-
         def register_reader_domain_services(container)
           register_navigation_service(container)
           register_bookmark_service(container)
@@ -157,8 +147,6 @@ module Shoko
 
             Shoko::Application::Services::Reader::BookmarkService.new(
               bookmark_repository: c.resolve(:bookmark_repository),
-              domain_event_bus: c.resolve(:domain_event_bus),
-              domain_event_factory: c.resolve(:domain_event_factory),
               app_config_store: c.resolve(:app_config_store),
               reader_session_store: c.resolve(:reader_session_store),
               reader_state_reader: lazy_container_service(c, :reader_state_reader),
@@ -316,8 +304,6 @@ module Shoko
 
             Shoko::Core::Services::AnnotationService.new(
               annotation_repository: c.resolve(:annotation_repository),
-              domain_event_bus: c.resolve(:domain_event_bus),
-              domain_event_factory: c.resolve(:domain_event_factory),
               logger: c.resolve(:logger)
             )
           end

@@ -78,9 +78,7 @@ module ShokoStateStoreHotPathBenchmark
   def with_store(store_class)
     Dir.mktmpdir do |dir|
       storage = config_storage_for(dir)
-      event_bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: NULL_LOGGER)
       store = store_class.new(
-        event_bus,
         config_storage: storage,
         terminal_capabilities: TERMINAL_CAPABILITIES,
         logger: NULL_LOGGER

@@ -3,6 +3,8 @@
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
+require_relative 'ui/panel_spans'
+require_relative 'ui/list_helpers'
 require_relative 'in_book_search/result_row'
 require 'shoko/shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
@@ -28,6 +30,7 @@ module Shoko
         class InBookSearchPopupComponent < BaseComponent
           include BottomLeftPanel
           include OverlayMouseTarget
+          include Ui::PanelSpans
 
           Palette = StatusBar::Palette
 
@@ -159,7 +162,8 @@ module Shoko
           # to the visible slice of the result set.
           def render_scrollbar(surface, bounds, layout)
             rows = layout[:content_rows]
-            thumb = scrollbar_thumb(rows, layout[:visible])
+            thumb = Ui::ListHelpers.scrollbar_thumb(total: @results.length, visible: layout[:visible],
+                                                    scroll: @scroll_offset, track_rows: rows)
             top = layout[:rule_row] + 1
             col = layout[:col] + layout[:width] - 1
             rows.times do |offset|
@@ -167,15 +171,6 @@ module Shoko
               color = in_thumb ? Palette::LIST_SCROLL_THUMB_FG : Palette::LIST_SCROLL_TRACK_FG
               surface.write(bounds, top + offset, col, "#{Palette::RESET}#{Palette::LIST_BG}#{color}#{SCROLL_GLYPH}")
             end
-          end
-
-          def scrollbar_thumb(rows, visible)
-            total = [@results.length, 1].max
-            size = (visible.to_f / total * rows).round.clamp(1, rows)
-            room = rows - size
-            denom = [total - visible, 1].max
-            start = room <= 0 ? 0 : ((@scroll_offset.to_f / denom) * room).round.clamp(0, room)
-            { size: size, start: start }
           end
 
           def render_result_block(surface, bounds, layout, slot)
@@ -206,13 +201,7 @@ module Shoko
             Palette::LIST_BG
           end
 
-          def visible_length(text)
-            Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          end
-
-          def truncate(text, width)
-            Shoko::Shared::Terminal::TextMetrics.truncate_to(text.to_s, [width.to_i, 0].max)
-          end
+          def panel_bg = Palette::LIST_BG
 
           def normalize_results(results)
             Array(results).filter_map do |entry|
@@ -244,12 +233,9 @@ module Shoko
           end
 
           def ensure_selection_visible!(visible)
-            if @selected_index < @scroll_offset
-              @scroll_offset = @selected_index
-            elsif @selected_index >= @scroll_offset + visible
-              @scroll_offset = @selected_index - visible + 1
-            end
-            clamp_scroll!
+            @scroll_offset = Ui::ListHelpers.scroll_to_reveal(
+              @selected_index, scroll: @scroll_offset, visible: visible, total: @results.length
+            )
           end
 
           def clamp_selection!

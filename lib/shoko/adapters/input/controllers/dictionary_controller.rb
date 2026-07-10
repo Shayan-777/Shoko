@@ -300,7 +300,7 @@ module Shoko
             return :pass if @reader_state.dictionary_fuzzy_mode
 
             result = @reader_state.dictionary_result
-            return :pass unless result.respond_to?(:entry_count) && result.entry_count > 1
+            return :pass unless result && result.entry_count > 1
 
             next_index = (@reader_state.dictionary_entry_index.to_i + 1) % result.entry_count
             @reader_session_mutator.update_reader(dictionary_entry_index: next_index, dictionary_selected_index: 0)

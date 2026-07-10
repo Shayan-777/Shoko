@@ -462,11 +462,7 @@ module Shoko
           end
 
           def translator_visible?
-            controller = popup_ui_controller
-            return false unless controller
-            return false unless controller.respond_to?(:translator_visible?)
-
-            controller.translator_visible?
+            popup_ui_controller&.translator_visible? == true
           end
 
           def popup_menu_active?

@@ -167,6 +167,41 @@ Every resilient boundary:
 
 ## Amendments
 
+- **2026-07-10 — Dead event pipeline deleted; reflection-probing rule extended; popup primitives consolidated under R1's own bar.**
+  - **The zero-subscriber event subsystem is gone.** `Application::State::EventBus`
+    had no production subscriber — every `StateStore#update` built and emitted
+    change events into the void, and the whole `Core::Events` tree
+    (`DomainEventBus` + middleware pipeline, `EventFactory`, `BaseDomainEvent`,
+    annotation/bookmark event classes) forwarded through `EventPublisherAdapter`
+    into that same void (~700 LOC, kept alive only by its own unit specs). All of
+    it is deleted; `ObserverStateStore`'s path observers — the mechanism that
+    always carried production traffic — are the single notification path.
+    `StateStore` no longer takes an event bus; `AnnotationService` and
+    `BookmarkService` lost their `domain_event_bus`/`domain_event_factory`
+    dependencies. If domain events become a real requirement, design them for a
+    real consumer; git preserves the old shape.
+  - **`no_reflection_probing` now also covers adapters + shared.** Probing an
+    injected collaborator for a method its contract guarantees
+    (`x.respond_to?(:foo) && x.foo`) is a silent-failure trap: a rename passes
+    every test against permissive doubles while the feature quietly dies. ~35
+    such probes were removed (event loop → controller, menu controller → catalog,
+    input router → ui controller, screens → typed dependency records, session
+    adapters → popups, state readers for schema-guaranteed fields); the affected
+    spec doubles were completed instead. `respond_to?` survives only at genuine
+    polymorphic/external boundaries (protocol-conversion probes on values, plus
+    an explicit per-file allowlist in the spec, each entry justified).
+  - **The bottom-docked popup family's primitives are consolidated.** R1's own
+    bar ("used by two or more call sites") had been met — and ignored — by
+    copy-pasted `wrap`/`wrap_indices`, `scrollbar_thumb`, `ensure_*_visible!`,
+    and `seg`/`cell`/`dim_line`/`body_line`/`render_rule` across the five
+    popups, with drift (three `scrollbar_thumb` variants; a dead prose-wrap in
+    notes missing the long-word split). Now: `Ui::TextUtils.wrap_prose` /
+    `.wrap_indexed` (display-width-aware, so wide input can no longer overflow
+    the panels), `Ui::ListHelpers.scrollbar_thumb` / `.scroll_to_reveal`, and
+    the `Ui::PanelSpans` mixin (a genuine ≥2-host mixin with per-host palette
+    hooks) — each unit-tested in isolation. The dictionary *setup wizard* keeps
+    its deliberate styled-input-safe variants; it is a different family.
+
 - **2026-06-23 — R1 fully enforced: the two deferred protocol redesigns landed.**
   The last two `no_include_once_mixin` ALLOWLIST holdouts are gone; the scanner
   allowlist now contains only the §IV composition-wiring files and the

@@ -17,6 +17,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::InputRouter do
       in_book_search_visible?: false,
       toc_lookup_visible?: false,
       translator_visible?: false,
+      notes_visible?: false,
       close_dictionary: :handled,
       close_in_book_search: :handled,
       close_toc_lookup: :handled,

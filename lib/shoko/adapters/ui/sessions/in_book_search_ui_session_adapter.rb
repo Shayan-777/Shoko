@@ -41,7 +41,7 @@ module Shoko
               return failure_outcome(:error, :in_book_search_popup_unavailable, 'In-book search popup unavailable')
             end
 
-            popup.update_rendered_lines(current_rendered_lines) if popup.respond_to?(:update_rendered_lines)
+            popup.update_rendered_lines(current_rendered_lines)
             @reader_session_mutator.update_reader(
               in_book_search_popup: popup, mode: :in_book_search, popup_menu: nil, **BLANK_SEARCH_STATE
             )
@@ -81,7 +81,7 @@ module Shoko
 
           def refresh_theme(color_mode:)
             popup = current_popup
-            popup&.update_color_mode(color_mode) if popup.respond_to?(:update_color_mode)
+            popup&.update_color_mode(color_mode)
             success_outcome(:handled, :in_book_search_theme_refreshed)
           rescue *RESCUABLE_ERRORS => e
             log_error('in_book_search.session.refresh_theme', e)

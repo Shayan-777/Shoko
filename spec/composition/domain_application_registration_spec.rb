@@ -15,7 +15,6 @@ RSpec.describe Shoko::Composition::ContainerFactory::DomainApplicationRegistrati
     registration_host.register_domain_services(container)
 
     expected_keys = %i[
-      domain_event_factory
       navigation_service
       bookmark_service
       page_calculator

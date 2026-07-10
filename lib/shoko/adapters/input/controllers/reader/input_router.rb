@@ -54,15 +54,15 @@ module Shoko
             end
 
             def toc_lookup_visible?
-              @ui_controller.respond_to?(:toc_lookup_visible?) && @ui_controller.toc_lookup_visible?
+              @ui_controller.toc_lookup_visible?
             end
 
             def translator_visible?
-              @ui_controller.respond_to?(:translator_visible?) && @ui_controller.translator_visible?
+              @ui_controller.translator_visible?
             end
 
             def notes_visible?
-              @ui_controller.respond_to?(:notes_visible?) && @ui_controller.notes_visible?
+              @ui_controller.notes_visible?
             end
 
             def cancel_key_pressed?(keys)

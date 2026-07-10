@@ -12,7 +12,6 @@ module Shoko
           register_storage_services(container)
           register_epub_cache_factories(container)
           register_worker_factories(container)
-          register_domain_event_bus(container)
         end
 
         private
@@ -60,19 +59,13 @@ module Shoko
         end
 
         def register_monitoring_services(container, log_config)
-          register_logger_bus_services(container, log_config)
+          register_logger_services(container, log_config)
           register_performance_services(container, log_config)
         end
 
-        def register_logger_bus_services(container, log_config)
+        def register_logger_services(container, log_config)
           container.register_singleton(:logger) do |_c|
             Shoko::Adapters::Monitoring::LoggerAdapter.new(level: log_config[:level], output: log_config[:output])
-          end
-          container.register_singleton(:event_bus) do |c|
-            Shoko::Application::State::EventBus.new(logger: c.resolve(:logger))
-          end
-          container.register_singleton(:event_publisher) do |c|
-            Shoko::Adapters::Runtime::SessionState::EventPublisherAdapter.new(event_bus: c.resolve(:event_bus))
           end
         end
 
@@ -165,17 +158,6 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
-        end
-
-        def register_domain_event_bus(container)
-          event_bus = container.resolve(:event_bus)
-          container.register_singleton(:domain_event_bus) do |c|
-            Shoko::Core::Events::DomainEventBus.new(
-              event_publisher: c.resolve(:event_publisher),
-              logger: c.resolve(:logger)
-            )
-          end
-          event_bus
         end
 
         def apply_runtime_configuration(container)

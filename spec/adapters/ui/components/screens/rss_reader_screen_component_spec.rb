@@ -43,7 +43,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
       rss_last_synced_at: '2026-04-06T08:00:00Z'
     )
   end
-  let(:dependencies) { instance_double('Dependencies', menu_state_reader: menu_state_reader) }
+  let(:dependencies) { instance_double('Dependencies', menu_state_reader: menu_state_reader, menu_hit_registry: nil) }
   let(:component) { described_class.new(dependencies: dependencies) }
 
   def text_for(mode:, width:, height:)

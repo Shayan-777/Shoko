@@ -21,16 +21,8 @@ RSpec.describe Shoko::Composition::DependencyContainer do
       end
 
       describe 'infrastructure services' do
-        it 'resolves event_bus' do
-          expect(container.resolve(:event_bus)).to be_a(Shoko::Application::State::EventBus)
-        end
-
         it 'resolves global_state' do
           expect(container.resolve(:global_state)).to be_a(Shoko::Application::State::ObserverStateStore)
-        end
-
-        it 'resolves domain_event_bus' do
-          expect(container.resolve(:domain_event_bus)).to be_a(Shoko::Core::Events::DomainEventBus)
         end
 
         it 'resolves logger instance' do
@@ -383,10 +375,6 @@ RSpec.describe Shoko::Composition::DependencyContainer do
       end
 
       describe 'domain services' do
-        it 'resolves domain_event_factory' do
-          expect(container.resolve(:domain_event_factory)).to be_a(Shoko::Core::Events::EventFactory)
-        end
-
         it 'resolves page_calculator' do
           expect(container.resolve(:page_calculator)).to be_a(Shoko::Application::Services::Pagination::PageCalculatorService)
         end
@@ -547,10 +535,10 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           expect(state1).to be(state2)
         end
 
-        it 'returns same event_bus instance' do
-          bus1 = container.resolve(:event_bus)
-          bus2 = container.resolve(:event_bus)
-          expect(bus1).to be(bus2)
+        it 'returns same logger instance' do
+          logger1 = container.resolve(:logger)
+          logger2 = container.resolve(:logger)
+          expect(logger1).to be(logger2)
         end
       end
 

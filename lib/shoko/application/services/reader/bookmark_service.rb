@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'shoko/core/services/base_service'
-require 'shoko/core/events/bookmark_events'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/core/models/reader_settings'
 require 'shoko/application/ports/outbound/app_config_store'
@@ -15,16 +14,13 @@ module Shoko
         # Pure business logic for bookmark management.
         # Uses session stores/runtime context instead of state-slice ports.
         class BookmarkService < Shoko::Core::Services::BaseService
-          def initialize(bookmark_repository:, domain_event_bus:,
-                         domain_event_factory:,
+          def initialize(bookmark_repository:,
                          app_config_store:, reader_session_store:, reader_runtime_context:,
                          reader_state_reader: nil,
                          page_calculator: nil, layout_service: nil,
                          logger: nil)
             super(logger: logger)
             @bookmark_repository = bookmark_repository
-            @domain_event_bus = domain_event_bus
-            @domain_event_factory = domain_event_factory
             @app_config_store = app_config_store
             @reader_session_store = reader_session_store
             @reader_state_reader = reader_state_reader || reader_session_store
@@ -47,7 +43,6 @@ module Shoko
 
             bookmark = create_bookmark(book_path, text_snippet, anchor)
             refresh_bookmarks(book_path)
-            publish_bookmark_event(Shoko::Core::Events::BookmarkAdded, book_path: book_path, bookmark: bookmark)
             bookmark
           end
 
@@ -60,7 +55,6 @@ module Shoko
 
             @bookmark_repository.delete_for_book(book_path, bookmark)
             refresh_bookmarks(book_path)
-            publish_bookmark_event(Shoko::Core::Events::BookmarkRemoved, book_path: book_path, bookmark: bookmark)
           end
 
           # Get all bookmarks for current book
@@ -90,18 +84,13 @@ module Shoko
             end
           end
 
-          # Jump to bookmark — updates navigation state and emits event.
+          # Jump to bookmark — updates navigation state.
           #
           # @param line_offset [Integer, nil] Optional anchor-resolved offset
           #   under the CURRENT layout (the state controller resolves bookmark
           #   anchors); the stored offset is the fallback for legacy records.
           def jump_to_bookmark(bookmark, line_offset: nil)
             update_navigation(navigation_attributes_for(bookmark, line_offset))
-            publish_bookmark_event(
-              Shoko::Core::Events::BookmarkNavigated,
-              book_path: current_book_path,
-              bookmark: bookmark
-            )
           end
 
           def current_position_bookmarked?
@@ -175,12 +164,6 @@ module Shoko
               line_offset: current_line_offset,
               text_snippet: text_snippet || generate_text_snippet(anchor),
               anchor: anchor
-            )
-          end
-
-          def publish_bookmark_event(event_class, book_path:, bookmark:)
-            @domain_event_bus.publish(
-              @domain_event_factory.build(event_class, book_path: book_path, bookmark: bookmark)
             )
           end
 

@@ -97,9 +97,9 @@ module Shoko
           register_progress_repository(container)
         end
 
-        def register_state_management(container, event_bus)
+        def register_state_management(container)
           register_schema_registry(container)
-          register_global_state(container, event_bus)
+          register_global_state(container)
           container.register_factory(:state_store) { |c| c.resolve(:global_state) }
           register_hexagonal_adapters(container)
         end
@@ -383,11 +383,10 @@ module Shoko
           end
         end
 
-        def register_global_state(container, event_bus)
+        def register_global_state(container)
           container.register_singleton(:global_state) do |c|
             reset_result = run_schema_reset_guard(c)
             store = Shoko::Application::State::ObserverStateStore.new(
-              event_bus,
               config_storage: c.resolve(:config_storage),
               terminal_capabilities: c.resolve(:terminal_capabilities),
               schema_registry: c.resolve(:schema_registry),

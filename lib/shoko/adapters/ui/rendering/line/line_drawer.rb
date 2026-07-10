@@ -94,10 +94,7 @@ module Shoko
             end
 
             def hovered_inline_link_for(context)
-              reader_state_reader = context&.reader_state_reader
-              return unless reader_state_reader.respond_to?(:hovered_inline_link)
-
-              reader_state_reader.hovered_inline_link
+              context&.reader_state_reader&.hovered_inline_link
             end
 
             def absolute_cell(bounds, row, col)

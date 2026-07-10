@@ -199,7 +199,7 @@ module Shoko
             end
 
             def hits
-              @dependencies.respond_to?(:menu_hit_registry) ? @dependencies.menu_hit_registry : nil
+              @dependencies&.menu_hit_registry
             end
 
             def well_visible?(frame)
@@ -311,8 +311,7 @@ module Shoko
               reader = menu_state_reader
               return false unless reader
 
-              predicate = "#{key}?"
-              reader.respond_to?(predicate) && reader.public_send(predicate)
+              reader.public_send("#{key}?")
             end
 
             # ----- values (family tones: emerald on, amber armed/off-warn) -----

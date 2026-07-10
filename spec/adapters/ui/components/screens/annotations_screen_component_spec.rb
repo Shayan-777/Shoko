@@ -38,9 +38,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
       .register(Shoko::Application::State::Schema::UiGlobals)
   end
   let(:state_store) do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
     Shoko::Application::State::StateStore.new(
-      bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities,
       schema_registry: schema_registry
@@ -51,6 +49,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
     state = state_store
     Class.new do
       define_method(:initialize) { |s| @state = s }
+      define_method(:menu_hit_registry) { nil }
       define_method(:menu_state_reader) do
         session_store = Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(@state)
         transient_store = Shoko::Adapters::Runtime::SessionState::MenuTransientStoreAdapter.new(@state)

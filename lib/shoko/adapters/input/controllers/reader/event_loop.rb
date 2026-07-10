@@ -96,34 +96,32 @@ module Shoko
             # spinner animates. The heavy work is on the worker thread; this thread
             # only polls and paints. Cleared when the rebuild completes.
             def recalculating?
-              @controller.respond_to?(:recalculating?) && @controller.recalculating?
+              @controller.recalculating?
             end
 
             # True once per terminal-resize burst; forces a redraw so the new
             # size applies even when the reader is idle on blocked input.
             def consume_pending_resize?
-              @controller.respond_to?(:consume_pending_resize?) && @controller.consume_pending_resize?
+              @controller.consume_pending_resize?
             end
 
             # True once per render request posted via the controller (worker
             # threads wake the blocked read through the input self-pipe);
             # forces a redraw on this thread so the result becomes visible.
             def consume_render_request?
-              @controller.respond_to?(:consume_render_request?) && @controller.consume_render_request?
+              @controller.consume_render_request?
             end
 
             # Applies async results (e.g. translations) on this thread; a
             # positive count forces a redraw so the result becomes visible.
             def drain_async_results
-              return 0 unless @controller.respond_to?(:drain_async_results)
-
               @controller.drain_async_results.to_i
             end
 
             # Keep polling while async work is in flight so its result can be
             # drained and painted without waiting for a keypress.
             def async_work_pending?
-              @controller.respond_to?(:async_work_pending?) && @controller.async_work_pending?
+              @controller.async_work_pending?
             end
 
             # While a search-result landing highlight is live, keep redrawing so its

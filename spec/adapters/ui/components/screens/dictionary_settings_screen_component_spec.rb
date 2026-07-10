@@ -26,7 +26,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DictionarySettingsScree
     )
   end
   let(:runtime_config) { instance_double('RuntimeConfig', dictionary_backend_override: nil) }
-  let(:dependencies) { instance_double('Dependencies') }
+  let(:dependencies) { instance_double('Dependencies', menu_hit_registry: nil) }
   let(:menu_state_reader) do
     instance_double(
       'MenuStateReader',

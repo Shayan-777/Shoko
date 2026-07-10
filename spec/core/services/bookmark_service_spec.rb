@@ -37,8 +37,6 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
                     exists_at_position?: false,
                     find_at_position: nil)
   end
-  let(:domain_event_bus) { instance_double('DomainEventBus', publish: nil) }
-  let(:domain_event_factory) { instance_double('DomainEventFactory') }
   let(:app_config_store) do
     TestConfigStore.new(
       Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(
@@ -70,28 +68,15 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
   subject(:service) do
     described_class.new(
       bookmark_repository: bookmark_repository,
-      domain_event_bus: domain_event_bus,
-      domain_event_factory: domain_event_factory,
       app_config_store: app_config_store,
       reader_session_store: reader_session_store,
       reader_runtime_context: reader_runtime_context
     )
   end
 
-  before do
-    allow(domain_event_factory).to receive(:build) do |event_class, **attrs|
-      event_class.new(
-        event_id: 'evt-1',
-        occurred_at: Time.utc(2024, 1, 1, 0, 0, 0),
-        **attrs
-      )
-    end
-  end
-
-  it 'publishes BookmarkAdded through the domain event bus when adding a bookmark' do
+  it 'refreshes the session bookmark list when adding a bookmark' do
     service.add_bookmark('note')
 
-    expect(domain_event_bus).to have_received(:publish).with(instance_of(Shoko::Core::Events::BookmarkAdded))
     expect(reader_session_store.load.bookmarks).to eq([bookmark])
   end
 
@@ -121,17 +106,15 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
     )
   end
 
-  it 'publishes BookmarkRemoved through the domain event bus when removing a bookmark' do
+  it 'refreshes the session bookmark list when removing a bookmark' do
     service.remove_bookmark(bookmark)
 
-    expect(domain_event_bus).to have_received(:publish).with(instance_of(Shoko::Core::Events::BookmarkRemoved))
     expect(reader_session_store.load.bookmarks).to eq([bookmark])
   end
 
-  it 'publishes BookmarkNavigated through the domain event bus when jumping to a bookmark' do
+  it 'updates navigation state when jumping to a bookmark' do
     service.jump_to_bookmark(bookmark)
 
-    expect(domain_event_bus).to have_received(:publish).with(instance_of(Shoko::Core::Events::BookmarkNavigated))
     expect(reader_session_store.load.current_chapter).to eq(1)
     expect(reader_session_store.load.current_page).to eq(12)
   end

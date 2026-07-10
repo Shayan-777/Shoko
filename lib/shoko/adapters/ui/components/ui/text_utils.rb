@@ -46,6 +46,78 @@ module Shoko
               end
             end
 
+            # Word-wrap plain prose into display-width-safe lines, preserving hard
+            # newlines: each "\n" forces a new row, blank lines survive as ''.
+            # Words longer than the line fall back to cell wrapping (via
+            # #wrap_words), so nothing ever overflows the width.
+            def wrap_prose(text, width)
+              text.to_s.split("\n").flat_map { |paragraph| wrap_words(paragraph, width) }
+            end
+
+            # Wrap editor text for caret mapping: every character is preserved (a
+            # break space rides the end of its line), each "\n" forces a new row
+            # and is consumed as the break, and each row records the character
+            # index where it starts so a flat caret index maps onto a
+            # (row, column). Rows break on display width, so wide (CJK) input
+            # never overflows the field. Returns [{ text:, start: }].
+            def wrap_indexed(text, width)
+              w = [width.to_i, 1].max
+              source = text.to_s
+              rows = []
+              index = 0
+              loop do
+                newline = source.index("\n", index)
+                line_end = newline || source.length
+                wrap_indexed_segment(rows, source, index, line_end, w)
+                break unless newline
+
+                index = newline + 1
+              end
+              rows
+            end
+
+            # Wrap one physical line [start, line_end) into rows; always adds at
+            # least one row (empty for a blank line).
+            def wrap_indexed_segment(rows, text, start, line_end, width)
+              if start == line_end
+                rows << { text: '', start: start }
+                return
+              end
+
+              cursor = start
+              cursor = append_indexed_row(rows, text, cursor, width, line_end) while cursor < line_end
+            end
+
+            def append_indexed_row(rows, text, cursor, width, line_end)
+              take = indexed_row_capacity(text, cursor, width, line_end)
+              if cursor + take >= line_end
+                rows << { text: text[cursor...line_end], start: cursor }
+                return line_end
+              end
+
+              brk = text[cursor, take].rindex(' ')
+              take = brk + 1 if brk&.positive?
+              rows << { text: text[cursor, take], start: cursor }
+              cursor + take
+            end
+
+            # Characters from +cursor+ that fit in +width+ display cells (at
+            # least one, so a too-narrow field still makes progress).
+            def indexed_row_capacity(text, cursor, width, line_end)
+              metrics = Shoko::Shared::Terminal::TextMetrics
+              taken = 0
+              cells = 0
+              text[cursor...line_end].each_char do |char|
+                char_cells = metrics.visible_length(char)
+                break if taken.positive? && cells + char_cells > width
+
+                taken += 1
+                cells += char_cells
+                break if cells >= width
+              end
+              [taken, 1].max
+            end
+
             def truncate_text(text, max_length)
               str = (text || '').to_s
               w = max_length.to_i

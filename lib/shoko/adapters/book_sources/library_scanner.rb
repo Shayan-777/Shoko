@@ -68,11 +68,7 @@ module Shoko
         private
 
         def cached_book_entries
-          if @book_finder.respond_to?(:load_cached_files)
-            @book_finder.load_cached_files(allow_expired: true) || []
-          else
-            @book_finder.scan_system(force_refresh: false) || []
-          end
+          @book_finder.load_cached_files(allow_expired: true) || []
         end
 
         def initialize_scan(preserve_entries:)

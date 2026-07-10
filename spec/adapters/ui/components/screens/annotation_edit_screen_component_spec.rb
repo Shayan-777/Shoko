@@ -38,9 +38,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenCom
       .register(Shoko::Application::State::Schema::UiGlobals)
   end
   let(:state_store) do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
     Shoko::Application::State::StateStore.new(
-      bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities,
       schema_registry: schema_registry

@@ -28,11 +28,10 @@ module Shoko
             false
           end
 
-          # Defensive on the config contract: any object reaching the wrap path
-          # that does not expose #kitty_images simply disables images rather than
-          # raising NoMethodError up into the reader's render loop. The reader's
-          # real config reader always responds; a mis-wired or stub config must
-          # never be able to take down rendering.
+          # The config here is the formatting surface's polymorphic "config-like"
+          # value (full snapshot, partial Struct/Data/Hash wrapper, or nil for
+          # defaults — see FormattingService#config_setting), so shape probing is
+          # legitimate here: absent kitty_images means the text path.
           def enabled_for?(config_reader)
             return false unless supported?
             return false unless config_reader.respond_to?(:kitty_images)

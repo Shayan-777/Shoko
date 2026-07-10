@@ -112,7 +112,7 @@ module Shoko
           # True once per terminal-resize burst (SIGWINCH); the event loop
           # redraws so the resize applies while the reader is otherwise idle.
           def consume_pending_resize?
-            terminal_service.respond_to?(:consume_resize_event?) && terminal_service.consume_resize_event?
+            terminal_service.consume_resize_event?
           end
 
           # Marks a render as pending and wakes the event loop's blocked input
@@ -120,7 +120,7 @@ module Shoko
           # frame drawn) on the UI thread, mirroring the resize path.
           def request_render
             @render_pending = true
-            terminal_service.wake_input if terminal_service.respond_to?(:wake_input)
+            terminal_service.wake_input
             nil
           end
 

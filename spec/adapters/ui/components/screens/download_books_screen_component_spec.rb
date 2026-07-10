@@ -23,7 +23,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DownloadBooksScreenComp
     )
   end
   let(:config_reader) { instance_double('ConfigReader', download_source: :gutendex) }
-  let(:dependencies) { instance_double('Dependencies', menu_state_reader: menu_state_reader, config_reader: config_reader) }
+  let(:dependencies) { instance_double('Dependencies', menu_state_reader: menu_state_reader, config_reader: config_reader,
+                                                menu_hit_registry: nil) }
   let(:component) { described_class.new(dependencies: dependencies) }
 
   [

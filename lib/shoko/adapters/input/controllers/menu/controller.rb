@@ -208,7 +208,7 @@ module Shoko
             # Refreshes the cached terminal size after SIGWINCH so the redraw
             # below lays the menu out against the new dimensions immediately.
             def consume_pending_resize
-              @terminal_service.consume_resize_event? if @terminal_service.respond_to?(:consume_resize_event?)
+              @terminal_service.consume_resize_event?
             end
 
             def handle_user_input
@@ -238,8 +238,7 @@ module Shoko
                 @prepagination_toast.render(surface, bounds)
                 @startup_notice.render(surface, bounds)
               end
-              @catalog.consume_metadata_refresh! if metadata_refresh_pending &&
-                                                    @catalog.respond_to?(:consume_metadata_refresh!)
+              @catalog.consume_metadata_refresh! if metadata_refresh_pending
             end
 
             def annotation_editor_active?
@@ -286,7 +285,7 @@ module Shoko
             # toast is up so its spinner animates instead of freezing on the menu's
             # otherwise blocking idle read.
             def prepagination_active?
-              @menu_state_reader.respond_to?(:prepaginate_active) && @menu_state_reader.prepaginate_active == true
+              @menu_state_reader.prepaginate_active == true
             end
 
             private
@@ -400,16 +399,15 @@ module Shoko
             end
 
             def catalog_metadata_refresh_needed?
-              (@catalog.respond_to?(:metadata_work_pending?) && @catalog.metadata_work_pending?) ||
-                catalog_metadata_refresh_pending?
+              @catalog.metadata_work_pending? || catalog_metadata_refresh_pending?
             end
 
             def catalog_metadata_refresh_pending?
-              @catalog.respond_to?(:metadata_refresh_pending?) && @catalog.metadata_refresh_pending?
+              @catalog.metadata_refresh_pending?
             end
 
             def catalog_scan_pending?
-              @catalog.respond_to?(:scan_status) && @catalog.scan_status == :scanning
+              @catalog.scan_status == :scanning
             end
 
             def force_cleanup_if_needed(terminal, cleanup_error)

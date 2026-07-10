@@ -41,14 +41,6 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::StartupNoticeComponent 
     end
   end
 
-  it 'renders nothing when the reader does not expose startup_notice' do
-    writes = []
-    component = described_class.new(menu_state_reader: Object.new)
-
-    component.render(recording_surface(writes), bounds)
-
-    expect(writes).to be_empty
-  end
 
   it 'truncates the notice to the available width' do
     writes = []

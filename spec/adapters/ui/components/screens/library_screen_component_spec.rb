@@ -8,7 +8,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::LibraryScreenComponent 
 
   let(:palette) { Shoko::Adapters::Ui::Components::StatusBar::Palette }
   let(:menu_state_reader) do
-    instance_double('MenuStateReader', library_selected: 0, library_details_open?: false)
+    instance_double('MenuStateReader', library_selected: 0, library_details_open?: false,
+                                       prepaginate_active: false, prepaginate_paths: [], prepaginate_done: [])
   end
   let(:catalog_service) do
     instance_double(
@@ -28,7 +29,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::LibraryScreenComponent 
     )
   end
   let(:dependencies) do
-    instance_double('Dependencies', menu_state_reader: menu_state_reader, catalog_service: catalog_service)
+    instance_double('Dependencies', menu_state_reader: menu_state_reader, catalog_service: catalog_service,
+                                    menu_hit_registry: nil)
   end
   let(:component) { described_class.new(dependencies) }
 

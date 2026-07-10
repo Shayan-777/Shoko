@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
-require 'timeout'
 
 RSpec.describe Shoko::Application::State::StateStore do
-  let(:null_logger) { Shoko::Core::Services::NullLogger.new }
   let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:config_dir) { @tmpdir }
   let(:config_file) { File.join(@tmpdir, 'config.json') }
@@ -38,9 +36,8 @@ RSpec.describe Shoko::Application::State::StateStore do
       .register(Shoko::Application::State::Schema::UiGlobals)
   end
 
-  def build_store(bus)
+  def build_store
     described_class.new(
-      bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities,
       schema_registry: schema_registry
@@ -54,83 +51,40 @@ RSpec.describe Shoko::Application::State::StateStore do
     end
   end
 
-  it 'emits state change events when updates occur' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    events = []
-    subscriber = Class.new do
-      def initialize(events)
-        @events = events
-      end
-
-      def handle_event(event)
-        @events << event
-      end
-    end
-    bus.subscribe(subscriber.new(events), :state_changed)
-
-    store = build_store(bus)
+  it 'returns the change set for committed updates' do
+    store = build_store
     change_set = store.update(%i[config view_mode] => :split)
 
-    expect(events.length).to eq(1)
-    expect(events.first.type).to eq(:state_changed)
     expect(change_set.size).to eq(1)
     expect(change_set.first.path).to eq(%i[config view_mode])
+    expect(change_set.first.new_value).to eq(:split)
   end
 
   it 'validates update values' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
+    store = build_store
     expect { store.update(%i[config view_mode] => :unknown) }.to raise_error(ArgumentError)
   end
 
   it 'validates theme updates' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
+    store = build_store
     expect { store.update(%i[config theme] => :not_a_theme) }.to raise_error(ArgumentError)
   end
 
   it 'persists config to disk' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
+    store = build_store
     store.update(%i[config view_mode] => :single)
     store.save_config
     expect(File).to exist(config_file)
   end
 
-  it 'allows event subscribers to read state during callbacks without deadlocking' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
-    seen_modes = []
-
-    subscriber = Class.new do
-      def initialize(store, seen_modes)
-        @store = store
-        @seen_modes = seen_modes
-      end
-
-      def handle_event(event)
-        return unless event.type == :state_changed
-
-        @seen_modes << @store.get(%i[config view_mode])
-      end
-    end
-
-    bus.subscribe(subscriber.new(store, seen_modes), :state_changed)
-
-    Timeout.timeout(1) { store.update(%i[config view_mode] => :split) }
-    expect(seen_modes).to include(:split)
-  end
-
   it 'returns nil for no-op updates' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
+    store = build_store
 
     expect(store.update(%i[config view_mode] => :single)).to be_nil
   end
 
   it 'dispatches action objects by calling #apply with itself' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
+    store = build_store
     action = Class.new do
       attr_reader :applied_to
 
@@ -145,15 +99,13 @@ RSpec.describe Shoko::Application::State::StateStore do
   end
 
   it 'fails fast when dispatching an object without #apply' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
+    store = build_store
 
     expect { store.dispatch(Object.new) }.to raise_error(NoMethodError, /apply/)
   end
 
   it 'propagates validator errors from inside an action unmasked' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
+    store = build_store
     action = Class.new do
       def apply(target)
         target.update(%i[config view_mode] => :unknown)

@@ -4,8 +4,10 @@ require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
 require_relative 'ui/cursor_blink'
+require_relative 'ui/panel_spans'
+require_relative 'ui/list_helpers'
+require_relative 'ui/text_utils'
 require_relative 'ui/note_markup'
-require 'shoko/shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
 
 module Shoko
@@ -37,6 +39,7 @@ module Shoko
           include BottomLeftPanel
           include OverlayMouseTarget
           include Ui::CursorBlink
+          include Ui::PanelSpans
 
           Palette = StatusBar::Palette
 
@@ -56,9 +59,7 @@ module Shoko
           CONTENT_LEFT = 2 # columns before the body text (just the lead bar / blank)
           SCROLL_GLYPH = '█'
 
-          DIM = "\e[2m"
           ITALIC = "\e[3m"
-          STYLE_RESET = "\e[22;23;24m"
 
           attr_reader :notes, :selected_index, :scroll_offset, :composing, :cursor
 
@@ -289,7 +290,7 @@ module Shoko
             surface.write(bounds, rule_row, 1, rule_text('Notes', '0 notes', width)) if rule_row >= 1
             lines.each_with_index do |line, offset|
               row = rule_row + 1 + offset
-              surface.write(bounds, row, 1, body_line(line, width)) if row.between?(1, bottom_row)
+              surface.write(bounds, row, 1, body_line(line, width, pad: PAD)) if row.between?(1, bottom_row)
             end
           end
 
@@ -298,7 +299,7 @@ module Shoko
           def render_compose(surface, bounds)
             width = card_width(bounds)
             text_width = [width - PAD - RIGHT_GAP, 8].max
-            rows = wrap_indices(@draft, text_width)
+            rows = Ui::TextUtils.wrap_indexed(@draft, text_width)
             layout = compose_layout(bounds, width, rows.length)
             return unless layout
 
@@ -309,7 +310,8 @@ module Shoko
               visible: 0, rows_per: 1, scroll: 0, count: 0
             )
             render_rule(surface, bounds, layout[:rule_row], width, compose_title_spans, compose_meta)
-            surface.write(bounds, layout[:rule_row] + 1, layout[:col], body_line(compose_header(text_width), width))
+            surface.write(bounds, layout[:rule_row] + 1, layout[:col],
+                          body_line(compose_header(text_width), width, pad: PAD))
             render_editor(surface, bounds, layout, width, text_width, rows)
           end
 
@@ -406,31 +408,10 @@ module Shoko
               "#{seg(right, Palette::NOTES_DIM_FG)}#{seg(' ──', rule_fg)}#{Palette::RESET}"
           end
 
-          # Rule built from pre-styled [span, visible_length] pairs (compose face).
-          def render_rule(surface, bounds, row, width, left, right)
-            return if row < 1
-
-            left_span, left_len = left
-            right_span, right_len = right
-            rule_fg = Palette::NOTES_RULE_FG
-            fill = [width - left_len - right_len - 8, 1].max
-            text = "#{seg('── ', rule_fg)}#{left_span}#{seg(" #{'·' * fill} ", rule_fg)}" \
-                   "#{right_span}#{seg(' ──', rule_fg)}#{Palette::RESET}"
-            surface.write(bounds, row, 1, text)
-          end
-
-          # A body line over the panel background: a left margin, the (already-styled)
-          # line, padded out to the width.
-          def body_line(text, width)
-            base = "#{Palette::RESET}#{Palette::NOTES_BG}#{Palette::NOTES_NOTE_FG}"
-            safe = text.to_s.gsub(Palette::RESET, base)
-            pad = [width - PAD - visible_length(safe), 0].max
-            "#{base}#{' ' * PAD}#{safe}#{' ' * pad}#{Palette::RESET}"
-          end
-
           def render_scrollbar(surface, bounds, layout)
             rows = layout[:content_rows]
-            thumb = scrollbar_thumb(rows, layout[:visible])
+            thumb = Ui::ListHelpers.scrollbar_thumb(total: @notes.length, visible: layout[:visible],
+                                                    scroll: @scroll_offset, track_rows: rows)
             top = layout[:rule_row] + 1
             col = layout[:col] + layout[:width] - 1
             rows.times do |offset|
@@ -440,22 +421,10 @@ module Shoko
             end
           end
 
-          def scrollbar_thumb(rows, visible)
-            total = [@notes.length, 1].max
-            size = (visible.to_f / total * rows).round.clamp(1, rows)
-            room = rows - size
-            denom = [total - visible, 1].max
-            start = room <= 0 ? 0 : ((@scroll_offset.to_f / denom) * room).round.clamp(0, room)
-            { size: size, start: start }
-          end
-
           def ensure_selection_visible!(visible)
-            if @selected_index < @scroll_offset
-              @scroll_offset = @selected_index
-            elsif @selected_index >= @scroll_offset + visible
-              @scroll_offset = @selected_index - visible + 1
-            end
-            clamp_scroll!
+            @scroll_offset = Ui::ListHelpers.scroll_to_reveal(
+              @selected_index, scroll: @scroll_offset, visible: visible, total: @notes.length
+            )
           end
 
           def clamp_selection!
@@ -525,96 +494,16 @@ module Shoko
             (cursor_row - visible + 1).clamp(0, total - visible)
           end
 
-          # Word-wrap that honors hard newlines and preserves every character,
-          # recording each row's start index so the flat caret maps onto (row, column).
-          def wrap_indices(text, width)
-            width = [width.to_i, 1].max
-            rows = []
-            index = 0
-            length = text.length
-            loop do
-              newline = text.index("\n", index)
-              line_end = newline || length
-              wrap_segment(rows, text, index, line_end, width)
-              break unless newline
-
-              index = newline + 1
-            end
-            rows
-          end
-
-          def wrap_segment(rows, text, start, line_end, width)
-            if start == line_end
-              rows << { text: '', start: start }
-              return line_end
-            end
-
-            index = start
-            index = append_wrapped_row(rows, text, index, width, line_end) while index < line_end
-            line_end
-          end
-
-          def append_wrapped_row(rows, text, cursor, width, line_end)
-            remaining = line_end - cursor
-            if remaining <= width
-              rows << { text: text[cursor...line_end], start: cursor }
-              return line_end
-            end
-
-            window = text[cursor, width]
-            brk = window.rindex(' ')
-            take = brk&.positive? ? brk + 1 : width
-            rows << { text: text[cursor, take], start: cursor }
-            cursor + take
-          end
-
-          # Plain word-wrap (no index tracking); honors hard newlines.
-          def wrap(text, width)
-            width = [width.to_i, 1].max
-            text.to_s.split("\n").flat_map { |paragraph| wrap_paragraph(paragraph, width) }
-          end
-
-          def wrap_paragraph(paragraph, width)
-            words = paragraph.strip.split(/\s+/)
-            return [''] if words.empty?
-
-            words.each_with_object([]) do |word, lines|
-              if lines.empty? || visible_length("#{lines.last} #{word}") > width
-                lines << word
-              else
-                lines[-1] = "#{lines.last} #{word}"
-              end
-            end
-          end
-
           # ----- styled spans -----
 
-          def seg(text, foreground)
-            "#{Palette::RESET}#{Palette::NOTES_BG}#{foreground}#{text}"
-          end
-
-          def field_seg(text, foreground)
-            "#{Palette::RESET}#{Palette::NOTES_FIELD_BG}#{foreground}#{text}"
-          end
-
-          def cell(text, foreground, background)
-            "#{Palette::RESET}#{background}#{foreground}#{text}"
-          end
-
-          def dim_line(text)
-            "#{DIM}#{Palette::NOTES_DIM_FG}#{text}#{STYLE_RESET}"
-          end
+          def panel_bg = Palette::NOTES_BG
+          def panel_field_bg = Palette::NOTES_FIELD_BG
+          def panel_dim_fg = Palette::NOTES_DIM_FG
+          def panel_rule_fg = Palette::NOTES_RULE_FG
+          def panel_body_fg = Palette::NOTES_NOTE_FG
 
           def quote_text(text)
             "#{ITALIC}#{Palette::NOTES_EXCERPT_FG}#{text}#{STYLE_RESET}"
-          end
-
-          def visible_length(text)
-            Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          end
-
-          def truncate(text, width)
-            Shoko::Shared::Terminal::TextMetrics.truncate_to(text.to_s, [width.to_i, 0].max)
           end
         end
       end

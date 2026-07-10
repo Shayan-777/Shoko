@@ -39,8 +39,6 @@ module Shoko
             attr_reader :menu_state_reader
 
             def notice_text
-              return '' unless menu_state_reader.respond_to?(:startup_notice)
-
               menu_state_reader.startup_notice.to_s.strip
             end
 

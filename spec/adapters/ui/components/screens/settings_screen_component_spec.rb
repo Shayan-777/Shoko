@@ -62,7 +62,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
       )
     end
     let(:dependencies) do
-      instance_double('Dependencies', menu_state_reader: menu_state_reader, config_reader: config_reader)
+      instance_double('Dependencies', menu_state_reader: menu_state_reader, config_reader: config_reader,
+                      menu_hit_registry: nil)
     end
     let(:component) { described_class.new(nil, dependencies: dependencies) }
 

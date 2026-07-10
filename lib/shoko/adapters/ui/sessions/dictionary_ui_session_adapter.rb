@@ -135,7 +135,7 @@ module Shoko
 
           def refresh_theme(color_mode:)
             [current_lookup_popup, current_setup_popup].compact.each do |popup|
-              popup.update_color_mode(color_mode) if popup.respond_to?(:update_color_mode)
+              popup&.update_color_mode(color_mode)
             end
             success_outcome(:handled, :dictionary_theme_refreshed)
           rescue *RESCUABLE => e

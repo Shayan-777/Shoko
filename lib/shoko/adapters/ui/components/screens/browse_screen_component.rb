@@ -113,7 +113,7 @@ module Shoko
             end
 
             def hits
-              @dependencies.respond_to?(:menu_hit_registry) ? @dependencies.menu_hit_registry : nil
+              @dependencies&.menu_hit_registry
             end
 
             def rule_meta

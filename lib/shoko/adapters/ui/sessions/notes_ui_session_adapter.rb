@@ -132,7 +132,7 @@ module Shoko
 
           def refresh_theme(color_mode:)
             popup = current_popup
-            popup&.update_color_mode(color_mode) if popup.respond_to?(:update_color_mode)
+            popup&.update_color_mode(color_mode)
             success_outcome(:handled, :notes_theme_refreshed)
           rescue *RESCUABLE_ERRORS => e
             log_error('notes.session.refresh_theme', e)

@@ -8,16 +8,14 @@ module Shoko
       # StateStore with observer-pattern support.
       #
       # Adds path-scoped subscriptions on top of the base state store so that
-      # consumers can react to specific state-path changes without consuming
-      # the broadcast event stream.
+      # consumers can react to specific state-path changes.
       class ObserverStateStore < StateStore
-        # @param event_bus [EventBus] Event bus for state change events
         # @param config_storage [Application::Ports::Outbound::ConfigStorage] Port for configuration persistence (required)
         # @param terminal_capabilities [Application::Ports::Outbound::TerminalCapabilities]
         #   Port for terminal capability detection (required)
         # @param schema_registry [SchemaRegistry] Composed schema fragments (required)
         # @param logger [Application::Ports::Outbound::Logging, nil] Logger (optional)
-        def initialize(event_bus, config_storage:, terminal_capabilities:, schema_registry:, logger: nil)
+        def initialize(config_storage:, terminal_capabilities:, schema_registry:, logger: nil)
           super
           @observers_by_path = Hash.new { |h, k| h[k] = [] }
           @observers_all = []

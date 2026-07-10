@@ -339,7 +339,7 @@ module Shoko
             end
 
             def menu_hits
-              @dependencies.respond_to?(:menu_hit_registry) ? @dependencies.menu_hit_registry : nil
+              @dependencies&.menu_hit_registry
             end
 
             # The picker recesses below the pane on the darkest family tone,

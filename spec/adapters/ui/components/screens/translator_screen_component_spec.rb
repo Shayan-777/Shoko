@@ -45,7 +45,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
       :translator_context_menu
     )
   end
-  let(:dependencies_class) { Struct.new(:menu_state_reader) }
+  let(:dependencies_class) { Struct.new(:menu_state_reader, :menu_hit_registry) }
   let(:menu_state_reader) do
     menu_state_class.new(
       :translator,
@@ -243,7 +243,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
       menu_state_class.new(:translator, :input, :idle, text, cursor, '', '', '', 0, 'auto', 'en', [], nil, nil)
     end
     let(:cursor_component) do
-      deps = Struct.new(:menu_state_reader, :menu_session_mutator).new(cursor_state, mutator)
+      deps = Struct.new(:menu_state_reader, :menu_session_mutator, :menu_hit_registry).new(cursor_state, mutator)
       described_class.new(dependencies: deps)
     end
 

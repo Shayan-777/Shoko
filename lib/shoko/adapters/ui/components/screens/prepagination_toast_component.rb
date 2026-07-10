@@ -41,7 +41,7 @@ module Shoko
             attr_reader :menu_state_reader
 
             def active?
-              menu_state_reader.respond_to?(:prepaginate_active) && menu_state_reader.prepaginate_active == true
+              menu_state_reader.prepaginate_active == true
             end
 
             def toast_label

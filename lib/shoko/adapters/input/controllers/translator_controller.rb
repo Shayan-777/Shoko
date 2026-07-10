@@ -374,7 +374,7 @@ module Shoko
           end
 
           def announce_translation(result)
-            if result.respond_to?(:error?) && result.error?
+            if result.error?
               set_message('Translation failed — is LibreTranslate running?', 3)
             else
               set_message("Translated to #{LanguageDirectory.name_for(@reader_state.translator_target_lang)}", 2)
@@ -522,7 +522,7 @@ module Shoko
 
           def detected_source
             result = @reader_state.translator_result
-            return '' unless result.respond_to?(:detected_source_lang)
+            return '' unless result
 
             result.detected_source_lang.to_s
           end

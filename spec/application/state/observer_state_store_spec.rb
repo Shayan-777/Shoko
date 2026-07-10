@@ -5,7 +5,6 @@ require 'fileutils'
 require 'json'
 
 RSpec.describe Shoko::Application::State::ObserverStateStore do
-  let(:null_logger) { Shoko::Core::Services::NullLogger.new }
   let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:config_dir) { @tmpdir }
   let(:config_file) { File.join(@tmpdir, 'config.json') }
@@ -47,8 +46,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'notifies observers for specific paths' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
 
@@ -59,8 +57,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'notifies observers for parent paths' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
 
@@ -71,8 +68,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'returns a change set for committed updates' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
 
     change_set = store.update(
       %i[reader mode] => :help,
@@ -85,8 +81,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'notifies a path observer only once when using set' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
 
@@ -97,8 +92,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'does not notify observers when set is a no-op' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
 
@@ -109,8 +103,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'notifies parent observers once per changed path in a multi-path update' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
 
@@ -125,8 +118,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'does not notify the same observer twice for a single change when registered on overlapping paths' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
 
@@ -137,8 +129,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'does not notify the same observer twice when registered globally and on a specific path' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
 
@@ -153,8 +144,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
     FileUtils.mkdir_p(File.dirname(config_file))
     File.write(config_file, JSON.pretty_generate({ view_mode: 'single', dictionary_backend: nil }))
 
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
 
     expect(store.get(%i[config view_mode])).to eq(:single)
     expect(store.get(%i[config dictionary_backend])).to be_nil
@@ -164,8 +154,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
     FileUtils.mkdir_p(File.dirname(config_file))
     File.write(config_file, JSON.pretty_generate({ view_mode: 'single', kitty_images: 'nope' }))
 
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
 
     expect(store.get(%i[config view_mode])).to eq(:single)
     expect([true, false]).to include(store.get(%i[config kitty_images]))
@@ -175,8 +164,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
     FileUtils.mkdir_p(File.dirname(config_file))
     File.write(config_file, JSON.pretty_generate({ theme: 'dark' }))
 
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
 
     expect(store.get(%i[config theme])).to eq(:default)
   end
@@ -185,8 +173,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
     FileUtils.mkdir_p(File.dirname(config_file))
     File.write(config_file, JSON.pretty_generate({ theme: 'bad-theme' }))
 
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
 
     expect(store.get(%i[config theme])).to eq(:default)
   end
@@ -195,10 +182,9 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
     FileUtils.mkdir_p(File.dirname(config_file))
     File.write(config_file, '{ corrupt json !!!')
 
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
     store = nil
     expect do
-      store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+      store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
     end.not_to raise_error
 
     expect(store.get(%i[config theme])).to eq(:default)
@@ -206,8 +192,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'isolates a failing observer: the update commits and other observers are still notified' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
 
     failing = double('FailingObserver')
     allow(failing).to receive(:state_changed).and_raise(NoMethodError, 'observer bug')
@@ -226,8 +211,7 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
   end
 
   it 'tolerates an observer without state_changed: the update still commits' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
 
     store.add_observer(Object.new, %i[reader mode])
 

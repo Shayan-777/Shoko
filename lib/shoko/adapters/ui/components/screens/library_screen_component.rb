@@ -100,7 +100,7 @@ module Shoko
             end
 
             def hits
-              @dependencies.respond_to?(:menu_hit_registry) ? @dependencies.menu_hit_registry : nil
+              @dependencies&.menu_hit_registry
             end
 
             def rule_meta(items)
@@ -370,7 +370,7 @@ module Shoko
 
             def prepagination_status_for(item)
               reader = menu_state_reader
-              return Status::READY unless reader.respond_to?(:prepaginate_active)
+              return Status::READY unless reader
 
               Status.for_path(
                 item.epub_path,

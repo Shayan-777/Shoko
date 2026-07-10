@@ -172,7 +172,7 @@ module Shoko
           def jump_to_entry(entry)
             chapter_index = entry.chapter_index
             offset = @anchor_resolver&.line_offset_for_toc_entry(entry, chapter_index)
-            if offset && @state_controller.respond_to?(:jump_to_chapter_offset)
+            if offset
               @state_controller.jump_to_chapter_offset(chapter_index, offset)
             else
               @navigation_service&.jump_to_chapter(chapter_index)

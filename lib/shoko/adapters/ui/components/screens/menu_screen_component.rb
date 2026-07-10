@@ -113,9 +113,7 @@ module Shoko
             end
 
             def hit_registry
-              return nil unless @dependencies.respond_to?(:menu_hit_registry)
-
-              @dependencies.menu_hit_registry
+              @dependencies&.menu_hit_registry
             end
 
             # ----- compact fallback (small terminals) -----

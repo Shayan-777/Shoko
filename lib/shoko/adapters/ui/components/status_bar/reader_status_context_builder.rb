@@ -254,7 +254,7 @@ module Shoko
 
               result = state_value(:translator_result)
               return '' if result.nil?
-              return 'failed' if result.respond_to?(:error?) && result.error?
+              return 'failed' if result.error?
 
               'translated'
             end
@@ -305,7 +305,7 @@ module Shoko
               return 'no entry' if result.nil?
               return 'not installed' if result.search_mode == :unavailable
               return 'error' if result.search_mode == :error
-              return 'no entry' if result.respond_to?(:empty?) && result.empty?
+              return 'no entry' if result.empty?
 
               entry_count_status(result)
             end
@@ -321,8 +321,6 @@ module Shoko
             end
 
             def state_value(field)
-              return nil unless @reader_state_reader.respond_to?(field)
-
               @reader_state_reader.public_send(field)
             end
 
