@@ -30,7 +30,7 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
   end
 
   let(:bookmark_repository) do
-    instance_double('BookmarkRepository',
+    instance_double(Shoko::Application::Ports::Outbound::BookmarkRepository,
                     add_for_book: bookmark,
                     delete_for_book: nil,
                     find_by_book_path: [bookmark],
@@ -59,7 +59,7 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
   end
   let(:reader_runtime_context) do
     instance_double(
-      'ReaderRuntimeContext',
+      Shoko::Application::Ports::Outbound::ReaderRuntimeContext,
       terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24)
     )
   end

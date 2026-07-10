@@ -4,14 +4,14 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
   let(:popup) do
-    instance_double('InBookSearchPopup', update_color_mode: nil, update_rendered_lines: nil)
+    instance_double(Shoko::Adapters::Ui::Components::InBookSearchPopupComponent, update_color_mode: nil, update_rendered_lines: nil)
   end
-  let(:reader_state_reader) { instance_double('ReaderStateReader', in_book_search_popup: popup, mode: :in_book_search) }
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
-  let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: rendered_lines) }
+  let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, in_book_search_popup: popup, mode: :in_book_search) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil) }
+  let(:rendered_content_reader) { instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader, rendered_lines: rendered_lines) }
   let(:rendered_lines) { { 'line-key' => { geometry: double('Geometry') } } }
-  let(:ui_component_factory) { instance_double('UIFactory', in_book_search_popup: popup) }
-  let(:logger) { instance_double('Logger', error: nil) }
+  let(:ui_component_factory) { instance_double(Shoko::Adapters::Ui::ComponentFactory, in_book_search_popup: popup) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, error: nil) }
 
   subject(:session) do
     described_class.new(

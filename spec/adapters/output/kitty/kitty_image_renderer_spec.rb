@@ -128,7 +128,7 @@ RSpec.describe Shoko::Adapters::Output::Kitty::KittyImageRenderer do
       Dir.mktmpdir('kitty-image-renderer-spec') do |dir|
         epub_path = File.join(dir, 'book.epub')
         File.write(epub_path, 'epub')
-        output = instance_double('Output', raw: nil)
+        output = instance_double(Shoko::Adapters::Output::Terminal::TerminalBuffer, raw: nil)
         renderer = described_class.new(
           resource_loader: loader,
           transcoder: transcoder_class.new(png_bytes)
@@ -176,7 +176,7 @@ RSpec.describe Shoko::Adapters::Output::Kitty::KittyImageRenderer do
       Dir.mktmpdir('kitty-image-renderer-spec') do |dir|
         epub_path = File.join(dir, 'book.epub')
         File.write(epub_path, 'epub')
-        output = instance_double('Output', raw: nil)
+        output = instance_double(Shoko::Adapters::Output::Terminal::TerminalBuffer, raw: nil)
         renderer = described_class.new(
           resource_loader: loader,
           transcoder: transcoder_class.new(png_bytes)

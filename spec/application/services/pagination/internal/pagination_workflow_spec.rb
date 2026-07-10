@@ -4,12 +4,12 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Services::Pagination::Internal::PaginationWorkflow do
   it 'passes text metrics to absolute pagination fallback builder' do
-    metrics_calculator = instance_double('MetricsCalculator')
-    display_capabilities = instance_double('DisplayCapabilities')
-    instrumentation = instance_double('Instrumentation')
-    text_metrics = instance_double('TextMetrics')
-    config_reader = instance_double('ConfigReader', view_mode: :single, line_spacing: :normal)
-    doc = instance_double('Document')
+    metrics_calculator = instance_double(Shoko::Application::Services::Pagination::Internal::LayoutMetricsCalculator)
+    display_capabilities = instance_double(Shoko::Application::Ports::Outbound::DisplayCapabilities)
+    instrumentation = instance_double(Shoko::Application::Ports::Outbound::Instrumentation)
+    text_metrics = instance_double(Shoko::Application::Ports::Outbound::TextMetrics)
+    config_reader = instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, view_mode: :single, line_spacing: :normal)
+    doc = instance_double(Shoko::Application::Models::ReaderDocument)
 
     allow(metrics_calculator).to receive(:layout).and_return([80, 20])
     allow(metrics_calculator).to receive(:lines_per_page_for).and_return(10)

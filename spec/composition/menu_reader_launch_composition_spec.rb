@@ -143,7 +143,7 @@ RSpec.describe 'Menu reader launch composition' do
       Shoko::Composition::ContainerFactory::ControllerComposition::MenuBuilder::EAGER_SERVICE_MAP.values.to_h do |service|
         [service, Object.new]
       end
-    reader_launch_state = instance_double('ReaderLaunchState', preloaded_document: Object.new)
+    reader_launch_state = instance_double(Shoko::Application::Ports::Outbound::ReaderLaunchState, preloaded_document: Object.new)
     reader_session_store = Object.new
     container = double('Container')
 

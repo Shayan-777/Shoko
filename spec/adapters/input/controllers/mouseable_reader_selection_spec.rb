@@ -106,7 +106,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
 
     context 'when dictionary availability raises a typed dependency error' do
       it 'returns false instead of crashing the UI path' do
-        dict = instance_double('DictionaryAvailability')
+        dict = instance_double(Shoko::Application::Ports::Outbound::DictionaryAvailability)
         allow(dict).to receive(:sqlite3_available?).and_raise(
           Shoko::DependencyUnavailableError,
           "Required optional gem 'sqlite3' is not installed"
@@ -121,8 +121,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
   describe '#handle_selection_end' do
     it 'does not open popup immediately for a non-empty selection' do
       reader = described_class.allocate
-      mouse_handler = instance_double('MouseHandler', selection_range: { start: { x: 1, y: 1 }, end: { x: 4, y: 1 } })
-      reader_state = instance_double('ReaderStateReader', selection: { start: {}, end: {} })
+      mouse_handler = instance_double(Shoko::Adapters::Input::Annotations::MouseHandler, selection_range: { start: { x: 1, y: 1 }, end: { x: 4, y: 1 } })
+      reader_state = instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, selection: { start: {}, end: {} })
 
       reader.instance_variable_set(:@mouse_handler, mouse_handler)
       reader.instance_variable_set(:@reader_state_reader, reader_state)
@@ -152,10 +152,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
     def build_popup_reader(coordinate_service:)
       reader = described_class.allocate
       reader.instance_variable_set(:@selected_text, 'abc')
-      reader.instance_variable_set(:@reader_state_reader, instance_double('ReaderStateReader', selection: selection))
+      reader.instance_variable_set(:@reader_state_reader, instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, selection: selection))
       reader.instance_variable_set(
         :@rendered_content_reader,
-        instance_double('RenderedContentReader', rendered_lines: rendered_lines)
+        instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader, rendered_lines: rendered_lines)
       )
       reader.instance_variable_set(:@coordinate_service, coordinate_service)
       reader
@@ -166,7 +166,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
         page_id: 0, column_id: 0, geometry_key: 'g1', line_offset: 0, cell_index: 4, row: 10, column_origin: 1
       )
       coordinate_service = instance_double(
-        'CoordinateService',
+        Shoko::Application::Services::CoordinateService,
         anchor_from_point: click_anchor,
         normalize_selection_range: selection,
         mouse_to_terminal: { x: 44, y: 16 }
@@ -185,7 +185,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
         page_id: 0, column_id: 0, geometry_key: 'g1', line_offset: 0, cell_index: 20, row: 10, column_origin: 1
       )
       coordinate_service = instance_double(
-        'CoordinateService',
+        Shoko::Application::Services::CoordinateService,
         anchor_from_point: outside_anchor,
         normalize_selection_range: selection
       )

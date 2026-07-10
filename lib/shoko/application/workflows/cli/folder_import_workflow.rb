@@ -23,9 +23,6 @@ module Shoko
                                      :failed_count,
                                      :failures,
                                      :elapsed_seconds)
-          KEYWORD_PARAMETER_KINDS = %i[key keyreq keyrest].freeze
-          PROGRESS_PAYLOAD_KEYS = Shoko::Application::Workflows::Cli::FolderImportProgressReporter::PAYLOAD_KEYS
-          private_constant :KEYWORD_PARAMETER_KINDS, :PROGRESS_PAYLOAD_KEYS
 
           def initialize(scanner:, importer:, clock:, path_ops:, logger: nil)
             unless scanner.is_a?(Shoko::Application::Ports::Outbound::FolderScanner)
@@ -170,12 +167,7 @@ module Shoko
           end
 
           def import_document(path, progress_reporter:)
-            parameters = @importer.method(:import).parameters
-            if supports_progress_reporter_keyword?(parameters)
-              return @importer.import(path, progress_reporter: progress_reporter)
-            end
-
-            @importer.import(path)
+            @importer.import(path, progress_reporter: progress_reporter)
           end
 
           def progress_reporter_for(index, total, path, &notifier)
@@ -193,25 +185,10 @@ module Shoko
             done.to_f / total
           end
 
+          # The notifier contract is FolderImportProgressReporter::PAYLOAD_KEYS:
+          # every notifier accepts the full payload as keywords.
           def notify_progress(notifier, **payload)
-            supported = supported_progress_keywords(notifier)
-            notifier.call(**payload.slice(*supported))
-          end
-
-          def supported_progress_keywords(notifier)
-            parameters = notifier.parameters
-            return PROGRESS_PAYLOAD_KEYS if parameters.any? { |kind, _name| kind == :keyrest }
-
-            parameters.filter_map do |kind, name|
-              next unless KEYWORD_PARAMETER_KINDS.include?(kind)
-
-              name
-            end
-          end
-
-          def supports_progress_reporter_keyword?(parameters)
-            parameters.any? { |kind, name| KEYWORD_PARAMETER_KINDS.include?(kind) && name == :progress_reporter } ||
-              parameters.any? { |kind, _name| kind == :keyrest }
+            notifier.call(**payload)
           end
 
           # Import-run bookkeeping and progress emission helpers.

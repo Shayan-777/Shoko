@@ -35,7 +35,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorWorkflow do
     end
   end
 
-  let(:translation_service) { instance_double('TranslationService') }
+  let(:translation_service) { instance_double(Shoko::Core::Services::TranslationService) }
   let(:menu_session_store) { TranslatorWorkflowSpecMenuSessionStore.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build) }
   let(:menu_transient_store) do
     TranslatorWorkflowSpecMenuTransientStore.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)

@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Runtime::REXMLSecurityLimitsAdapter do
   it 'applies entity expansion limits from runtime config' do
     config = instance_double(
-      'RuntimeConfig',
+      Shoko::Application::Ports::Outbound::RuntimeConfig,
       rexml_entity_expansion_limit: 4321,
       rexml_entity_expansion_text_limit: 54_321
     )

@@ -26,7 +26,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
       overlay_hover_index: nil,
     }
   end
-  let(:reader_state_reader) { instance_double('ReaderStateReader', **search_state) }
+  let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, **search_state) }
 
   subject(:component) { described_class.new(reader_state_reader: reader_state_reader) }
 

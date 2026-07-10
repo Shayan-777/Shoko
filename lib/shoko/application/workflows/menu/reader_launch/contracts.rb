@@ -16,6 +16,22 @@ module Shoko
               def valid_cache_path?(_path)
                 raise NotImplementedError, "#{self.class} must implement #valid_cache_path?"
               end
+
+              def canonical_path(_path)
+                raise NotImplementedError, "#{self.class} must implement #canonical_path"
+              end
+
+              def canonical_recent_path(_path)
+                raise NotImplementedError, "#{self.class} must implement #canonical_recent_path"
+              end
+
+              def document_matches?(_document, _target_path)
+                raise NotImplementedError, "#{self.class} must implement #document_matches?"
+              end
+
+              def cache_pointer?(_path)
+                raise NotImplementedError, "#{self.class} must implement #cache_pointer?"
+              end
             end
 
             # Loads documents and maintains the warm reader launch state.

@@ -69,7 +69,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
     end
   end
 
-  let(:download_service) { instance_double('DownloadService') }
+  let(:download_service) { instance_double(Shoko::Adapters::BookSources::DownloadService) }
   let(:menu_session_store) do
     DownloadWorkflowTestMenuSessionStore.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build)
   end

@@ -31,12 +31,16 @@ module Shoko
           DEFAULT_LANGUAGE = 'en_US'
           PAGES_PER_AUTO_CHAPTER = 20
 
+          # `runtime_config` is part of the uniform importer construction
+          # contract (see Ports::Outbound::BookImporterResolver); PDF has no
+          # archive limits to configure, so it is accepted and unused.
           def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil,
-                         instrumentation: nil)
+                         instrumentation: nil, runtime_config: nil)
             @formatting_service = formatting_service
             @extract_resources = extract_resources ? true : false
             @progress_reporter = progress_reporter
             @instrumentation = instrumentation
+            @runtime_config = runtime_config
           end
 
           # @param path [String] path to .pdf file

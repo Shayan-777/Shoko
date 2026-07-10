@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/type_coercion'
 require_relative 'base_component'
 require_relative 'ui/backdrop_overlay'
@@ -626,7 +627,7 @@ module Shoko
           def normalize_spell_target(target)
             return nil unless target.is_a?(Hash)
 
-            normalized = symbolize_hash(target)
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(target)
             start_index = integer_value(normalized[:start])
             end_index = integer_value(normalized[:end])
             return nil unless start_index && end_index
@@ -934,14 +935,6 @@ module Shoko
             return false if codepoint.between?(0x80, 0x9F)
 
             true
-          end
-
-          def symbolize_hash(value)
-            return {} unless value.is_a?(Hash)
-
-            value.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
           end
         end
       end

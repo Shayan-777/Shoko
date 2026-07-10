@@ -35,7 +35,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
       obj.extend(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::DocumentPreparation)
       allow(obj).to receive(:ensure_reader_document_for).and_return(true)
       allow(obj).to receive(:ensure_background_worker).and_return(nil)
-      allow(obj).to receive(:load_document_for).and_return(instance_double('Document'))
+      allow(obj).to receive(:load_document_for).and_return(instance_double(Shoko::Application::Models::ReaderDocument))
       allow(obj).to receive(:register_document).and_return(nil)
       allow(obj).to receive(:update_total_chapters).and_return(nil)
     end

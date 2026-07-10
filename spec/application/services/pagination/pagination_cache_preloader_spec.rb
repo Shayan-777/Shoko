@@ -59,15 +59,15 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCachePreloade
 
   let(:terminal_size) { Struct.new(:width, :height).new(80, 24) }
   let(:display_capabilities) do
-    instance_double('DisplayCapabilities').tap do |double|
+    instance_double(Shoko::Application::Ports::Outbound::DisplayCapabilities).tap do |double|
       allow(double).to receive(:kitty_images_enabled?) { |config| config.kitty_images == true }
     end
   end
   let(:reader_runtime_context) do
-    instance_double('ReaderRuntimeContext', terminal_size: terminal_size, display_capabilities: display_capabilities)
+    instance_double(Shoko::Application::Ports::Outbound::ReaderRuntimeContext, terminal_size: terminal_size, display_capabilities: display_capabilities)
   end
   let(:pagination_cache) { PreloaderMemoryPaginationCache.new }
-  let(:logger) { instance_double('Logger', debug: nil) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
   let(:doc) { Object.new }
   let(:config_store) do
     PreloaderSnapshotStore.new(
@@ -91,7 +91,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCachePreloade
   let(:reader_pagination_store) do
     PreloaderSnapshotStore.new(Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot.build)
   end
-  let(:page_calculator) { instance_double('PageCalculator') }
+  let(:page_calculator) { instance_double(Shoko::Application::Services::Pagination::PageCalculatorService) }
   let(:preloader) do
     described_class.new(
       page_calculator: page_calculator,

@@ -4,7 +4,7 @@ require 'spec_helper'
 require 'shoko/adapters/runtime/session_state/prepagination_progress_writer_adapter'
 
 RSpec.describe Shoko::Adapters::Runtime::SessionState::PrepaginationProgressWriterAdapter do
-  let(:state) { instance_double('StateStore') }
+  let(:state) { instance_double(Shoko::Application::State::StateStore) }
 
   subject(:writer) { described_class.new(state) }
 

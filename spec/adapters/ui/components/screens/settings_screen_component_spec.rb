@@ -32,7 +32,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
   describe 'render snapshots' do
     let(:menu_state_reader) do
       instance_double(
-        'MenuStateReader',
+        Shoko::Adapters::Runtime::SessionState::MenuSnapshotProjectionAdapter,
         settings_selected: 0,
         wipe_cache_cached?: true,
         wipe_cache_downloads?: false,
@@ -46,7 +46,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
     end
     let(:config_reader) do
       instance_double(
-        'ConfigReader',
+        Shoko::Application::Ports::Outbound::State::ConfigSnapshot,
         view_mode: :single,
         line_spacing: :normal,
         paragraph_style: :book,
@@ -62,7 +62,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
       )
     end
     let(:dependencies) do
-      instance_double('Dependencies', menu_state_reader: menu_state_reader, config_reader: config_reader,
+      instance_double(Shoko::Adapters::Ui::MenuUiDependencies, menu_state_reader: menu_state_reader, config_reader: config_reader,
                       menu_hit_registry: nil)
     end
     let(:component) { described_class.new(nil, dependencies: dependencies) }

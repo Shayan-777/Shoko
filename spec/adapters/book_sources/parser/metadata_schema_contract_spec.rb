@@ -53,8 +53,8 @@ RSpec.describe 'Metadata parser schema contract' do
   end
 
   it 'enforces canonical parser schema for Kindle metadata parser' do
-    mobi = instance_double('MobiHeader', full_name: 'Kindle Title')
-    exth = instance_double('Exth',
+    mobi = instance_double(Shoko::Adapters::BookSources::Kindle::MobiHeaderParser, full_name: 'Kindle Title')
+    exth = instance_double(Shoko::Adapters::BookSources::Kindle::ExthParser,
                            updated_title: 'Kindle Title',
                            authors: ['Kindle Author'],
                            publishing_date: '2004-01-01',

@@ -43,10 +43,10 @@ RSpec.describe Shoko::Application::Services::Pagination::PageCalculatorService d
   end
 
   let(:text_metrics) { CountingTextMetrics.new }
-  let(:display_capabilities) { instance_double('DisplayCapabilities', kitty_images_enabled?: false) }
-  let(:instrumentation) { instance_double('Instrumentation') }
+  let(:display_capabilities) { instance_double(Shoko::Application::Ports::Outbound::DisplayCapabilities, kitty_images_enabled?: false) }
+  let(:instrumentation) { instance_double(Shoko::Application::Ports::Outbound::Instrumentation) }
   let(:config_reader) do
-    instance_double('ConfigReader',
+    instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot,
                     page_numbering_mode: :dynamic,
                     view_mode: :single,
                     line_spacing: :normal,

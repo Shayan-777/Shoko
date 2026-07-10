@@ -83,7 +83,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::MetadataParser do
     it 'is used by RtfImporter metadata extraction and preserves author_str' do
       importer = Shoko::Adapters::BookSources::Rtf::RtfImporter.new
       importer.instance_variable_set(:@rtf_path, '/tmp/my_book.rtf')
-      fake_doc = instance_double('RtfDoc')
+      fake_doc = instance_double(Shoko::Adapters::BookSources::Rtf::RtfParser::DocumentModel)
 
       allow(described_class).to receive(:parse).and_return(
         title: 'My Book',

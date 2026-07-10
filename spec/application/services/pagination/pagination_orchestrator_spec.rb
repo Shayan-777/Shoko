@@ -87,15 +87,15 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
   end
 
   let(:terminal_size) { Struct.new(:width, :height).new(88, 33) }
-  let(:display_capabilities) { instance_double('DisplayCapabilities', kitty_images_enabled?: false) }
+  let(:display_capabilities) { instance_double(Shoko::Application::Ports::Outbound::DisplayCapabilities, kitty_images_enabled?: false) }
   let(:reader_runtime_context) do
     OrchestratorTestReaderRuntimeContext.new(
       terminal_size: terminal_size,
       display_capabilities: display_capabilities
     )
   end
-  let(:instrumentation) { instance_double('Instrumentation') }
-  let(:logger) { instance_double('Logger', debug: nil) }
+  let(:instrumentation) { instance_double(Shoko::Application::Ports::Outbound::Instrumentation) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
   let(:pagination_cache) { OrchestratorMemoryPaginationCache.new }
   let(:orchestrator) do
     described_class.new(
@@ -157,7 +157,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
   end
 
   it 'returns a runtime handle with the existing bind contract' do
-    page_calculator = instance_double('PageCalculator')
+    page_calculator = instance_double(Shoko::Application::Services::Pagination::PageCalculatorService)
     runtime = build_runtime(page_calculator: page_calculator).fetch(:runtime)
 
     expect(runtime).to respond_to(
@@ -172,7 +172,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
   end
 
   it 'resolves terminal dimensions when a runtime call omits them' do
-    page_calculator = instance_double('PageCalculator')
+    page_calculator = instance_double(Shoko::Application::Services::Pagination::PageCalculatorService)
     allow(page_calculator).to receive(:build_absolute_map!).and_return(
       page_map: [2, 3],
       total_pages: 5,
@@ -202,7 +202,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
   end
 
   it 'toggles loading state, reports progress, persists pagination, and applies pending restore on dynamic initial build' do
-    page_calculator = instance_double('PageCalculator')
+    page_calculator = instance_double(Shoko::Application::Services::Pagination::PageCalculatorService)
     allow(page_calculator).to receive(:build_dynamic_map!) do |_width, _height, _doc, config_reader:, &progress|
       expect(config_reader.page_numbering_mode).to eq(:dynamic)
       progress&.call(1, 4)
@@ -232,7 +232,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
   end
 
   it 'returns an absolute cache entry using the shared layout key semantics' do
-    page_calculator = instance_double('PageCalculator')
+    page_calculator = instance_double(Shoko::Application::Services::Pagination::PageCalculatorService)
     allow(page_calculator).to receive(:build_absolute_map!).and_return(
       page_map: [1, 4, 2],
       total_pages: 7,
@@ -254,7 +254,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
   end
 
   it 'keeps cache invalidation status semantics unchanged' do
-    page_calculator = instance_double('PageCalculator')
+    page_calculator = instance_double(Shoko::Application::Services::Pagination::PageCalculatorService)
     state = build_runtime(page_calculator: page_calculator)
     runtime = state.fetch(:runtime)
     key = pagination_cache.layout_key(80, 24, :single, :normal, kitty_images: false, layout_variant: :base)

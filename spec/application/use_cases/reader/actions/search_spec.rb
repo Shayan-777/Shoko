@@ -4,16 +4,16 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::UseCases::Reader::Actions::Search do
   let(:reader_search_control) do
-    instance_double('ReaderSearchControl',
+    instance_double(Shoko::Application::Ports::Outbound::ReaderSearchControl,
                     open_search_session: :handled,
                     close_search_session: :handled,
                     submit_search_session: :handled,
                     open_search_result: :handled)
   end
-  let(:reader_view_mutator) { instance_double('ReaderViewMutator', update_reader: nil) }
-  let(:reader_view_state_store) { instance_double('ReaderViewStateStore', load: snapshot) }
+  let(:reader_view_mutator) { instance_double(Shoko::Application::Ports::Outbound::ReaderViewMutator, update_reader: nil) }
+  let(:reader_view_state_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderViewStateStore, load: snapshot) }
   let(:snapshot) do
-    instance_double('ReaderViewSnapshot',
+    instance_double(Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot,
                     search_query: search_query,
                     search_results: search_results,
                     search_results_query: search_results_query,

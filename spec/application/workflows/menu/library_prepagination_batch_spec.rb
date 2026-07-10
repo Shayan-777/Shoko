@@ -14,7 +14,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch do
     end.new
   end
 
-  let(:document) { instance_double('Document', cached?: true, chapter_count: 12) }
+  let(:document) { instance_double(Shoko::Application::Models::ReaderDocument, cached?: true, chapter_count: 12) }
   let(:document_loader) do
     Class.new do
       include Shoko::Application::Ports::Outbound::DocumentLoader
@@ -31,7 +31,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch do
 
   let(:catalog_service) do
     instance_double(
-      'CatalogService',
+      Shoko::Application::UseCases::CatalogService,
       cached_library_entries: [
         { book_path: '/books/a.epub' },
         { book_path: '/books/b.epub' },
@@ -69,8 +69,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch do
   let(:config) do
     Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(page_numbering_mode: page_numbering_mode)
   end
-  let(:app_config_store) { instance_double('AppConfigStore', load: config) }
-  let(:logger) { instance_double('Logger', debug: nil) }
+  let(:app_config_store) { instance_double(Shoko::Application::Ports::Outbound::AppConfigStore, load: config) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
 
   subject(:batch) do
     described_class.new(
@@ -122,7 +122,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch do
   end
 
   context 'when there is nothing to paginate' do
-    let(:catalog_service) { instance_double('CatalogService', cached_library_entries: []) }
+    let(:catalog_service) { instance_double(Shoko::Application::UseCases::CatalogService, cached_library_entries: []) }
 
     it 'completes without starting progress' do
       expect(batch.run(width: 100, height: 40)).to eq(:completed)
@@ -132,7 +132,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch do
   end
 
   context 'when library discovery itself fails' do
-    let(:catalog_service) { instance_double('CatalogService') }
+    let(:catalog_service) { instance_double(Shoko::Application::UseCases::CatalogService) }
 
     before do
       allow(catalog_service).to receive(:cached_library_entries)

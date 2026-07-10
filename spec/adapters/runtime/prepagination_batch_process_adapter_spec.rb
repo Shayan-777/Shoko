@@ -5,7 +5,7 @@ require 'rbconfig'
 require 'shoko/adapters/runtime/prepagination_batch_process_adapter'
 
 RSpec.describe Shoko::Adapters::Runtime::PrepaginationBatchProcessAdapter do
-  let(:logger) { instance_double('Logger', debug: nil) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
 
   # A stand-in child: any ruby script run as `ruby SCRIPT --prepaginate-batch WxH`.
   def adapter_for_child(script)

@@ -3,9 +3,9 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Runtime::SessionState::RenderStateWriterAdapter do
-  let(:state) { instance_double('StateStore') }
-  let(:render_registry) { instance_double('RenderRegistry') }
-  let(:logger) { instance_double('Logger') }
+  let(:state) { instance_double(Shoko::Application::State::StateStore) }
+  let(:render_registry) { instance_double(Shoko::Adapters::Ui::RenderRegistry) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging) }
   let(:adapter) { described_class.new(state, render_registry: render_registry, logger: logger) }
 
   describe '#clear_rendered_lines' do

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../status_bar/palette'
+require_relative '../ui/list_helpers'
 require_relative 'icon_set'
 require_relative 'canvas_frame'
 
@@ -89,7 +90,8 @@ module Shoko
             def render_scrollbar(top:, height:, total:, visible:, offset:)
               return if total <= visible || height <= 0
 
-              thumb = thumb_metrics(height, total, visible, offset)
+              thumb = Ui::ListHelpers.scrollbar_thumb(total: total, visible: visible, scroll: offset,
+                                                      track_rows: height)
               col = @frame.content_x + @frame.content_width - 1
               height.times do |index|
                 in_thumb = index >= thumb[:start] && index < thumb[:start] + thumb[:size]
@@ -104,14 +106,6 @@ module Shoko
             # scrollbar reserves at its right edge.
             def strip_width(width)
               [(width || @frame.content_width) - SCROLLBAR_WIDTH, 0].max
-            end
-
-            def thumb_metrics(height, total, visible, offset)
-              size = (visible.to_f / total * height).round.clamp(1, height)
-              room = height - size
-              denom = [total - visible, 1].max
-              start = room <= 0 ? 0 : ((offset.to_f / denom) * room).round.clamp(0, room)
-              { size: size, start: start }
             end
 
             def pointer_segment(selected)

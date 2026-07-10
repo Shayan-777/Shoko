@@ -4,7 +4,7 @@ require 'json'
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::Pdf::Importer::PageExtractionCoordinator do
-  let(:extractor) { instance_double('PdfTextExtractor') }
+  let(:extractor) { instance_double(Shoko::Adapters::BookSources::Pdf::PdfTextExtractor) }
 
   it 'normalizes invalid layout text to UTF-8 before generating the layout payload' do
     allow(extractor).to receive(:extract_page_layout).with(:page1).and_return(

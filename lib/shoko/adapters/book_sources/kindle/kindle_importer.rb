@@ -74,12 +74,16 @@ module Shoko
           TITLE_FROM_CLASS_HEADING = %r{class="[^"]*(?:chapter|heading|sgc-\d+|calibre_\d+)[^"]*"[^>]*>(.*?)</}im
           TITLE_FROM_BOLD = %r{<(?:b|strong)>(.*?)</(?:b|strong)>}im
 
+          # `runtime_config` is part of the uniform importer construction
+          # contract (see Ports::Outbound::BookImporterResolver); Kindle books
+          # are not zip archives, so it is accepted and unused.
           def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil,
-                         instrumentation: nil)
+                         instrumentation: nil, runtime_config: nil)
             @formatting_service = formatting_service
             @extract_resources = extract_resources ? true : false
             @progress_reporter = progress_reporter
             @instrumentation = instrumentation
+            @runtime_config = runtime_config
           end
 
           # @param path [String] path to .mobi, .azw, or .azw3 file

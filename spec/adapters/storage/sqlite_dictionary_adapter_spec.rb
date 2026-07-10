@@ -66,7 +66,9 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
       sqlite_module = Module.new
       stub_const('SQLite3', sqlite_module)
       sqlite_module.const_set(:Exception, Class.new(StandardError))
-      sqlite_module.const_set(:Database, Class.new)
+      sqlite_module.const_set(:Database, Class.new do
+        def initialize(_path); end
+      end)
 
       adapter = described_class.new(databases_path: '/tmp')
       allow(adapter).to receive(:database_path_for).and_return('/tmp/fake.sqlite3')

@@ -19,7 +19,7 @@ RSpec.describe Shoko::Application::UseCases::Reader::Actions::Navigation do
     end
   end
 
-  let(:navigation_service) { instance_double('NavigationService', jump_to_chapter: nil) }
+  let(:navigation_service) { instance_double(Shoko::Application::Services::Reader::NavigationService, jump_to_chapter: nil) }
   let(:bookmark_service) { double('BookmarkService').as_null_object }
 
   def build(current_chapter:, total_chapters:)

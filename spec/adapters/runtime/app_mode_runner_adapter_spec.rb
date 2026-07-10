@@ -3,9 +3,9 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Runtime::AppModeRunnerAdapter do
-  let(:reader_mode_runner) { instance_double('ReaderModeRunner', run: nil) }
-  let(:menu_controller) { instance_double('MenuController', run: nil) }
-  let(:menu_builder) { instance_double('MenuBuilder') }
+  let(:reader_mode_runner) { instance_double(Shoko::Adapters::Runtime::ReaderModeRunner, run: nil) }
+  let(:menu_controller) { instance_double(Shoko::Adapters::Input::Controllers::Menu::Controller, run: nil) }
+  let(:menu_builder) { instance_double(Proc) }
 
   subject(:adapter) do
     described_class.new(

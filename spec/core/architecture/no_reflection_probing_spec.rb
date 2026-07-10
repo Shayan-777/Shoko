@@ -76,4 +76,20 @@ RSpec.describe 'No reflection probing' do
                          "with a justification):\n" \
                          "#{offenders.map { |p| p.delete_prefix("#{root}/") }.join("\n")}"
   end
+
+  # Signature probing is the same trap through a different door: inspecting a
+  # collaborator's method parameters (`x.method(:foo).parameters`,
+  # `klass.instance_method(:initialize).parameters`) to adapt a call defends
+  # against contracts the ports already pin, and silently drops arguments when
+  # a signature drifts. Callers rely on the declared contract instead.
+  it 'forbids method-signature probing everywhere in lib' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /\.parameters\b|\barity\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to eq([]),
+                         "lib must not probe method signatures (rely on the declared contract; " \
+                         "unify the collaborators' signatures instead):\n" \
+                         "#{offenders.map { |p| p.delete_prefix("#{root}/") }.join("\n")}"
+  end
 end

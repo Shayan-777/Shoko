@@ -58,7 +58,7 @@ RSpec.describe Shoko::Application::Services::SelectionService do
   it 'normalizes mouse ranges through rendered content' do
     geometry = build_geometry(plain_text: 'ab')
     rendered_content_reader = instance_double(
-      'RenderedContentReader',
+      Shoko::Application::Ports::Outbound::RenderedContentReader,
       rendered_lines: { geometry.key => { geometry: geometry } }
     )
 

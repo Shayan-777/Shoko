@@ -3,14 +3,14 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Reader::InputRouter do
-  let(:reader_state_reader) { instance_double('ReaderStateReader', popup_menu: nil) }
+  let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, popup_menu: nil) }
   let(:input_controller) do
-    instance_double('ReaderInputController',
+    instance_double(Shoko::Adapters::Input::ReaderInputController,
                     handle_key: nil, handle_popup_menu_input: nil, handle_annotations_overlay_input: nil)
   end
   let(:ui_controller) do
     instance_double(
-      'UIController',
+      Shoko::Adapters::Input::Controllers::UIController,
       annotations_overlay_visible?: false,
       annotation_editor_visible?: false,
       dictionary_visible?: false,
@@ -24,7 +24,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::InputRouter do
       close_translator_lookup: :handled
     )
   end
-  let(:key_classifier) { instance_double('KeyClassifier', cancel_key?: false) }
+  let(:key_classifier) { instance_double(Shoko::Adapters::Input::KeyClassifierAdapter, cancel_key?: false) }
 
   subject(:router) do
     described_class.new(

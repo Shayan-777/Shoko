@@ -35,16 +35,16 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationSessionFactor
 
   let(:config_snapshot) { Struct.new(:view_mode, :line_spacing, :page_numbering_mode, :paragraph_style, :justify)
                           .new(:single, :normal, :absolute, :book, :book) }
-  let(:pagination_cache) { instance_double('PaginationCache', layout_key: 'cache-key') }
-  let(:instrumentation) { instance_double('Instrumentation') }
-  let(:reader_session_store) { instance_double('ReaderSessionStore', load: instance_double('ReaderSessionSnapshot')) }
+  let(:pagination_cache) { class_double(Shoko::Adapters::Storage::PaginationCache, layout_key: 'cache-key') }
+  let(:instrumentation) { instance_double(Shoko::Application::Ports::Outbound::Instrumentation) }
+  let(:reader_session_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderSessionStore, load: instance_double(Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot)) }
   let(:reader_view_state_store) do
-    instance_double('ReaderViewStateStore', load: instance_double('ReaderViewSnapshot'))
+    instance_double(Shoko::Application::Ports::Outbound::ReaderViewStateStore, load: instance_double(Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot))
   end
-  let(:reader_pagination_store) { instance_double('ReaderPaginationStore', load: instance_double('ReaderPaginationSnapshot')) }
-  let(:app_config_store) { instance_double('AppConfigStore', load: config_snapshot) }
-  let(:doc) { instance_double('BookDocument') }
-  let(:page_calculator) { instance_double('PageCalculator') }
+  let(:reader_pagination_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderPaginationStore, load: instance_double(Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot)) }
+  let(:app_config_store) { instance_double(Shoko::Application::Ports::Outbound::AppConfigStore, load: config_snapshot) }
+  let(:doc) { instance_double(Shoko::Application::Models::ReaderDocument) }
+  let(:page_calculator) { instance_double(Shoko::Application::Services::Pagination::PageCalculatorService) }
 
   it 'rejects runtime contexts that do not implement the outbound port' do
     expect do

@@ -5,9 +5,9 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::BookSources::Kindle::MetadataParser do
   describe '.parse' do
     it 'extracts canonical metadata from MOBI and EXTH values' do
-      mobi = instance_double('MobiHeader', full_name: 'Legacy Title')
+      mobi = instance_double(Shoko::Adapters::BookSources::Kindle::MobiHeaderParser, full_name: 'Legacy Title')
       exth = instance_double(
-        'Exth',
+        Shoko::Adapters::BookSources::Kindle::ExthParser,
         updated_title: 'Updated Title',
         authors: ['Jane Austen'],
         publishing_date: '1818-12-20',

@@ -64,16 +64,16 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
     end
   end
 
-  let(:doc) { instance_double('Doc', cached?: false) }
+  let(:doc) { instance_double(Shoko::Application::Models::ReaderDocument, cached?: false) }
   let(:page_calculator) do
-    instance_double('PageCalculator', total_pages: 10, apply_pending_precise_restore!: nil, reset_session!: nil)
+    instance_double(Shoko::Application::Services::Pagination::PageCalculatorService, total_pages: 10, apply_pending_precise_restore!: nil, reset_session!: nil)
   end
-  let(:layout_service) { instance_double('LayoutService') }
-  let(:pagination_cache) { instance_double('PaginationCache') }
+  let(:layout_service) { instance_double(Shoko::Application::Services::LayoutService) }
+  let(:pagination_cache) { instance_double(Shoko::Adapters::Storage::PaginationCache) }
   let(:reader_render_requester) { PaginationCoordinatorTestRenderRequester.new }
-  let(:async_executor) { instance_double('AsyncExecutor', submit: nil) }
-  let(:instrumentation) { instance_double('Instrumentation') }
-  let(:display_capabilities) { instance_double('DisplayCapabilities', kitty_images_enabled?: false) }
+  let(:async_executor) { instance_double(Shoko::Application::Ports::Outbound::AsyncExecutor, submit: nil) }
+  let(:instrumentation) { instance_double(Shoko::Application::Ports::Outbound::Instrumentation) }
+  let(:display_capabilities) { instance_double(Shoko::Application::Ports::Outbound::DisplayCapabilities, kitty_images_enabled?: false) }
   let(:reader_runtime_context) do
     PaginationCoordinatorTestReaderRuntimeContext.new(
       terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24),
@@ -92,7 +92,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       )
     )
   end
-  let(:logger) { instance_double('Logger', debug: nil) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
 
   def build_coordinator(notification_writer: nil, logger: nil)
     described_class.new(
@@ -136,7 +136,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
 
   it 'rebuilds pagination through the bound runtime and requests a render' do
     coordinator = build_coordinator
-    runtime = instance_double('PaginationRuntime')
+    runtime = instance_double(Shoko::Application::Services::Pagination::PaginationRuntime)
     coordinator.instance_variable_set(:@pagination_runtime, runtime)
 
     expect(runtime).to receive(:rebuild_dynamic).and_return(:handled)
@@ -147,7 +147,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
 
   it 'keeps pagination rebuild successful when render requester raises typed failure' do
     coordinator = build_coordinator(logger: logger)
-    runtime = instance_double('PaginationRuntime')
+    runtime = instance_double(Shoko::Application::Services::Pagination::PaginationRuntime)
     coordinator.instance_variable_set(:@pagination_runtime, runtime)
 
     expect(runtime).to receive(:rebuild_dynamic).and_return(:handled)
@@ -167,7 +167,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
 
     it 'flags recalculating synchronously and coalesces concurrent resizes into one job' do
       coordinator = build_coordinator
-      coordinator.instance_variable_set(:@pagination_runtime, instance_double('PaginationRuntime'))
+      coordinator.instance_variable_set(:@pagination_runtime, instance_double(Shoko::Application::Services::Pagination::PaginationRuntime))
       allow(async_executor).to receive(:submit) # leave the job in flight
 
       expect(coordinator.refresh_after_resize(width: 100, height: 40)).to be(true)
@@ -179,7 +179,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
 
     it 'clears the recalculating flag after the background resize completes' do
       coordinator = build_coordinator
-      runtime = instance_double('PaginationRuntime', refresh_after_resize: nil)
+      runtime = instance_double(Shoko::Application::Services::Pagination::PaginationRuntime, refresh_after_resize: nil)
       coordinator.instance_variable_set(:@pagination_runtime, runtime)
       captured_job = nil
       allow(async_executor).to receive(:submit) { |&block| captured_job = block }
@@ -196,10 +196,10 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
   end
 
   it 'invalidates pagination cache via session and publishes success notification' do
-    notification_writer = instance_double('NotificationWriter', show_message: nil)
+    notification_writer = instance_double(Shoko::Application::Ports::Outbound::NotificationWriter, show_message: nil)
     coordinator = build_coordinator(notification_writer: notification_writer)
 
-    runtime = instance_double('PaginationRuntime')
+    runtime = instance_double(Shoko::Application::Services::Pagination::PaginationRuntime)
     coordinator.instance_variable_set(:@pagination_runtime, runtime)
 
     expect(runtime).to receive(:invalidate_cache).with(dimensions: [80, 24]).and_return(:deleted)

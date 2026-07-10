@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 module Shoko
   module Adapters
     module BookSources
@@ -37,12 +39,8 @@ module Shoko
             private
 
             def normalize_payload(info, kwargs)
-              source = info.is_a?(Hash) ? info : {}
-              symbolize_keys(source).merge(kwargs)
-            end
-
-            def symbolize_keys(hash)
-              hash.transform_keys(&:to_sym)
+              source = Shoko::Shared::HashNormalizer.symbolize_keys(info) || {}
+              source.merge(kwargs)
             end
 
             def normalize_text(value)

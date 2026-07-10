@@ -49,9 +49,9 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
   end
   let(:annotation_editor_launcher) { PendingJumpHandlerTestAnnotationEditorLauncher.new }
   let(:navigation_service) do
-    instance_double('NavigationService', jump_to_chapter: nil, jump_to_chapter_offset: nil)
+    instance_double(Shoko::Application::Services::Reader::NavigationService, jump_to_chapter: nil, jump_to_chapter_offset: nil)
   end
-  let(:anchor_resolver) { instance_double('AnchorResolver') }
+  let(:anchor_resolver) { instance_double(Shoko::Application::Services::Annotations::AnchorResolver) }
 
   it 'resolves the annotation anchor to a precise offset, opens the editor, and clears the payload' do
     allow(anchor_resolver).to receive(:line_offset_for).and_return(7)

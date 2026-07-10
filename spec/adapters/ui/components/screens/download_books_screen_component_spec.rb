@@ -7,7 +7,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DownloadBooksScreenComp
 
   let(:menu_state_reader) do
     instance_double(
-      'MenuStateReader',
+      Shoko::Adapters::Runtime::SessionState::MenuSnapshotProjectionAdapter,
       download_results: [
         { title: 'Pride and Prejudice', authors: ['Jane Austen'], languages: ['en'], download_count: 1234 }
       ],
@@ -22,8 +22,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DownloadBooksScreenComp
       mode: :download
     )
   end
-  let(:config_reader) { instance_double('ConfigReader', download_source: :gutendex) }
-  let(:dependencies) { instance_double('Dependencies', menu_state_reader: menu_state_reader, config_reader: config_reader,
+  let(:config_reader) { instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, download_source: :gutendex) }
+  let(:dependencies) { instance_double(Shoko::Adapters::Ui::MenuUiDependencies, menu_state_reader: menu_state_reader, config_reader: config_reader,
                                                 menu_hit_registry: nil) }
   let(:component) { described_class.new(dependencies: dependencies) }
 

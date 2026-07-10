@@ -3,37 +3,37 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
-  let(:dictionary_controller) { instance_double('DictionaryController', close_dictionary: nil, refresh_theme: nil) }
-  let(:annotation_controller) { instance_double('AnnotationOverlayController', refresh_theme: nil) }
-  let(:in_book_search_controller) { instance_double('InBookSearchController', refresh_theme: nil) }
-  let(:toc_controller) { instance_double('TocLookupController', refresh_theme: nil) }
-  let(:translator_controller) { instance_double('TranslatorController', refresh_theme: nil) }
-  let(:notes_controller) { instance_double('NotesLookupController', refresh_theme: nil) }
-  let(:input_controller) { instance_double('ReaderInputController') }
+  let(:dictionary_controller) { instance_double(Shoko::Adapters::Input::Controllers::DictionaryController, close_dictionary_lookup: nil, refresh_theme: nil) }
+  let(:annotation_controller) { instance_double(Shoko::Adapters::Input::Controllers::AnnotationOverlayController, refresh_theme: nil) }
+  let(:in_book_search_controller) { instance_double(Shoko::Adapters::Input::Controllers::InBookSearchController, refresh_theme: nil) }
+  let(:toc_controller) { instance_double(Shoko::Adapters::Input::Controllers::TocLookupController, refresh_theme: nil) }
+  let(:translator_controller) { instance_double(Shoko::Adapters::Input::Controllers::TranslatorController, refresh_theme: nil) }
+  let(:notes_controller) { instance_double(Shoko::Adapters::Input::Controllers::NotesLookupController, refresh_theme: nil) }
+  let(:input_controller) { instance_double(Shoko::Adapters::Input::ReaderInputController) }
   let(:reader_state) do
-    instance_double('ReaderStateReader',
+    instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
                     current_chapter: 0, bookmarks: [], annotations: [],
                     selection: nil, annotations_overlay_selected: 0,
                     mode: :read, running?: true, message: nil, popup_menu: nil,
                     annotations_overlay: nil, annotation_editor_overlay: nil,
-                    dictionary_popup: nil, dictionary_panel: nil)
+                    dictionary_popup: nil)
   end
   let(:config_reader) do
-    instance_double('ConfigReader', theme: :dark, view_mode: :single,
+    instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, theme: :dark, view_mode: :single,
                                     line_spacing: :normal, page_numbering_mode: :dynamic,
                                     show_page_numbers: true)
   end
   let(:reader_session_mutator) do
-    instance_double('ReaderSessionMutator', update_reader: nil, update_config: nil,
+    instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil, update_config: nil,
                                             clear_selection: nil,
                                             toggle_view_mode: nil)
   end
   let(:ui_state) do
-    instance_double('UIStateReader', terminal_width: 80, terminal_height: 24)
+    instance_double(Shoko::Adapters::Runtime::SessionState::ReaderRuntimeContextAdapter, terminal_width: 80, terminal_height: 24)
   end
-  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
+  let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService, set_message: nil) }
   let(:theme_context) { Struct.new(:theme_id, :color_mode).new(:sepia, :light) }
-  let(:ui_component_factory) { instance_double('UIComponentFactory', apply_theme: theme_context) }
+  let(:ui_component_factory) { instance_double(Shoko::Adapters::Ui::ComponentFactory, apply_theme: theme_context) }
 
   def build_controller
     described_class.new(

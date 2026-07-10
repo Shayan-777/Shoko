@@ -152,7 +152,8 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
 
       events = []
-      report = workflow.import([a, b, c]) do |done:, total:, path:, status:|
+      report = workflow.import([a, b, c]) do |done:, total:, path:, status:, message: nil, progress: nil|
+        _ = [message, progress]
         events << [done, total, path, status]
       end
 
@@ -197,7 +198,8 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
 
       events = []
       expect do
-        workflow.import([a, b, c]) do |done:, total:, path:, status:|
+        workflow.import([a, b, c]) do |done:, total:, path:, status:, message: nil, progress: nil|
+          _ = [message, progress]
           events << [done, total, path, status]
         end
       end.to raise_error(StandardError, 'broken file')
@@ -223,7 +225,8 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
 
       events = []
-      report = workflow.import([a, b]) do |done:, total:, path:, status:|
+      report = workflow.import([a, b]) do |done:, total:, path:, status:, message: nil, progress: nil|
+        _ = [message, progress]
         events << [done, total, path, status]
       end
 
@@ -272,30 +275,5 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       )
     end
 
-    it 'supports legacy importers that do not accept progress reporter keywords' do
-      scanner = FolderImportWorkflowTestScanner.new([])
-      clock = FolderImportWorkflowTestClock.new([5.0, 6.0])
-      importer = Class.new do
-        include Shoko::Application::Ports::Outbound::FolderImporter
-
-        attr_reader :paths
-
-        def initialize
-          @paths = []
-        end
-
-        def import(path)
-          @paths << path
-          :imported
-        end
-      end.new
-      document = described_class::DocumentCandidate.new(path: '/books/a.epub', format_group: :epub, format_extension: '.epub')
-      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
-
-      report = workflow.import([document])
-
-      expect(report.imported_count).to eq(1)
-      expect(importer.paths).to eq(['/books/a.epub'])
-    end
   end
 end

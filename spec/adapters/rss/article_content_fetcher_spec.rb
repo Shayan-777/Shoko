@@ -6,7 +6,7 @@ require 'zlib'
 require 'stringio'
 
 RSpec.describe Shoko::Adapters::Rss::ArticleContentFetcher do
-  let(:extractor) { instance_double('ArticleContentExtractor') }
+  let(:extractor) { instance_double(Shoko::Adapters::Rss::ArticleContentExtractor) }
 
   subject(:fetcher) { described_class.new(extractor: extractor, open_timeout: 1, read_timeout: 1, redirect_limit: 2) }
 

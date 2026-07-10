@@ -3,8 +3,8 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::WorkflowRenderObserver do
-  let(:menu) { instance_double('MenuController', draw_screen: nil) }
-  let(:clock) { instance_double('Clock') }
+  let(:menu) { instance_double(Shoko::Adapters::Input::Controllers::Menu::Controller, draw_screen: nil) }
+  let(:clock) { instance_double(Shoko::Application::Ports::Outbound::Clock) }
 
   subject(:observer) { described_class.new(menu: menu, clock: clock, logger: nil) }
 

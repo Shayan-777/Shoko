@@ -31,7 +31,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
 
   let(:reader_state) do
     instance_double(
-      'ReaderState',
+      Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
       current_chapter: 1,
       left_page: 42,
       single_page: 42,
@@ -40,17 +40,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   end
   let(:config_reader) do
     instance_double(
-      'ConfigReader',
+      Shoko::Application::Ports::Outbound::State::ConfigSnapshot,
       page_numbering_mode: :absolute,
       view_mode: :single
     )
   end
-  let(:ui_state) { instance_double('UiState') }
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', quit_to_menu: nil) }
-  let(:rendered_content_reader) { instance_double('RenderedContentReader') }
-  let(:doc) { instance_double('Document', canonical_path: '/books/book.epub') }
+  let(:ui_state) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderRuntimeContextAdapter) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, quit_to_menu: nil) }
+  let(:rendered_content_reader) { instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader) }
+  let(:doc) { instance_double(Shoko::Application::Models::ReaderDocument, canonical_path: '/books/book.epub') }
   let(:document_reader) { -> { doc } }
-  let(:terminal_service) { instance_double('TerminalService') }
+  let(:terminal_service) { instance_double(Shoko::Adapters::Output::Terminal::TerminalService) }
   let(:progress_repository) do
     Class.new do
       include Shoko::Application::Ports::Outbound::ProgressRepository
@@ -70,19 +70,19 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       def save_if_further(book_path, chapter_index:, line_offset:, anchor: nil); end
     end.new
   end
-  let(:bookmark_repository) { instance_double('BookmarkRepository') }
-  let(:annotation_service) { instance_double('AnnotationService') }
-  let(:logger) { instance_double('Logger', warn: nil, debug: nil) }
-  let(:navigation_service) { instance_double('NavigationService') }
+  let(:bookmark_repository) { instance_double(Shoko::Application::Ports::Outbound::BookmarkRepository) }
+  let(:annotation_service) { instance_double(Shoko::Core::Services::AnnotationService) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, warn: nil, debug: nil) }
+  let(:navigation_service) { instance_double(Shoko::Application::Services::Reader::NavigationService) }
   let(:page_calculator) { nil }
-  let(:layout_service) { instance_double('LayoutService') }
-  let(:bookmark_service) { instance_double('BookmarkService') }
-  let(:notification_service) { instance_double('NotificationService') }
+  let(:layout_service) { instance_double(Shoko::Application::Services::LayoutService) }
+  let(:bookmark_service) { instance_double(Shoko::Application::Services::Reader::BookmarkService) }
+  let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService) }
   let(:position_anchor) do
     Shoko::Core::Models::DocumentAnchor.from_h(quote: 'It was the best of times', position: 0.25)
   end
-  let(:anchor_resolver) { instance_double('AnchorResolver', capture_line: position_anchor) }
-  let(:process_control) { instance_double('ProcessControl') }
+  let(:anchor_resolver) { instance_double(Shoko::Application::Services::Annotations::AnchorResolver, capture_line: position_anchor) }
+  let(:process_control) { instance_double(Shoko::Application::Ports::Outbound::ProcessControl) }
 
   describe '#quit_to_menu' do
     it 'raises when saving progress fails' do
@@ -155,7 +155,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
 
   describe '#load_progress' do
     let(:doc) { nil }
-    let(:loaded_doc) { instance_double('Document', canonical_path: '/books/book.epub', chapter_count: 7) }
+    let(:loaded_doc) { instance_double(Shoko::Application::Models::ReaderDocument, canonical_path: '/books/book.epub', chapter_count: 7) }
     let(:document_reader) { -> { loaded_doc } }
     let(:progress) { Shoko::Core::Models::ReadingProgress.new(chapter_index: 3, line_offset: 12, timestamp: nil) }
 

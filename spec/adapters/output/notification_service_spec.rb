@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::NotificationService do
-  let(:writer) { instance_double('NotificationWriter') }
+  let(:writer) { instance_double(Shoko::Application::Ports::Outbound::NotificationWriter) }
 
   describe '#set_message' do
     it 'shows messages through the injected notification writer' do

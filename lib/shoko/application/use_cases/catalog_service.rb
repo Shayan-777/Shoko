@@ -8,6 +8,7 @@ require_relative '../../application/ports/outbound/file_probe'
 require_relative '../../application/ports/outbound/library_scanner'
 require_relative '../../application/ports/outbound/metadata_reader'
 require_relative '../../shared/errors'
+require_relative '../../shared/hash_normalizer'
 
 module Shoko
   module Application
@@ -187,14 +188,10 @@ module Shoko
 
         private
 
-        def self.validate_optional_port(value, port, name)
+        def validate_optional_port(value, port, name)
           return if value.nil? || value.is_a?(port)
 
           raise ArgumentError, "#{name} must implement #{port.name}"
-        end
-
-        def validate_optional_port(value, port, name)
-          self.class.validate_optional_port(value, port, name)
         end
 
         def index_recent_by_path
@@ -210,10 +207,7 @@ module Shoko
         def normalize_hash(value, context:)
           raise ArgumentError, "#{context} must be a Hash, got #{value.class}" unless value.is_a?(Hash)
 
-          value.each_with_object({}) do |(key, inner_value), acc|
-            normalized_key = key.is_a?(String) ? key.to_sym : key
-            acc[normalized_key] = inner_value
-          end
+          Shoko::Shared::HashNormalizer.symbolize_keys(value)
         end
 
         def extract_book_metadata(path)

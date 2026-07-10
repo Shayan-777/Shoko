@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationEditorLauncherAdapter do
-  let(:annotation_overlay_ui_session) { instance_double('AnnotationOverlayUiSession', open_editor: :ok) }
+  let(:annotation_overlay_ui_session) { instance_double(Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter, open_editor: :ok) }
   subject(:adapter) { described_class.new(annotation_overlay_ui_session: annotation_overlay_ui_session) }
 
   it 'delegates editor opening to annotation overlay session' do

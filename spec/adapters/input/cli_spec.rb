@@ -197,9 +197,9 @@ RSpec.describe Shoko::Adapters::Input::CLI do
   end
 
   describe '.run' do
-    let(:app_factory) { instance_double('AppFactory') }
-    let(:application) { instance_double('UnifiedApplication', run: nil) }
-    let(:process_control) { instance_double('ProcessControl', terminate: nil) }
+    let(:app_factory) { instance_double(Proc) }
+    let(:application) { instance_double(Shoko::Application::UnifiedApplication, run: nil) }
+    let(:process_control) { instance_double(Shoko::Application::Ports::Outbound::ProcessControl, terminate: nil) }
 
     it 'builds and runs the application via injected hooks' do
       expect(app_factory).to receive(:call).with(
@@ -227,8 +227,8 @@ RSpec.describe Shoko::Adapters::Input::CLI do
     end
 
     describe 'the --prepaginate-batch child entry' do
-      let(:prepaginate_factory) { instance_double('PrepaginateFactory') }
-      let(:batch) { instance_double('LibraryPrepaginationBatch') }
+      let(:prepaginate_factory) { instance_double(Proc) }
+      let(:batch) { instance_double(Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch) }
 
       before do
         allow(described_class).to receive(:deprioritize_current_process)

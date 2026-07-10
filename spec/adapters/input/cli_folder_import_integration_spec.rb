@@ -115,9 +115,9 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         expect(log_config).to include(:level, :output, :profile_path, :debug)
         context
       end
-      application = instance_double('UnifiedApplication', run: nil)
-      app_factory = instance_double('AppFactory', call: application)
-      process_control = instance_double('ProcessControl', terminate: nil)
+      application = instance_double(Shoko::Application::UnifiedApplication, run: nil)
+      app_factory = instance_double(Proc, call: application)
+      process_control = instance_double(Shoko::Application::Ports::Outbound::ProcessControl, terminate: nil)
       output = StringIO.new
 
       expect(application).to receive(:run)

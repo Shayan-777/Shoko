@@ -18,32 +18,47 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
       def load(path:, progress_reporter: nil, background_worker: nil); end
     end.new
   end
-  let(:document_warmup) { instance_double('DocumentWarmup', warm: :warmed) }
+  let(:document_warmup) do
+    Class.new do
+      include Shoko::Application::Ports::Outbound::DocumentWarmup
+
+      def warm(document, progress_reporter: nil)
+        _ = [document, progress_reporter]
+        :warmed
+      end
+    end.new
+  end
 
   it 'returns :skipped when document is already cached' do
-    document = instance_double('Document', cached?: true)
+    document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: true)
     allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
                                             .and_return(document)
 
     adapter = described_class.new(document_loader: document_loader, document_warmup: document_warmup)
 
-    expect(document_warmup).to receive(:warm).with(document)
+    expect(document_warmup).to receive(:warm).with(document, progress_reporter: nil)
     expect(adapter.import('/books/a.epub')).to eq(:skipped)
   end
 
   it 'returns :imported when document is newly built' do
-    document = instance_double('Document', cached?: false)
+    document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false)
     allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
                                             .and_return(document)
 
     adapter = described_class.new(document_loader: document_loader, document_warmup: document_warmup)
 
-    expect(document_warmup).to receive(:warm).with(document)
+    expect(document_warmup).to receive(:warm).with(document, progress_reporter: nil)
     expect(adapter.import('/books/a.epub')).to eq(:imported)
   end
 
+  it 'rejects a warmup collaborator that does not implement the DocumentWarmup port' do
+    expect do
+      described_class.new(document_loader: document_loader, document_warmup: Object.new)
+    end.to raise_error(ArgumentError, /DocumentWarmup/)
+  end
+
   it 'supports import without a warmup collaborator' do
-    document = instance_double('Document', cached?: false)
+    document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false)
     allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
                                             .and_return(document)
 
@@ -53,23 +68,23 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
   end
 
   it 'warms imported documents with reader view state during the batch import path' do
-    document = instance_double('Document', cached?: false, canonical_path: '/books/a.epub')
+    document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false, canonical_path: '/books/a.epub')
     allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
                                             .and_return(document)
-    page_calculator = instance_double('PageCalculator', reset_session!: nil, build_dynamic_map!: { total_pages: 42 })
+    page_calculator = instance_double(Shoko::Application::Services::Pagination::PageCalculatorService, reset_session!: nil, build_dynamic_map!: { total_pages: 42 })
     warmup = Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup.new(
       deps: Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup::Dependencies.new(
         page_calculator: page_calculator,
-        app_config_store: instance_double('AppConfigStore', load: instance_double('Config', page_numbering_mode: :dynamic)),
+        app_config_store: instance_double(Shoko::Application::Ports::Outbound::AppConfigStore, load: instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, page_numbering_mode: :dynamic)),
         reader_view_state_store: instance_double(
-          'ReaderViewStateStore',
+          Shoko::Application::Ports::Outbound::ReaderViewStateStore,
           load: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build
         ),
         reader_runtime_context: instance_double(
-          'ReaderRuntimeContext',
+          Shoko::Application::Ports::Outbound::ReaderRuntimeContext,
           terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 90, height: 32)
         ),
-        logger: instance_double('Logger', debug: nil)
+        logger: instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil)
       )
     )
     adapter = described_class.new(document_loader: document_loader, document_warmup: warmup)
@@ -86,7 +101,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
 
   it 'forwards progress through load and warmup stages without regressing overall progress' do
     collector = build_progress_collector
-    document = instance_double('Document', cached?: false)
+    document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false)
     loader = Class.new do
       include Shoko::Application::Ports::Outbound::DocumentLoader
 
@@ -106,6 +121,8 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
       end
     end.new(document)
     warmup = Class.new do
+      include Shoko::Application::Ports::Outbound::DocumentWarmup
+
       attr_reader :reporters
 
       def initialize
@@ -131,28 +148,6 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
         { message: 'Imported a.epub', progress: 1.0 },
       ]
     )
-  end
-
-  it 'keeps compatibility with warmup collaborators that do not accept a progress reporter keyword' do
-    document = instance_double('Document', cached?: false)
-    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
-                                            .and_return(document)
-    legacy_warmup = Class.new do
-      attr_reader :documents
-
-      def initialize
-        @documents = []
-      end
-
-      def warm(document)
-        @documents << document
-        :warmed
-      end
-    end.new
-    adapter = described_class.new(document_loader: document_loader, document_warmup: legacy_warmup)
-
-    expect(adapter.import('/books/a.epub')).to eq(:imported)
-    expect(legacy_warmup.documents).to eq([document])
   end
 
   it 'raises a file-scoped parse error when the document loader returns nil' do

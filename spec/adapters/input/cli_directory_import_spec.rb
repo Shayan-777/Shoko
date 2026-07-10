@@ -15,9 +15,9 @@ RSpec.describe Shoko::Adapters::Input::CLI do
     end
   end
 
-  let(:application) { instance_double('UnifiedApplication', run: nil) }
-  let(:app_factory) { instance_double('AppFactory') }
-  let(:process_control) { instance_double('ProcessControl', terminate: nil) }
+  let(:application) { instance_double(Shoko::Application::UnifiedApplication, run: nil) }
+  let(:app_factory) { instance_double(Proc) }
+  let(:process_control) { instance_double(Shoko::Application::Ports::Outbound::ProcessControl, terminate: nil) }
 
   before do
     allow(app_factory).to receive(:call).and_return(application)
@@ -56,9 +56,9 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         counts_by_group: { epub: 1 },
         total_count: 1
       )
-      workflow = instance_double('FolderImportWorkflow', discover: report)
+      workflow = instance_double(Shoko::Application::Workflows::Cli::FolderImportWorkflow, discover: report)
       context = folder_context(workflow: workflow)
-      folder_import_factory = instance_double('FolderImportFactory', call: context)
+      folder_import_factory = instance_double(Proc, call: context)
       input = StringIO.new("3\n")
       output = StringIO.new
 
@@ -88,10 +88,10 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         counts_by_group: { epub: 1, pdf: 1 },
         total_count: 2
       )
-      workflow = instance_double('FolderImportWorkflow', discover: report)
-      presenter = instance_double('CLIProgressPresenter', start: nil, update_status: nil, finish: nil)
+      workflow = instance_double(Shoko::Application::Workflows::Cli::FolderImportWorkflow, discover: report)
+      presenter = instance_double(Shoko::Adapters::Runtime::CLIProgressPresenter, start: nil, update_status: nil, finish: nil)
       context = folder_context(workflow: workflow, presenter: presenter)
-      folder_import_factory = instance_double('FolderImportFactory', call: context)
+      folder_import_factory = instance_double(Proc, call: context)
       input = StringIO.new("1\n")
       output = StringIO.new
 
@@ -126,10 +126,10 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         counts_by_group: { epub: 1 },
         total_count: 1
       )
-      workflow = instance_double('FolderImportWorkflow', discover: report)
-      presenter = instance_double('CLIProgressPresenter', start: nil, finish: nil)
+      workflow = instance_double(Shoko::Application::Workflows::Cli::FolderImportWorkflow, discover: report)
+      presenter = instance_double(Shoko::Adapters::Runtime::CLIProgressPresenter, start: nil, finish: nil)
       context = folder_context(workflow: workflow, presenter: presenter)
-      folder_import_factory = instance_double('FolderImportFactory', call: context)
+      folder_import_factory = instance_double(Proc, call: context)
       input = StringIO.new("1\n")
       output = StringIO.new
 
@@ -166,9 +166,9 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         counts_by_group: { epub: 1, pdf: 1 },
         total_count: 2
       )
-      workflow = instance_double('FolderImportWorkflow', discover: report)
+      workflow = instance_double(Shoko::Application::Workflows::Cli::FolderImportWorkflow, discover: report)
       context = folder_context(workflow: workflow)
-      folder_import_factory = instance_double('FolderImportFactory', call: context)
+      folder_import_factory = instance_double(Proc, call: context)
       input = StringIO.new("2\n2\n")
       output = StringIO.new
 
@@ -201,9 +201,9 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         counts_by_group: { epub: 1 },
         total_count: 1
       )
-      workflow = instance_double('FolderImportWorkflow', discover: report)
+      workflow = instance_double(Shoko::Application::Workflows::Cli::FolderImportWorkflow, discover: report)
       context = folder_context(workflow: workflow)
-      folder_import_factory = instance_double('FolderImportFactory', call: context)
+      folder_import_factory = instance_double(Proc, call: context)
       input = StringIO.new("x\n9\n3\n")
       output = StringIO.new
 
@@ -233,10 +233,10 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         counts_by_group: { epub: 1 },
         total_count: 1
       )
-      workflow = instance_double('FolderImportWorkflow', discover: report)
+      workflow = instance_double(Shoko::Application::Workflows::Cli::FolderImportWorkflow, discover: report)
       context = folder_context(workflow: workflow)
-      folder_import_factory = instance_double('FolderImportFactory', call: context)
-      process_control = instance_double('ProcessControl', terminate: nil)
+      folder_import_factory = instance_double(Proc, call: context)
+      process_control = instance_double(Shoko::Application::Ports::Outbound::ProcessControl, terminate: nil)
       input = StringIO.new("1\n")
       output = StringIO.new
 
@@ -261,7 +261,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
     Dir.mktmpdir do |dir|
       file_path = File.join(dir, 'book.epub')
       File.write(file_path, 'content')
-      folder_import_factory = instance_double('FolderImportFactory')
+      folder_import_factory = instance_double(Proc)
 
       expect(folder_import_factory).not_to receive(:call)
       expect(app_factory).to receive(:call).with(

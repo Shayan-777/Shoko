@@ -104,7 +104,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationWarmup d
       end
     end.new
   end
-  let(:logger) { instance_double('Logger', debug: nil) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
 
   let(:config) do
     Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(

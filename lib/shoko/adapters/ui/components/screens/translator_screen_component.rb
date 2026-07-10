@@ -5,6 +5,7 @@ require_relative '../menu_design/canvas_frame'
 require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
 require_relative '../ui/box_drawer'
+require_relative '../ui/list_helpers'
 require_relative '../ui/text_utils'
 require_relative '../ui/cursor_blink'
 require 'shoko/shared/terminal/text_metrics'
@@ -369,13 +370,9 @@ module Shoko
             def dropdown_window(kind)
               items = language_options(kind)
               visible = self.class::MAX_DROPDOWN_ROWS
-              max_start = [items.length - visible, 0].max
-              @dropdown_scroll = (@dropdown_scroll || 0).clamp(0, max_start)
-              if dropdown_selected < @dropdown_scroll
-                @dropdown_scroll = dropdown_selected
-              elsif dropdown_selected >= @dropdown_scroll + visible
-                @dropdown_scroll = dropdown_selected - visible + 1
-              end
+              @dropdown_scroll = Ui::ListHelpers.scroll_to_reveal(
+                dropdown_selected, scroll: @dropdown_scroll || 0, visible: visible, total: items.length
+              )
               { start: @dropdown_scroll, items: items.slice(@dropdown_scroll, visible) || [] }
             end
 
@@ -509,15 +506,7 @@ module Shoko
               visible = [Array(window[:items]).length, 1].max
               return nil if total <= visible
 
-              max_start = [total - visible, 0].max
-              thumb_height = dropdown_scrollbar_thumb_height(total, visible)
-              thumb_row = dropdown_scrollbar_thumb_row(
-                start: window[:start],
-                max_start: max_start,
-                visible: visible,
-                thumb_height: thumb_height
-              )
-              { thumb_row: thumb_row, thumb_height: thumb_height, visible: visible }
+              Ui::ListHelpers.scrollbar_thumb(total: total, visible: visible, scroll: window[:start])
             end
 
             # The family scrollbar: a full-height █ track in the lighter tone
@@ -526,23 +515,13 @@ module Shoko
             def dropdown_scrollbar_cell(scrollbar, offset)
               return ' ' unless scrollbar
 
-              thumb_end = scrollbar[:thumb_row] + scrollbar[:thumb_height] - 1
-              color = if offset.between?(scrollbar[:thumb_row], thumb_end)
+              thumb_end = scrollbar[:start] + scrollbar[:size] - 1
+              color = if offset.between?(scrollbar[:start], thumb_end)
                         Palette::TRANS_SCROLL_THUMB_FG
                       else
                         Palette::TRANS_SCROLL_TRACK_FG
                       end
               "#{color}█"
-            end
-
-            def dropdown_scrollbar_thumb_height(total, visible)
-              (visible.to_f * visible / total).round.clamp(1, visible)
-            end
-
-            def dropdown_scrollbar_thumb_row(start:, max_start:, visible:, thumb_height:)
-              return 0 if max_start.zero? || visible <= thumb_height
-
-              ((start.to_f / max_start) * (visible - thumb_height)).round
             end
 
             def visible_length(text)

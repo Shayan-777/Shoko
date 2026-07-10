@@ -10,8 +10,8 @@ RSpec.describe Shoko::Adapters::BookSources::BookFinder::DirectoryScanner do
     end
   end
 
-  let(:context) { instance_double('ScannerContext') }
-  let(:book_file_probe) { instance_double('BookFileProbe', book_file?: false) }
+  let(:context) { instance_double(Shoko::Adapters::BookSources::BookFinder::ScannerContext) }
+  let(:book_file_probe) { instance_double(Shoko::Adapters::BookSources::BookFileProbe, book_file?: false) }
 
   it 'limits default scan roots to book-specific directories' do
     home = File.expand_path('~')

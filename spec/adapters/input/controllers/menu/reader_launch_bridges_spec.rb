@@ -45,7 +45,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapt
       end
     end.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build)
   end
-  let(:reader_controller) { instance_double('ReaderController', run: :handled) }
+  let(:reader_controller) { instance_double(Shoko::Adapters::Input::Controllers::ReaderController, run: :handled) }
   let(:reader_controller_builder) { double('ReaderControllerBuilder', call: reader_controller) }
   let(:menu_transient_store) do
     ReaderLaunchBridgesSpecMenuTransientStore.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)

@@ -8,37 +8,24 @@ module Shoko
   module Adapters
     module BookSources
       # Book-source adapter that resolves and runs format importers.
+      #
+      # Every registered importer shares the uniform construction contract
+      # `new(progress_reporter:, runtime_config:)` (mirroring the registry's
+      # content-parser factory contract), so importers are constructed
+      # directly — no signature probing.
       class BookImporterResolverAdapter
         include Shoko::Application::Ports::Outbound::BookImporterResolver
-
-        KEYWORD_PARAMETER_KINDS = %i[key keyreq keyrest].freeze
 
         def initialize(format_registry: FormatRegistry)
           @format_registry = format_registry
         end
 
-        def import(path, progress_reporter: nil, runtime_config: nil, logger: nil)
+        def import(path, progress_reporter: nil, runtime_config: nil)
           importer_class = @format_registry.importer_for(path)
           raise Shoko::BookParseError.new("unsupported book format: #{path}", path) unless importer_class
 
-          importer = importer_class.new(**importer_kwargs(importer_class, progress_reporter, runtime_config, logger))
+          importer = importer_class.new(progress_reporter: progress_reporter, runtime_config: runtime_config)
           importer.import(path)
-        end
-
-        private
-
-        def importer_kwargs(importer_class, progress_reporter, runtime_config, logger)
-          kwargs = {}
-          kwargs[:progress_reporter] = progress_reporter if supports_keyword?(importer_class, :progress_reporter)
-          kwargs[:runtime_config] = runtime_config if supports_keyword?(importer_class, :runtime_config)
-          kwargs[:logger] = logger if supports_keyword?(importer_class, :logger)
-          kwargs
-        end
-
-        def supports_keyword?(klass, keyword)
-          klass.instance_method(:initialize).parameters.any? do |kind, name|
-            KEYWORD_PARAMETER_KINDS.include?(kind) && (name == keyword || kind == :keyrest)
-          end
         end
       end
     end

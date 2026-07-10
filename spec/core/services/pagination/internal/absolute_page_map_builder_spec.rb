@@ -24,7 +24,7 @@ RSpec.describe Shoko::Core::Services::Pagination::Internal::AbsolutePageMapBuild
 
   it 'uses text metrics fallback wrapping when wrapper is nil' do
     doc = build_document([['abcdef', '', 'ghij']])
-    text_metrics = instance_double('TextMetrics')
+    text_metrics = instance_double(Shoko::Application::Ports::Outbound::TextMetrics)
     allow(text_metrics).to receive(:wrap_plain_text) do |line, width|
       line.to_s.scan(/.{1,#{width}}/)
     end

@@ -55,8 +55,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
     end
   end
 
-  let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
-  let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko/dictionary') }
+  let(:dictionary_catalog_service) { instance_double(Shoko::Adapters::Storage::DictionaryCatalogService) }
+  let(:dictionary_storage) { instance_double(Shoko::Application::Ports::Outbound::DictionaryStorage, ensure_databases_path: '/tmp/shoko/dictionary') }
   let(:app_config_store) do
     DictionaryWorkflowTestConfigStore.new(Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(dictionary_path: nil))
   end

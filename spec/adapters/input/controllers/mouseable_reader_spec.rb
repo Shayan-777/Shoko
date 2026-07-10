@@ -63,14 +63,14 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
 
     it 'prioritizes inline link navigation before selection handling' do
       mouse_handler = instance_double(
-        'MouseHandler',
+        Shoko::Adapters::Input::Annotations::MouseHandler,
         selecting: true,
         selection_start: { x: 10, y: 5 },
         selection_end: { x: 10, y: 5 },
         reset: nil
       )
-      reader_session_mutator = instance_double('ReaderSessionMutator', update_reader: nil, clear_selection: nil)
-      navigator = instance_double('InlineLinkNavigator', navigate: true, link_hit_for_event: nil)
+      reader_session_mutator = instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil, clear_selection: nil)
+      navigator = instance_double(Shoko::Adapters::Input::Controllers::Reader::InlineLinkNavigator, navigate: true, link_hit_for_event: nil)
 
       reader.instance_variable_set(:@mouse_handler, mouse_handler)
       reader.instance_variable_set(:@reader_session_mutator, reader_session_mutator)
@@ -87,9 +87,9 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
 
   describe '#sync_inline_link_hover' do
     let(:reader) { described_class.allocate }
-    let(:reader_state_reader) { instance_double('ReaderStateReader', current_chapter: 3, hovered_inline_link: nil) }
-    let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
-    let(:navigator) { instance_double('InlineLinkNavigator') }
+    let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, current_chapter: 3, hovered_inline_link: nil) }
+    let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil) }
+    let(:navigator) { instance_double(Shoko::Adapters::Input::Controllers::Reader::InlineLinkNavigator) }
 
     before do
       reader.instance_variable_set(:@inline_link_navigator, navigator)
@@ -138,18 +138,18 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
 
   describe '#build_inline_link_navigator' do
     let(:reader) { described_class.allocate }
-    let(:ui_state_reader) { instance_double('UiStateReader') }
-    let(:reader_state_reader) { instance_double('ReaderStateReader') }
-    let(:config_reader) { instance_double('ConfigReader') }
-    let(:coordinate_service) { instance_double('CoordinateService') }
-    let(:rendered_content_reader) { instance_double('RenderedContentReader') }
-    let(:formatting_service) { instance_double('FormattingService') }
-    let(:layout_service) { instance_double('LayoutService') }
-    let(:state_controller) { instance_double('StateController') }
-    let(:document) { instance_double('Document') }
+    let(:ui_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderRuntimeContextAdapter) }
+    let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter) }
+    let(:config_reader) { instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot) }
+    let(:coordinate_service) { instance_double(Shoko::Application::Services::CoordinateService) }
+    let(:rendered_content_reader) { instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader) }
+    let(:formatting_service) { instance_double(Shoko::Adapters::Output::Formatting::FormattingService) }
+    let(:layout_service) { instance_double(Shoko::Application::Services::LayoutService) }
+    let(:state_controller) { instance_double(Shoko::Adapters::Input::Controllers::StateController) }
+    let(:document) { instance_double(Shoko::Application::Models::ReaderDocument) }
     let(:deps) do
       instance_double(
-        'MouseableReaderDependencies',
+        Shoko::Adapters::Ui::ReaderUiDependencies,
         ui_state_reader: ui_state_reader,
         formatting_service: formatting_service,
         layout_service: layout_service
@@ -167,8 +167,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
     end
 
     it 'passes ui state reader from dependencies to anchor resolver' do
-      anchor_resolver = instance_double('AnchorResolver')
-      navigator = instance_double('InlineLinkNavigator')
+      anchor_resolver = instance_double(Shoko::Application::Services::Annotations::AnchorResolver)
+      navigator = instance_double(Shoko::Adapters::Input::Controllers::Reader::InlineLinkNavigator)
 
       expect(Shoko::Adapters::Input::Controllers::Reader::TocAnchorResolver).to receive(:new).with(
         hash_including(
@@ -198,11 +198,11 @@ end
 
 RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader, 'bar overlay mouse' do
   let(:reader) { described_class.allocate }
-  let(:popup) { instance_double('OverlayPopup') }
-  let(:coordinate_service) { instance_double('CoordinateService') }
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
+  let(:popup) { instance_double(Shoko::Adapters::Ui::Components::InBookSearchPopupComponent) }
+  let(:coordinate_service) { instance_double(Shoko::Application::Services::CoordinateService) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil) }
   let(:reader_state_reader) do
-    instance_double('ReaderStateReader', mode: :in_book_search, in_book_search_popup: popup,
+    instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, mode: :in_book_search, in_book_search_popup: popup,
                                          overlay_hover_index: nil)
   end
 
@@ -321,7 +321,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader, 'bar overla
   end
 
   it 'opens the language picker on the clicked side via the translator intent' do
-    input_controller = instance_double('ReaderInputController', dispatch_reader_intent: nil)
+    input_controller = instance_double(Shoko::Adapters::Input::ReaderInputController, dispatch_reader_intent: nil)
     allow(reader).to receive(:input_controller).and_return(input_controller)
     allow(reader_state_reader).to receive(:mode).and_return(:translator)
     allow(reader_state_reader).to receive(:translator_lookup_popup).and_return(popup)
@@ -334,7 +334,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader, 'bar overla
   end
 
   it 'routes the Paste and Copy buttons to their translator intents' do
-    input_controller = instance_double('ReaderInputController', dispatch_reader_intent: nil)
+    input_controller = instance_double(Shoko::Adapters::Input::ReaderInputController, dispatch_reader_intent: nil)
     allow(reader).to receive(:input_controller).and_return(input_controller)
     allow(reader_state_reader).to receive(:mode).and_return(:translator)
     allow(reader_state_reader).to receive(:translator_lookup_popup).and_return(popup)

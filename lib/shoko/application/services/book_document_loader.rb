@@ -56,8 +56,7 @@ module Shoko
           book_data = @book_importer_resolver.import(
             path,
             progress_reporter: progress_reporter,
-            runtime_config: @runtime_config,
-            logger: @logger
+            runtime_config: @runtime_config
           )
 
           report(progress_reporter, 'Creating JSON cache...', progress: 0.9)

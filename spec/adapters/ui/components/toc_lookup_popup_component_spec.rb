@@ -14,7 +14,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TocLookupPopupComponent do
   let(:toc_state) do
     { mode: :toc, toc_visible_entries: entries, toc_selected_index: 0, overlay_hover_index: nil, toc_query: '' }
   end
-  let(:reader_state_reader) { instance_double('ReaderStateReader', **toc_state) }
+  let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, **toc_state) }
 
   subject(:component) { described_class.new(reader_state_reader: reader_state_reader) }
 

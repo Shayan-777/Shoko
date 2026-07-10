@@ -4,6 +4,7 @@ require_relative '../../components/render_style'
 require_relative '../../constants/highlighting'
 require 'shoko/application/ports/outbound/formatting/display_line'
 require 'shoko/core/models/block_type'
+require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/application/ports/outbound/runtime_config'
 require_relative 'inline_segment_highlighter'
@@ -238,14 +239,6 @@ module Shoko
               Shoko::Core::Models::BlockType.canonical(raw) || raw
             end
 
-            def symbolize_hash(value)
-              return {} unless value.is_a?(Hash)
-
-              value.transform_keys do |key|
-                key.is_a?(String) ? key.to_sym : key
-              end
-            end
-
             # Cache helpers for line composition results.
             def compose_cache_key(line, width, options)
               return nil unless self.class.compose_cache_enabled?
@@ -407,7 +400,7 @@ module Shoko
             def normalize_hovered_inline_link(value)
               return nil unless value.is_a?(Hash)
 
-              normalized = symbolize_hash(value)
+              normalized = Shoko::Shared::HashNormalizer.symbolize_keys(value)
               start_char = normalized[:start_char].to_i
               end_char = normalized[:end_char].to_i
               href = normalized[:href].to_s.strip

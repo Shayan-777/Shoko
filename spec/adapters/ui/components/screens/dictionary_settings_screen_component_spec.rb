@@ -15,21 +15,21 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DictionarySettingsScree
     end
   end
 
-  let(:config_reader) { instance_double('ConfigReader') }
-  let(:dictionary_availability) { instance_double('DictionaryAvailability', sqlite3_available?: true) }
+  let(:config_reader) { instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot) }
+  let(:dictionary_availability) { instance_double(Shoko::Application::Ports::Outbound::DictionaryAvailability, sqlite3_available?: true) }
   let(:dictionary_storage) do
     instance_double(
-      'DictionaryStorage',
+      Shoko::Application::Ports::Outbound::DictionaryStorage,
       databases_present?: false,
       default_databases_path: '/tmp/shoko/dictionary',
       display_path: '/tmp/shoko/dictionary'
     )
   end
-  let(:runtime_config) { instance_double('RuntimeConfig', dictionary_backend_override: nil) }
-  let(:dependencies) { instance_double('Dependencies', menu_hit_registry: nil) }
+  let(:runtime_config) { instance_double(Shoko::Application::Ports::Outbound::RuntimeConfig, dictionary_backend_override: nil) }
+  let(:dependencies) { instance_double(Shoko::Adapters::Ui::MenuUiDependencies, menu_hit_registry: nil) }
   let(:menu_state_reader) do
     instance_double(
-      'MenuStateReader',
+      Shoko::Adapters::Runtime::SessionState::MenuSnapshotProjectionAdapter,
       dictionary_results: [],
       dictionary_selected: 0,
       dictionary_query: '',

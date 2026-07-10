@@ -3,20 +3,20 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Reader::StartupSequence do
-  let(:terminal_session) { instance_double('TerminalSession', size: [40, 120]) }
-  let(:async_executor) { instance_double('AsyncExecutor') }
+  let(:terminal_session) { instance_double(Shoko::Application::Ports::Outbound::TerminalSession, size: [40, 120]) }
+  let(:async_executor) { instance_double(Shoko::Application::Ports::Outbound::AsyncExecutor) }
   let(:state_controller) do
-    instance_double('StateController', load_progress: nil, load_bookmarks: nil, refresh_annotations: nil)
+    instance_double(Shoko::Adapters::Input::Controllers::StateController, load_progress: nil, load_bookmarks: nil, refresh_annotations: nil)
   end
-  let(:pagination_cache_preloader) { instance_double('PaginationCachePreloader', preload: nil) }
-  let(:image_cache_warmup) { instance_double('ImageCacheWarmup', warm_document: nil) }
-  let(:kitty_image_renderer) { instance_double('KittyImageRenderer', reset_virtual_placements!: nil) }
-  let(:doc) { instance_double('Document', cached?: false) }
-  let(:config_reader) { instance_double('ConfigReader', kitty_images: true) }
-  let(:pagination_coordinator) { instance_double('PaginationCoordinator', apply_pending_progress_if_ready: nil) }
+  let(:pagination_cache_preloader) { instance_double(Shoko::Application::Services::Pagination::PaginationCachePreloader, preload: nil) }
+  let(:image_cache_warmup) { instance_double(Shoko::Adapters::Output::Kitty::ImageCacheWarmup, warm_document: nil) }
+  let(:kitty_image_renderer) { instance_double(Shoko::Adapters::Output::Kitty::KittyImageRenderer, reset_virtual_placements!: nil) }
+  let(:doc) { instance_double(Shoko::Application::Models::ReaderDocument, cached?: false) }
+  let(:config_reader) { instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, kitty_images: true) }
+  let(:pagination_coordinator) { instance_double(Shoko::Application::Services::Pagination::PaginationCoordinator, apply_pending_progress_if_ready: nil) }
   let(:controller) do
     instance_double(
-      'Controller',
+      Shoko::Adapters::Input::Controllers::ReaderController,
       doc: doc,
       config_reader: config_reader,
       pagination_coordinator: pagination_coordinator,
@@ -75,7 +75,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::StartupSequence do
   end
 
   describe 'cached pagination preload outcomes' do
-    let(:doc) { instance_double('Document', cached?: true) }
+    let(:doc) { instance_double(Shoko::Application::Models::ReaderDocument, cached?: true) }
     let(:preload_result) { Struct.new(:status, :key) }
 
     before do

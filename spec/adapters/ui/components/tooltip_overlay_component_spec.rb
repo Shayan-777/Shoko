@@ -37,7 +37,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
   let(:surface) { Shoko::Adapters::Ui::Components::Surface.new(terminal) }
   let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 40) }
   let(:coordinate_service) { double('CoordinateService') }
-  let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: {}) }
+  let(:rendered_content_reader) { instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader, rendered_lines: {}) }
 
   before do
     terminal.reset!
@@ -53,7 +53,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       after: ' order',
     }
     reader_state_reader = instance_double(
-      'ReaderStateReader',
+      Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
       annotations: [],
       current_chapter: 2,
       current_page_index: 17,
@@ -102,7 +102,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
     }
     line = 'power and freedom and power again'
     reader_state_reader = instance_double(
-      'ReaderStateReader',
+      Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
       annotations: [],
       current_chapter: 2,
       current_page_index: 17,
@@ -150,7 +150,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       after: ' returned',
     }
     reader_state_reader = instance_double(
-      'ReaderStateReader',
+      Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
       annotations: [],
       current_chapter: 2,
       current_page_index: 17,
@@ -198,7 +198,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       'after' => ' order',
     }
     reader_state_reader = instance_double(
-      'ReaderStateReader',
+      Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
       annotations: [],
       current_chapter: 2,
       current_page_index: 17,
@@ -243,7 +243,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       match_text: 'economic',
     }
     reader_state_reader = instance_double(
-      'ReaderStateReader',
+      Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
       annotations: [],
       current_chapter: 2,
       current_page_index: 17,
@@ -287,7 +287,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
     }
     line = 'power and freedom and power again'
     reader_state_reader = instance_double(
-      'ReaderStateReader',
+      Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
       annotations: [],
       current_chapter: 2,
       current_page_index: 17,
@@ -331,7 +331,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
         started_at: now - started_offset, expires_at: now + 10
       }
       reader = instance_double(
-        'ReaderStateReader',
+        Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
         annotations: [], current_chapter: 2, current_page_index: 17,
         search_landing_highlight: highlight, selection: nil, popup_menu: nil,
         annotations_overlay: nil, annotation_editor_overlay: nil,
@@ -360,7 +360,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
   describe 'saved annotation highlights' do
     def reader_with_annotation(annotation)
       instance_double(
-        'ReaderStateReader',
+        Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
         annotations: [annotation], current_chapter: 2, current_page_index: 0,
         search_landing_highlight: nil, selection: nil, popup_menu: nil,
         annotations_overlay: nil, annotation_editor_overlay: nil,
@@ -403,7 +403,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
 
     it 'skips annotations from other chapters and those without an anchor' do
       reader = instance_double(
-        'ReaderStateReader',
+        Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
         annotations: [
           { 'chapter_index' => 5, 'anchor' => { 'quote' => 'elsewhere' } },
           { 'chapter_index' => 2, 'anchor' => {} },

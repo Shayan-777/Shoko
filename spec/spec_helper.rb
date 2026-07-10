@@ -84,5 +84,18 @@ RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
     expectations.syntax = :expect
   end
+
+  # Doubles must verify against real contracts. `verify_partial_doubles`
+  # rejects stubs of methods the real object does not define;
+  # `verify_doubled_constant_names` makes an `instance_double('Name')` whose
+  # constant does not resolve an error instead of a silently permissive
+  # double — the trap the constitution's reflection-probing amendment calls
+  # out ("passes every test against permissive doubles while the feature
+  # quietly dies").
+  config.mock_with :rspec do |mocks|
+    mocks.verify_partial_doubles = true
+    mocks.verify_doubled_constant_names = true
+  end
+
   config.order = :random
 end

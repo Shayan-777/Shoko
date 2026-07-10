@@ -5,8 +5,11 @@ module Shoko
     module Workflows
       module Cli
         # Adapts nested per-document import progress into workflow-level progress updates.
+        #
+        # The notifier contract: a callable accepting the full PAYLOAD_KEYS
+        # keyword set. Notifiers are internal (the CLI supplies them), so the
+        # payload is passed whole — no signature adaptation.
         class FolderImportProgressReporter
-          KEYWORD_PARAMETER_KINDS = %i[key keyreq keyrest].freeze
           PAYLOAD_KEYS = %i[done total path status message progress].freeze
 
           def initialize(document_index:, total_documents:, path:, notifier:)
@@ -35,18 +38,7 @@ module Shoko
           end
 
           def notify_progress(**payload)
-            @notifier.call(**payload.slice(*supported_keywords))
-          end
-
-          def supported_keywords
-            parameters = @notifier.parameters
-            return PAYLOAD_KEYS if parameters.any? { |kind, _name| kind == :keyrest }
-
-            parameters.filter_map do |kind, name|
-              next unless KEYWORD_PARAMETER_KINDS.include?(kind)
-
-              name
-            end
+            @notifier.call(**payload)
           end
         end
       end

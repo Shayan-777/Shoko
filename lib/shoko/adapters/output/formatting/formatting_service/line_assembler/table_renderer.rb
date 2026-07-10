@@ -2,6 +2,7 @@
 
 require 'shoko/adapters/output/terminal/text_metrics'
 require 'shoko/core/models/content_block'
+require 'shoko/shared/hash_normalizer'
 
 module Shoko
   module Adapters
@@ -444,9 +445,7 @@ module Shoko
               end
 
               def symbolize_hash(value)
-                value.transform_keys do |key|
-                  key.is_a?(String) ? key.to_sym : key
-                end
+                Shoko::Shared::HashNormalizer.symbolize_keys(value) || {}
               end
 
               def normalize_alignment(value)

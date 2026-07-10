@@ -3,22 +3,22 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Services::Reader::Navigation::ImageOffsetSnapper do
-  let(:layout_service) { instance_double('LayoutService', calculate_metrics: [40, 18]) }
-  let(:wrapped_lines_provider) { instance_double('WrappedLinesProvider') }
+  let(:layout_service) { instance_double(Shoko::Application::Services::LayoutService, calculate_metrics: [40, 18]) }
+  let(:wrapped_lines_provider) { instance_double(Shoko::Application::Ports::Outbound::WrappedLinesProvider) }
   let(:terminal_size) { Struct.new(:width, :height).new(80, 24) }
   let(:config_store) do
     instance_double(
-      'AppConfigStore',
+      Shoko::Application::Ports::Outbound::AppConfigStore,
       load: Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(kitty_images: true, view_mode: :single)
     )
   end
-  let(:reader_session_store) { instance_double('ReaderSessionStore') }
-  let(:reader_state_reader) { instance_double('ReaderStateReader', load: Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot.build) }
-  let(:display_capabilities) { instance_double('DisplayCapabilities', kitty_images_enabled?: kitty_images_enabled) }
+  let(:reader_session_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderSessionStore) }
+  let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, load: Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot.build) }
+  let(:display_capabilities) { instance_double(Shoko::Application::Ports::Outbound::DisplayCapabilities, kitty_images_enabled?: kitty_images_enabled) }
   let(:reader_runtime_context) do
-    instance_double('ReaderRuntimeContext', display_capabilities: display_capabilities, terminal_size: terminal_size)
+    instance_double(Shoko::Application::Ports::Outbound::ReaderRuntimeContext, display_capabilities: display_capabilities, terminal_size: terminal_size)
   end
-  let(:logger) { instance_double('Logger', debug: nil) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
   let(:kitty_images_enabled) { true }
   let(:snapper) do
     described_class.new(
@@ -107,8 +107,8 @@ RSpec.describe Shoko::Application::Services::Reader::Navigation::ImageOffsetSnap
       reader_session_store: reader_session_store,
       reader_state_reader: reader_state_reader,
       reader_runtime_context: instance_double(
-        'ReaderRuntimeContext',
-        display_capabilities: instance_double('DisplayCapabilities', kitty_images_enabled?: false),
+        Shoko::Application::Ports::Outbound::ReaderRuntimeContext,
+        display_capabilities: instance_double(Shoko::Application::Ports::Outbound::DisplayCapabilities, kitty_images_enabled?: false),
         terminal_size: terminal_size
       ),
       logger: logger

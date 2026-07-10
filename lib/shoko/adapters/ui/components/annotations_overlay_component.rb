@@ -4,6 +4,7 @@ require_relative 'base_component'
 require_relative 'ui/box_drawer'
 require_relative 'ui/overlay_layout'
 require_relative 'annotations_overlay/list_renderer'
+require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/key_definitions'
 
 module Shoko
@@ -211,12 +212,10 @@ module Shoko
             @list_renderer ||= AnnotationsOverlay::ListRenderer.new
           end
 
+          # Non-Hash entries pass through untouched, matching the loose
+          # persisted-annotation shapes the list renderer tolerates.
           def symbolize_keys(annotation)
-            return annotation unless annotation.is_a?(Hash)
-
-            annotation.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
+            Shoko::Shared::HashNormalizer.symbolize_keys(annotation) || annotation
           end
         end
       end

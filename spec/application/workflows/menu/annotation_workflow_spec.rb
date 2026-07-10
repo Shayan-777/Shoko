@@ -136,7 +136,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
   let(:reader_runner) { AnnotationWorkflowTestReaderRunner.new }
   let(:annotation_service) do
     instance_double(
-      'AnnotationService',
+      Shoko::Core::Services::AnnotationService,
       delete: true,
       update: true,
       list_all: { '/books/a.epub' => [selection.to_annotation_h] }

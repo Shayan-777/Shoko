@@ -25,8 +25,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
   let(:reader_session_store) do
     ReaderLaunchDocumentPreparationTestReaderSessionStore.new(Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build)
   end
-  let(:logger) { instance_double('Logger', debug: nil) }
-  let(:loaded_document) { instance_double('Document', chapter_count: 7, canonical_path: '/books/a.epub') }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
+  let(:loaded_document) { instance_double(Shoko::Application::Models::ReaderDocument, chapter_count: 7, canonical_path: '/books/a.epub') }
   let(:document_loader) do
     Class.new do
       include Shoko::Application::Ports::Outbound::DocumentLoader
@@ -45,7 +45,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
   end
   let(:path_resolution) do
     instance_double(
-      'PathResolution',
+      Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::PathResolution,
       canonical_path: '/books/a.epub',
       document_matches?: false,
       cache_pointer?: false
@@ -84,7 +84,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
     # Simulates reading deep into a long book, then opening a shorter one:
     # the stale current_chapter must not exceed the new total_chapters.
     reader_session_store.save(reader_session_store.load.with(current_chapter: 21, total_chapters: 30))
-    smaller_document = instance_double('Document', chapter_count: 16, canonical_path: '/books/a.epub')
+    smaller_document = instance_double(Shoko::Application::Models::ReaderDocument, chapter_count: 16, canonical_path: '/books/a.epub')
     allow(document_loader).to receive(:load).and_return(smaller_document)
 
     result = service.ensure_reader_document_for(

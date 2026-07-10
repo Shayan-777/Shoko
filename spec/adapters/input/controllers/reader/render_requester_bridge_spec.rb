@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Reader::RenderRequesterBridge do
-  let(:controller) { instance_double('ReaderController', request_render: nil) }
+  let(:controller) { instance_double(Shoko::Adapters::Input::Controllers::ReaderController, request_render: nil) }
 
   it 'posts the render request through the controller boundary without drawing' do
     bridge = described_class.new(controller: controller)

@@ -21,25 +21,25 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Dictionary::SetupSession do
   let(:ui_factory) { FakeSetupUiFactory.new(popup) }
   let(:book_path) { '/books/book-a.epub' }
   let(:reader_state) do
-    instance_double('ReaderState', selection: nil, dictionary_popup: popup, book_path: book_path)
+    instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, selection: nil, dictionary_popup: popup, book_path: book_path)
   end
   let(:config_reader) do
-    instance_double('ConfigReader', dictionary_source_lang: 'auto', dictionary_target_lang: 'en', dictionary_path: nil)
+    instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, dictionary_source_lang: 'auto', dictionary_target_lang: 'en', dictionary_path: nil)
   end
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil, update_config: nil) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil, update_config: nil) }
   let(:dictionary_service) do
-    instance_double('DictionaryService',
+    instance_double(Shoko::Core::Services::DictionaryService,
                     configured_source_lang: 'de', configured_target_lang: 'en',
                     available_language_pairs: available_pairs, language_pair_available?: false)
   end
   let(:available_pairs) { [] }
-  let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
-  let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko-dict') }
-  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
-  let(:reader_controller) { instance_double('ReaderController', draw_screen: nil) }
-  let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
-  let(:document) { instance_double('Document', metadata: { language: 'en_US' }, source_path: book_path, language: 'en_US') }
-  let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
+  let(:dictionary_catalog_service) { instance_double(Shoko::Adapters::Storage::DictionaryCatalogService) }
+  let(:dictionary_storage) { instance_double(Shoko::Application::Ports::Outbound::DictionaryStorage, ensure_databases_path: '/tmp/shoko-dict') }
+  let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService, set_message: nil) }
+  let(:reader_controller) { instance_double(Shoko::Adapters::Input::Controllers::ReaderController, draw_screen: nil) }
+  let(:input_controller) { instance_double(Shoko::Adapters::Input::ReaderInputController, enter_modal_mode: nil, exit_modal_mode: nil) }
+  let(:document) { instance_double(Shoko::Application::Models::ReaderDocument, metadata: { language: 'en_US' }, source_path: book_path, language: 'en_US') }
+  let(:clock) { instance_double(Shoko::Application::Ports::Outbound::Clock, monotonic_now: 1.0) }
   let(:dictionary_ui_session) do
     Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter.new(
       reader_state_reader: reader_state,

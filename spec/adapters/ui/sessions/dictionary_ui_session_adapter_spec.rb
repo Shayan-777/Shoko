@@ -4,10 +4,10 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
   let(:lookup_popup) do
-    instance_double('DictionaryLookupPopup', visible?: true, update_color_mode: nil, render: nil)
+    instance_double(Shoko::Adapters::Ui::Components::DictionaryLookupPopupComponent, visible?: true, update_color_mode: nil, render: nil)
   end
   let(:setup_popup) do
-    instance_double('DictionaryPopup',
+    instance_double(Shoko::Adapters::Ui::Components::DictionaryPopupComponent,
                     hide: nil,
                     visible?: false,
                     update_color_mode: nil,
@@ -23,18 +23,18 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
                     setup_mode?: true)
   end
   let(:reader_state_reader) do
-    instance_double('ReaderStateReader',
+    instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
                     dictionary_lookup_popup: lookup_popup,
                     dictionary_popup: setup_popup,
                     dictionary_result: nil,
                     mode: :dictionary)
   end
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil) }
   let(:ui_component_factory) do
-    instance_double('UIFactory', dictionary_lookup_popup: lookup_popup, dictionary_popup: setup_popup)
+    instance_double(Shoko::Adapters::Ui::ComponentFactory, dictionary_lookup_popup: lookup_popup, dictionary_popup: setup_popup)
   end
-  let(:logger) { instance_double('Logger', error: nil) }
-  let(:result) { instance_double('DictionaryResult', query: 'haus') }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, error: nil) }
+  let(:result) { instance_double(Shoko::Core::Models::DictionaryResult, query: 'haus') }
 
   subject(:session) do
     described_class.new(

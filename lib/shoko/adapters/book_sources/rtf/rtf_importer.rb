@@ -27,12 +27,16 @@ module Shoko
           CHAPTER_HEADING = /\A\s*(?:CHAPTER|Chapter)\s+[IVXLCDM\d]+\.?\s*\z/
           VOLUME_HEADING  = /\A\s*(?:VOLUME|Volume|PART|Part|BOOK|Book)\s+[IVXLCDM\d]+\.?\s*\z/
 
+          # `runtime_config` is part of the uniform importer construction
+          # contract (see Ports::Outbound::BookImporterResolver); RTF is not
+          # an archive format, so it is accepted and unused.
           def initialize(formatting_service: nil, extract_resources: false,
-                         progress_reporter: nil, instrumentation: nil)
+                         progress_reporter: nil, instrumentation: nil, runtime_config: nil)
             @formatting_service = formatting_service
             @extract_resources = extract_resources ? true : false
             @progress_reporter = progress_reporter
             @instrumentation = instrumentation
+            @runtime_config = runtime_config
           end
 
           # @param path [String] path to .rtf file

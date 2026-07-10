@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::UnifiedApplication do
   let(:epub_path) { '/books/example.epub' }
-  let(:app_mode_runner) { instance_double('AppModeRunner', run_reader: nil, run_menu: nil) }
+  let(:app_mode_runner) { instance_double(Shoko::Application::Ports::Outbound::AppModeRunner, run_reader: nil, run_menu: nil) }
   let(:deps) do
     described_class::Dependencies.new(
       app_mode_runner: app_mode_runner

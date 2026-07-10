@@ -11,13 +11,13 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
   end
 
   let(:coordinate_service) do
-    instance_double('CoordinateService',
+    instance_double(Shoko::Application::Services::CoordinateService,
                     normalize_selection_range: selection_range,
                     within_bounds?: true)
   end
-  let(:popup_position_service) { instance_double('PopupPositionService', calculate_popup_position: { x: 1, y: 1 }) }
+  let(:popup_position_service) { instance_double(Shoko::Application::Services::PopupPositionService, calculate_popup_position: { x: 1, y: 1 }) }
 
-  let(:clipboard_service) { instance_double('ClipboardService', available?: clipboard_available) }
+  let(:clipboard_service) { instance_double(Shoko::Adapters::Output::Clipboard::ClipboardService, available?: clipboard_available) }
   let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 20) }
 
   # Fake observable reader view-state: the popup menu reads its selection cursor

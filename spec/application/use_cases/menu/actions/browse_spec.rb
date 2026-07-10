@@ -38,10 +38,10 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Browse do
     )
   end
   let(:reader_launch_service) do
-    instance_double('ReaderLaunchService', run_reader: nil, file_not_found: :file_not_found)
+    instance_double(Shoko::Application::Workflows::Menu::ReaderLaunchService, run_reader: nil, file_not_found: :file_not_found)
   end
   let(:menu_browse_inspection) do
-    instance_double('Inspection', selected_library_path: '/open.cache', selected_library_source_path: selected_source)
+    instance_double(Shoko::Application::Ports::Outbound::MenuBrowseInspection, selected_library_path: '/open.cache', selected_library_source_path: selected_source)
   end
 
   subject(:action) do
@@ -94,7 +94,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Browse do
 
   describe 'browse and library selections are independent' do
     let(:menu_browse_inspection) do
-      instance_double('Inspection',
+      instance_double(Shoko::Application::Ports::Outbound::MenuBrowseInspection,
                       browse_item_count: 10, library_item_count: 10,
                       selected_library_path: '/open.cache', selected_library_source_path: selected_source)
     end

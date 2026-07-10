@@ -41,16 +41,16 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
 
   let(:reader_runtime_context) do
     instance_double(
-      'ReaderRuntimeContext',
+      Shoko::Application::Ports::Outbound::ReaderRuntimeContext,
       terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24)
     )
   end
   let(:layout_service) do
-    instance_double('LayoutService', calculate_metrics: [80, 20], adjust_for_line_spacing: 10)
+    instance_double(Shoko::Application::Services::LayoutService, calculate_metrics: [80, 20], adjust_for_line_spacing: 10)
   end
-  let(:page_calculator) { instance_double('PageCalculator', total_pages: 10) }
+  let(:page_calculator) { instance_double(Shoko::Application::Services::Pagination::PageCalculatorService, total_pages: 10) }
   let(:pagination_runtime) do
-    instance_double('PaginationRuntime', ensure_absolute_page_map: true)
+    instance_double(Shoko::Application::Services::Pagination::PaginationRuntime, ensure_absolute_page_map: true)
   end
 
   it 'calculates dynamic single page info' do

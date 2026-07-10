@@ -9,7 +9,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
 
   let(:notes_ui_session) do
     instance_double(
-      'NotesUiSession',
+      Shoko::Adapters::Ui::Sessions::NotesUiSessionAdapter,
       open: success_outcome(code: :notes_opened, status: :opened),
       close: success_outcome(code: :notes_closed, status: :closed),
       apply_selection: success_outcome,
@@ -20,12 +20,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
       visible?: true
     )
   end
-  let(:annotation_service) { instance_double('AnnotationService', add: nil, update: nil) }
+  let(:annotation_service) { instance_double(Shoko::Core::Services::AnnotationService, add: nil, update: nil) }
   let(:captured_quote_anchor) { { quote: 'a highlighted quote', position: 0.2 } }
   let(:captured_position_anchor) { { position: 0.3 } }
   let(:state_controller) do
     instance_double(
-      'StateController',
+      Shoko::Adapters::Input::Controllers::StateController,
       jump_to_annotation: nil,
       delete_annotation_by_id: 0,
       refresh_annotations: nil,
@@ -34,11 +34,11 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
       page_for_annotation: 3
     )
   end
-  let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
-  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
-  let(:selection_service) { instance_double('SelectionService', extract_text: 'a  highlighted   quote') }
-  let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: { 1 => {} }) }
+  let(:input_controller) { instance_double(Shoko::Adapters::Input::ReaderInputController, enter_modal_mode: nil, exit_modal_mode: nil) }
+  let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService, set_message: nil) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil) }
+  let(:selection_service) { instance_double(Shoko::Application::Services::SelectionService, extract_text: 'a  highlighted   quote') }
+  let(:rendered_content_reader) { instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader, rendered_lines: { 1 => {} }) }
 
   let(:existing_note) do
     { 'id' => 'note-1', 'text' => 'quoted text', 'note' => 'my thought',
@@ -64,7 +64,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
   end
 
   let(:reader_state) do
-    rs = instance_double('ReaderState')
+    rs = instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter)
     state.each_key { |field| allow(rs).to receive(field) { state[field] } }
     rs
   end

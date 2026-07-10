@@ -9,7 +9,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
   let(:observer_registry) { MenuScreenRenderHelpers::NullObserverRegistry.new }
   let(:menu_state_reader) do
     instance_double(
-      'MenuStateReader',
+      Shoko::Adapters::Runtime::SessionState::MenuSnapshotProjectionAdapter,
       browse_selected: 0,
       search_query: 'book',
       search_cursor: 4,
@@ -20,14 +20,14 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
       loading_message: nil
     )
   end
-  let(:menu_session_mutator) { instance_double('MenuSessionMutator', update_menu: nil) }
+  let(:menu_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::MenuSessionMutator, update_menu: nil) }
   let(:dependencies) do
-    instance_double('Dependencies', menu_state_reader: menu_state_reader, menu_session_mutator: menu_session_mutator,
+    instance_double(Shoko::Adapters::Ui::MenuUiDependencies, menu_state_reader: menu_state_reader, menu_session_mutator: menu_session_mutator,
                                     menu_hit_registry: nil)
   end
   let(:catalog) do
     instance_double(
-      'CatalogService',
+      Shoko::Application::UseCases::CatalogService,
       entries: [],
       scan_status: :done,
       scan_message: 'Ready',

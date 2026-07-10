@@ -27,7 +27,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::NotesLookupPopupComponent do
     }
   end
   let(:reader_state_reader) do
-    rs = instance_double('ReaderStateReader')
+    rs = instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter)
     notes_state.each_key { |field| allow(rs).to receive(field) { notes_state[field] } }
     rs
   end

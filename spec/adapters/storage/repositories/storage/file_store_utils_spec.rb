@@ -50,7 +50,7 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::FileStoreUtils d
 
     it 'logs a warning naming the source and destination' do
       File.write(store_path, 'not json')
-      logger = instance_spy('logger')
+      logger = instance_spy(Shoko::Application::Ports::Outbound::Logging)
 
       described_class.load_json_or_empty(store_path, logger: logger)
 

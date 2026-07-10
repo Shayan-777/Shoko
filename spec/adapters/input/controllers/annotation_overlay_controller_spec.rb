@@ -13,13 +13,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
     )
   end
 
-  let(:reader_state) { instance_double('ReaderStateReader', book_path: '/books/test.epub', annotations: []) }
+  let(:reader_state) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, book_path: '/books/test.epub', annotations: []) }
   let(:reader_session_mutator) do
-    instance_double('ReaderSessionMutator', update_reader: nil, clear_selection: nil)
+    instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil, clear_selection: nil)
   end
   let(:session) do
     instance_double(
-      'AnnotationOverlayUiSession',
+      Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter,
       close_editor: nil,
       editor_context: nil,
       editor_spellcheck_target: nil,
@@ -27,7 +27,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
       editor_show_spell_suggestions: nil
     )
   end
-  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
+  let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService, set_message: nil) }
 
   subject(:controller) do
     described_class.new(deps: build_deps)
@@ -36,7 +36,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
   it 'looks up spell suggestions for the current editor word via dictionary datasets' do
     target = { word: 'ambigues', start: 24, end: 32 }
     dictionary_service = instance_double(
-      'DictionaryService',
+      Shoko::Core::Services::DictionaryService,
       available?: true,
       available_language_pairs: [{ source: 'en', target: 'de' }],
       configured_source_lang: 'de',
@@ -87,7 +87,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
   it 'falls back to translation-side matches so German suggestions still work from an en-de dataset' do
     target = { word: 'wirtschaffdlich', start: 12, end: 27 }
     dictionary_service = instance_double(
-      'DictionaryService',
+      Shoko::Core::Services::DictionaryService,
       available?: true,
       available_language_pairs: [{ source: 'en', target: 'de' }],
       configured_source_lang: 'de',
@@ -138,7 +138,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
   it 'cycles to the next spell lookup scope when alt+d is pressed again on the same word' do
     target = { word: 'ambigues', start: 24, end: 32 }
     dictionary_service = instance_double(
-      'DictionaryService',
+      Shoko::Core::Services::DictionaryService,
       available?: true,
       available_language_pairs: [{ source: 'en', target: 'de' }, { source: 'de', target: 'en' }],
       configured_source_lang: 'de',
@@ -204,7 +204,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
   it 'resets to the best matching scope when the word changed at the same range' do
     target = { word: 'ambigues', start: 24, end: 32 }
     dictionary_service = instance_double(
-      'DictionaryService',
+      Shoko::Core::Services::DictionaryService,
       available?: true,
       available_language_pairs: [{ source: 'en', target: 'de' }, { source: 'de', target: 'en' }],
       configured_source_lang: 'de',

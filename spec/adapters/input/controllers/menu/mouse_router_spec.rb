@@ -6,17 +6,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::MouseRouter do
   let(:registry) { Shoko::Adapters::Ui::State::MenuHitRegistry.new }
   let(:menu_state_reader) do
     instance_double(
-      'MenuStateReader',
+      Shoko::Adapters::Runtime::SessionState::MenuSnapshotProjectionAdapter,
       mode: :menu, selected: 0, browse_selected: 0,
       rss_feeds: [{ key: '__all__', title: 'All Feeds' }, { key: 'f1', title: 'Daily' }],
       rss_articles: [{ id: 'a1', title: 'One' }],
       rss_selected_feed_key: '__all__', rss_selected_article_id: 'a1'
     )
   end
-  let(:mutator) { instance_double('MenuSessionMutator', update_menu: nil) }
-  let(:intent_handler) { instance_double('MenuIntentHandler', handle_menu_intent: :handled) }
-  let(:annotations_screen) { instance_double('AnnotationsScreen', selected: 1) }
-  let(:main_menu_component) { instance_double('MainMenuComponent', annotations_screen: annotations_screen) }
+  let(:mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::MenuSessionMutator, update_menu: nil) }
+  let(:intent_handler) { instance_double(Shoko::Application::Ports::Inbound::MenuIntentHandler, handle_menu_intent: :handled) }
+  let(:annotations_screen) { instance_double(Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenComponent, selected: 1) }
+  let(:main_menu_component) { instance_double(Shoko::Adapters::Ui::Components::MainMenuComponent, annotations_screen: annotations_screen) }
 
   subject(:router) do
     described_class.new(

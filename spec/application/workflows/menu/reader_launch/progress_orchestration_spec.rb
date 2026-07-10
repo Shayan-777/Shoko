@@ -26,7 +26,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
   end
   let(:progress_presenter) do
     instance_double(
-      'ProgressPresenter',
+      Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter,
       show: nil,
       clear: nil,
       update_status: false,
@@ -34,18 +34,18 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
       update: nil
     )
   end
-  let(:progress_presenters) { instance_double('ProgressPresenters', build: progress_presenter) }
-  let(:null_presenter) { instance_double('NullPresenter') }
-  let(:pagination_runtime) { instance_double('PaginationRuntime', build_full_map: nil) }
-  let(:pagination_orchestrator) { instance_double('PaginationOrchestrator', bind: pagination_runtime) }
-  let(:page_calculator) { instance_double('PageCalculator') }
-  let(:app_config_store) { instance_double('AppConfigStore') }
-  let(:reader_session_store) { instance_double('ReaderSessionStore') }
-  let(:reader_view_state_store) { instance_double('ReaderViewStateStore') }
-  let(:reader_pagination_store) { instance_double('ReaderPaginationStore') }
+  let(:progress_presenters) { instance_double(Shoko::Application::Ports::Outbound::MenuProgressPresenters, build: progress_presenter) }
+  let(:null_presenter) { instance_double(Shoko::Application::Workflows::Menu::NullProgressPresenter) }
+  let(:pagination_runtime) { instance_double(Shoko::Application::Services::Pagination::PaginationRuntime, build_full_map: nil) }
+  let(:pagination_orchestrator) { instance_double(Shoko::Application::Services::Pagination::PaginationOrchestrator, bind: pagination_runtime) }
+  let(:page_calculator) { instance_double(Shoko::Application::Services::Pagination::PageCalculatorService) }
+  let(:app_config_store) { instance_double(Shoko::Application::Ports::Outbound::AppConfigStore) }
+  let(:reader_session_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderSessionStore) }
+  let(:reader_view_state_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderViewStateStore) }
+  let(:reader_pagination_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderPaginationStore) }
   let(:reader_runtime_context) do
     instance_double(
-      'ReaderRuntimeContext',
+      Shoko::Application::Ports::Outbound::ReaderRuntimeContext,
       terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24)
     )
   end
@@ -115,7 +115,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
   end
 
   it 'binds the full pagination runtime contract during pagination build' do
-    document = instance_double('Document', cached?: false)
+    document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false)
 
     expect(pagination_orchestrator).to receive(:bind).with(
       doc: document,
@@ -143,7 +143,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
   end
 
   it 'scales document load progress into the load segment of the bar' do
-    document = instance_double('Document', cached?: false)
+    document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false)
     allow(pagination_runtime).to receive(:build_full_map)
 
     service.prepare_reader_launch(
@@ -164,7 +164,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
   end
 
   it 'reports 100% for cached documents only after the cache preload step' do
-    document = instance_double('Document', cached?: true)
+    document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: true)
 
     service.prepare_reader_launch(
       path: '/books/a.cache',

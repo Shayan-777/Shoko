@@ -44,7 +44,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
 
   it 'submits scan work to the provided executor' do
     executor = TestExecutor.new
-    book_finder = instance_double('BookFinder', scan_system: [{ 'name' => 'Book' }], load_cached_files: [])
+    book_finder = instance_double(Shoko::Adapters::BookSources::BookFinder, scan_system: [{ 'name' => 'Book' }], load_cached_files: [])
     scanner = described_class.new(executor: executor, book_finder: book_finder)
 
     scanner.start_scan
@@ -59,7 +59,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
 
   it 'shuts down owned executors during cleanup' do
     executor = TestExecutor.new
-    book_finder = instance_double('BookFinder', scan_system: [], load_cached_files: [])
+    book_finder = instance_double(Shoko::Adapters::BookSources::BookFinder, scan_system: [], load_cached_files: [])
     builder = TestBackgroundWorkerBuilder.new(executor: executor)
     scanner = described_class.new(background_worker_builder: builder, book_finder: book_finder)
     scanner.start_scan
@@ -74,7 +74,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
   it 'builds owned executor from configured background worker builder' do
     owned_executor = TestExecutor.new
     builder = TestBackgroundWorkerBuilder.new(executor: owned_executor)
-    book_finder = instance_double('BookFinder', scan_system: [], load_cached_files: [])
+    book_finder = instance_double(Shoko::Adapters::BookSources::BookFinder, scan_system: [], load_cached_files: [])
     scanner = described_class.new(background_worker_builder: builder, book_finder: book_finder)
 
     scanner.start_scan
@@ -87,7 +87,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
 
   it 'loads stale cached entries without starting a filesystem scan' do
     cached = [{ 'name' => 'Cached' }]
-    book_finder = instance_double('BookFinder', load_cached_files: cached)
+    book_finder = instance_double(Shoko::Adapters::BookSources::BookFinder, load_cached_files: cached)
     scanner = described_class.new(executor: TestExecutor.new, book_finder: book_finder)
 
     scanner.load_cached
@@ -101,7 +101,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
     executor = TestExecutor.new
     cached = [{ 'name' => 'Cached' }]
     fresh = [{ 'name' => 'Fresh' }]
-    book_finder = instance_double('BookFinder', scan_system: fresh, load_cached_files: cached)
+    book_finder = instance_double(Shoko::Adapters::BookSources::BookFinder, scan_system: fresh, load_cached_files: cached)
     scanner = described_class.new(executor: executor, book_finder: book_finder)
     scanner.load_cached
 
@@ -116,7 +116,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
   it 'turns unexpected scanner errors into scan error results' do
     executor = TestExecutor.new
     book_finder = instance_double(
-      'BookFinder',
+      Shoko::Adapters::BookSources::BookFinder,
       scan_system: nil,
       load_cached_files: []
     )
@@ -142,7 +142,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
 
       def shutdown(_timeout = nil); end
     end.new
-    book_finder = instance_double('BookFinder', scan_system: [], load_cached_files: [])
+    book_finder = instance_double(Shoko::Adapters::BookSources::BookFinder, scan_system: [], load_cached_files: [])
     scanner = described_class.new(executor: executor, book_finder: book_finder)
 
     scanner.start_scan(force: true)

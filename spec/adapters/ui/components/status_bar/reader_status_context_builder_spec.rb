@@ -95,7 +95,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::StatusBar::ReaderStatusContextBu
         search_results_query: 'whale',
         search_selected_index: 0,
       }
-      instance_double('ReaderStateReader', **defaults.merge(overrides))
+      instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, **defaults.merge(overrides))
     end
 
     def search_context(reader, **vm_overrides)
@@ -149,7 +149,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::StatusBar::ReaderStatusContextBu
         dictionary_fuzzy_mode: false,
         dictionary_fuzzy_matches: [],
       }
-      instance_double('ReaderStateReader', **defaults.merge(overrides))
+      instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, **defaults.merge(overrides))
     end
 
     def dict_context(reader, **vm_overrides)
@@ -218,7 +218,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::StatusBar::ReaderStatusContextBu
         translator_languages: [{ code: 'en', name: 'English' }, { code: 'de', name: 'German' }],
         translator_picker_query: '',
       }
-      instance_double('ReaderStateReader', **defaults.merge(overrides))
+      instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, **defaults.merge(overrides))
     end
 
     def translator_context(reader, **vm_overrides)

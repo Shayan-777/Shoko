@@ -39,7 +39,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::RssReaderWorkflow do
     end
   end
 
-  let(:service) { instance_double('RssReaderService') }
+  let(:service) { instance_double(Shoko::Adapters::Rss::RssReaderService) }
   let(:menu_session_store) do
     RssReaderWorkflowTestMenuSessionStore.new(
       Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build(

@@ -14,23 +14,23 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
 
   let(:page_calculator) do
     instance_double(
-      'PageCalculator',
+      Shoko::Application::Services::Pagination::PageCalculatorService,
       reset_session!: nil,
       build_dynamic_map!: { total_pages: 42 }
     )
   end
-  let(:config) { instance_double('Config', page_numbering_mode: :dynamic) }
+  let(:config) { instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, page_numbering_mode: :dynamic) }
   let(:reader_view_state_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build }
-  let(:app_config_store) { instance_double('AppConfigStore', load: config) }
-  let(:reader_view_state_store) { instance_double('ReaderViewStateStore', load: reader_view_state_snapshot) }
+  let(:app_config_store) { instance_double(Shoko::Application::Ports::Outbound::AppConfigStore, load: config) }
+  let(:reader_view_state_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderViewStateStore, load: reader_view_state_snapshot) }
   let(:reader_runtime_context) do
     instance_double(
-      'ReaderRuntimeContext',
+      Shoko::Application::Ports::Outbound::ReaderRuntimeContext,
       terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 120, height: 40)
     )
   end
-  let(:logger) { instance_double('Logger', debug: nil) }
-  let(:document) { instance_double('Document', canonical_path: '/books/a.epub') }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
+  let(:document) { instance_double(Shoko::Application::Models::ReaderDocument, canonical_path: '/books/a.epub') }
 
   subject(:service) do
     described_class.new(

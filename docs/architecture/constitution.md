@@ -167,6 +167,52 @@ Every resilient boundary:
 
 ## Amendments
 
+- **2026-07-11 — Spec doubles verify for real; signature probing joins the reflection ban; the last duplicated primitives consolidated.**
+  - **Mock verification is on and every `instance_double` names a real constant.**
+    The suite had 435 `instance_double('Name')` doubles whose string names did
+    not resolve (`'Document'`, `'Logger'`, `'ReaderStateReader'`, …) — under
+    RSpec defaults each silently degraded to a permissive double, so ~95% of
+    the suite's "verified" doubles verified nothing: the exact
+    permissive-doubles trap the 2026-07-10 amendment blamed for silent feature
+    death. Now `spec_helper` sets `verify_partial_doubles = true` and
+    `verify_doubled_constant_names = true` (an unresolvable name is an error —
+    the ratchet), and all 435 sites reference real constants (ports where the
+    double stands in for an injected dependency; concrete classes elsewhere;
+    `Proc` for the CLI factory lambdas). The conversion surfaced and fixed
+    genuine drift: `ReaderLaunch::Contracts::PathResolution` declared only 2 of
+    the 6 methods production calls (`canonical_path`, `canonical_recent_path`,
+    `document_matches?`, `cache_pointer?` were missing);
+    `Ports::Outbound::MenuBrowseInspection` lacked
+    `selected_library_source_path` and `Ports::Outbound::ReaderDocument` lacked
+    `chapters`, both called in production; specs stubbed a retired
+    `dictionary_panel` field, a renamed `close_dictionary` method, and a
+    `respond_to?` fossil of the removed probing.
+  - **`no_reflection_probing` now bans signature probing everywhere in lib.**
+    `x.method(:foo).parameters` / `klass.instance_method(:initialize).parameters`
+    is the `respond_to?` trap through a different door — it defends against
+    contracts the ports already pin and silently drops arguments when a
+    signature drifts. All six sites were removed: the folder-import workflow
+    and progress reporter call the `FolderImporter` port and the notifier
+    contract (`PAYLOAD_KEYS`) directly; `CacheImportAdapter` type-checks a new
+    `Ports::Outbound::DocumentWarmup` port instead of sniffing `#warm`;
+    `BookImporterResolverAdapter` constructs importers through the uniform
+    contract `new(progress_reporter:, runtime_config:)` (all five importers
+    accept both; the dead `logger:` kwarg left the resolver port end-to-end);
+    the FB2 parser's handler table dispatches statically (`title` is the one
+    depth-aware element, handled explicitly). The guardrail's third example
+    enforces the ban (`.parameters` / `arity`, whole lib, no allowlist).
+  - **The scrollbar/ensure-visible/symbolize stragglers are consolidated.**
+    The 2026-07-10 sweep covered the popup family but missed two hosts:
+    `MenuDesign::CanvasList#thumb_metrics` (character-identical to
+    `ListHelpers.scrollbar_thumb`) and the menu translator screen's third
+    thumb variant plus a hand-rolled ensure-visible window — both now call
+    `Ui::ListHelpers`. The eight hand-rolled `symbolize_keys`/`symbolize_hash`
+    helpers re-implementing `Shared::HashNormalizer` are gone (each site
+    delegates, preserving its own non-Hash behavior); `CatalogService` keeps
+    its raising validation but delegates the normalization, and its
+    `private`-masked class method became a plain private instance method
+    (the `Lint/IneffectiveAccessModifier` todo entry is gone).
+
 - **2026-07-10 — Dead event pipeline deleted; reflection-probing rule extended; popup primitives consolidated under R1's own bar.**
   - **The zero-subscriber event subsystem is gone.** `Application::State::EventBus`
     had no production subscriber — every `StateStore#update` built and emitted

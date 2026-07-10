@@ -3,15 +3,15 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Reader::InlineLinkNavigator do
-  let(:coordinate_service) { instance_double('CoordinateService') }
-  let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: rendered_lines) }
-  let(:reader_state_reader) { instance_double('ReaderStateReader', current_chapter: current_chapter) }
-  let(:state_controller) { instance_double('StateController', jump_to_chapter_offset: nil) }
-  let(:anchor_resolver) { instance_double('AnchorResolver') }
+  let(:coordinate_service) { instance_double(Shoko::Application::Services::CoordinateService) }
+  let(:rendered_content_reader) { instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader, rendered_lines: rendered_lines) }
+  let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, current_chapter: current_chapter) }
+  let(:state_controller) { instance_double(Shoko::Adapters::Input::Controllers::StateController, jump_to_chapter_offset: nil) }
+  let(:anchor_resolver) { instance_double(Shoko::Adapters::Input::Controllers::Reader::TocAnchorResolver) }
   let(:current_chapter) { 0 }
   let(:chapter_class) { Struct.new(:metadata) }
   let(:chapters) { [chapter_class.new({ source_path: 'OPS/ch1.xhtml' })] }
-  let(:document) { instance_double('ReaderDocument', chapters: chapters) }
+  let(:document) { instance_double(Shoko::Application::Ports::Outbound::ReaderDocument, chapters: chapters) }
   let(:document_reader) { -> { document } }
   let(:navigator) do
     described_class.new(

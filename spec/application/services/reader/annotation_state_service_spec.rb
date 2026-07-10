@@ -22,11 +22,11 @@ class AnnotationStateServiceTestReaderSessionStore
 end
 
 RSpec.describe Shoko::Application::Services::Reader::AnnotationStateService do
-  let(:core_annotation_service) { instance_double('CoreAnnotationService') }
+  let(:core_annotation_service) { instance_double(Shoko::Core::Services::AnnotationService) }
   let(:reader_session_store) do
     AnnotationStateServiceTestReaderSessionStore.new(Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build)
   end
-  let(:logger) { instance_double('Logger', debug: nil) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil) }
   let(:path) { '/tmp/book.epub' }
   let(:annotations) { [{ 'id' => 'a1' }] }
 

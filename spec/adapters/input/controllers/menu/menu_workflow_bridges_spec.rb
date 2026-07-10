@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::WorkflowPortsAdapter do
-  let(:catalog) { instance_double('Catalog', start_scan: nil) }
+  let(:catalog) { instance_double(Shoko::Application::UseCases::CatalogService, start_scan: nil) }
   let(:reader_runner) { double('ReaderRunner', call: nil) }
   let(:mode_switcher) { double('ModeSwitcher', call: nil) }
   let(:annotations_screen) do

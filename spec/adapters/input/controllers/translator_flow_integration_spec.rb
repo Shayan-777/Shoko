@@ -83,8 +83,8 @@ RSpec.describe 'Translator end-to-end flow' do
       end
     end.new
   end
-  let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
-  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
+  let(:input_controller) { instance_double(Shoko::Adapters::Input::ReaderInputController, enter_modal_mode: nil, exit_modal_mode: nil) }
+  let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService, set_message: nil) }
 
   subject(:controller) do
     Shoko::Adapters::Input::Controllers::TranslatorController.new(

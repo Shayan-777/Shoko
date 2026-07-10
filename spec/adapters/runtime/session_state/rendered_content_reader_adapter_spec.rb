@@ -3,8 +3,8 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Runtime::SessionState::RenderedContentReaderAdapter do
-  let(:state) { instance_double('StateStore') }
-  let(:render_registry) { instance_double('RenderRegistry') }
+  let(:state) { instance_double(Shoko::Application::State::StateStore) }
+  let(:render_registry) { instance_double(Shoko::Adapters::Ui::RenderRegistry) }
   let(:adapter) { described_class.new(state, render_registry: render_registry) }
 
   describe '#rendered_lines' do

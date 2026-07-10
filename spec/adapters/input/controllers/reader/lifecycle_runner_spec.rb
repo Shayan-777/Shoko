@@ -3,9 +3,9 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
-  let(:controller) { instance_double('ReaderController') }
-  let(:terminal_session) { instance_double('TerminalSession') }
-  let(:logger) { instance_double('Logger') }
+  let(:controller) { instance_double(Shoko::Adapters::Input::Controllers::ReaderController) }
+  let(:terminal_session) { instance_double(Shoko::Application::Ports::Outbound::TerminalSession) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging) }
   let(:background_worker_builder_class) do
     Class.new do
       include Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder
@@ -47,7 +47,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
 
   it 'builds background worker with logger and upgrades inline async executor' do
     inline_executor = Shoko::Adapters::Runtime::InlineExecutorAdapter.new
-    worker = instance_double('BackgroundWorker')
+    worker = instance_double(Shoko::Adapters::Storage::BackgroundWorker)
     builder = background_worker_builder_class.new(worker: worker, logger_expectation: logger)
 
     lifecycle = described_class.new(

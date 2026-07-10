@@ -36,7 +36,8 @@ RSpec.describe Shoko::Application::Services::BookDocumentLoader do
       @imported_paths = []
     end
 
-    def import(path, progress_reporter: nil, runtime_config: nil, logger: nil)
+    def import(path, progress_reporter: nil, runtime_config: nil)
+      _ = [progress_reporter, runtime_config]
       @imported_paths << path
       @book
     end

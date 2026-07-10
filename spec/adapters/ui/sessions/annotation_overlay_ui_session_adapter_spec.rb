@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter do
   let(:annotations_overlay) do
-    instance_double('AnnotationsOverlay',
+    instance_double(Shoko::Adapters::Ui::Components::AnnotationsOverlayComponent,
                     visible?: true,
                     hide: nil,
                     current_annotation: { id: 7, text: 'n' },
@@ -13,7 +13,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
                     :'selected_index=' => nil)
   end
   let(:editor_overlay) do
-    instance_double('AnnotationEditorOverlay',
+    instance_double(Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent,
                     visible?: true,
                     hide: nil,
                     update_color_mode: nil,
@@ -36,19 +36,19 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
                     chapter_index: 3)
   end
   let(:reader_state_reader) do
-    instance_double('ReaderStateReader',
+    instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter,
                     annotations_overlay: annotations_overlay,
                     annotation_editor_overlay: editor_overlay)
   end
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
-  let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: rendered_lines) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil) }
+  let(:rendered_content_reader) { instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader, rendered_lines: rendered_lines) }
   let(:rendered_lines) { { 'line-key' => { geometry: double('Geometry') } } }
   let(:ui_component_factory) do
-    instance_double('UIFactory',
+    instance_double(Shoko::Adapters::Ui::ComponentFactory,
                     annotations_overlay: annotations_overlay,
                     annotation_editor_overlay: editor_overlay)
   end
-  let(:logger) { instance_double('Logger', error: nil) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, error: nil) }
 
   subject(:session) do
     described_class.new(

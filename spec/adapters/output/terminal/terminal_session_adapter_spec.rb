@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::Terminal::TerminalSessionAdapter do
-  let(:terminal_service) { instance_double('TerminalService', setup: nil, cleanup: nil, size: [24, 80]) }
+  let(:terminal_service) { instance_double(Shoko::Adapters::Output::Terminal::TerminalService, setup: nil, cleanup: nil, size: [24, 80]) }
   subject(:adapter) { described_class.new(terminal_service: terminal_service) }
 
   it 'delegates setup/cleanup/size to terminal service' do

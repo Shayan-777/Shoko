@@ -7,7 +7,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationDetailScreenC
 
   let(:menu_state_reader) do
     instance_double(
-      'MenuStateReader',
+      Shoko::Adapters::Runtime::SessionState::MenuSnapshotProjectionAdapter,
       selected_annotation: {
         'id' => 'a1',
         'text' => 'Selected quote',
@@ -21,7 +21,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationDetailScreenC
       selected_annotation_book: '/tmp/book.epub'
     )
   end
-  let(:dependencies) { instance_double('Dependencies', menu_state_reader: menu_state_reader, menu_hit_registry: nil) }
+  let(:dependencies) { instance_double(Shoko::Adapters::Ui::MenuUiDependencies, menu_state_reader: menu_state_reader, menu_hit_registry: nil) }
   let(:component) { described_class.new(dependencies: dependencies) }
 
   [

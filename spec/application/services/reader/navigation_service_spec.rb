@@ -31,7 +31,7 @@ RSpec.describe Shoko::Application::Services::Reader::NavigationService do
 
   let(:reader_runtime_context) do
     instance_double(
-      'ReaderRuntimeContext',
+      Shoko::Application::Ports::Outbound::ReaderRuntimeContext,
       terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24),
       display_capabilities: Shoko::Application::Ports::Outbound::State::DisplayCapabilitiesSnapshot.build(
         kitty_images_enabled: false
@@ -53,7 +53,7 @@ RSpec.describe Shoko::Application::Services::Reader::NavigationService do
         total_chapters: 3
       )
     )
-    page_calculator = instance_double('PageCalculator', total_pages: 5)
+    page_calculator = instance_double(Shoko::Application::Services::Pagination::PageCalculatorService, total_pages: 5)
     allow(page_calculator).to receive(:get_page).with(1).and_return(chapter_index: 0)
 
     service = described_class.new(
@@ -61,7 +61,7 @@ RSpec.describe Shoko::Application::Services::Reader::NavigationService do
       reader_session_store: reader_session_store,
       reader_runtime_context: reader_runtime_context,
       page_calculator: page_calculator,
-      layout_service: instance_double('LayoutService'),
+      layout_service: instance_double(Shoko::Application::Services::LayoutService),
       wrapped_lines_provider: nil
     )
 
@@ -89,7 +89,7 @@ RSpec.describe Shoko::Application::Services::Reader::NavigationService do
         page_map: [5, 5, 5]
       )
     )
-    layout_service = instance_double('LayoutService', calculate_metrics: [80, 10], adjust_for_line_spacing: 4)
+    layout_service = instance_double(Shoko::Application::Services::LayoutService, calculate_metrics: [80, 10], adjust_for_line_spacing: 4)
 
     service = described_class.new(
       app_config_store: app_config_store,

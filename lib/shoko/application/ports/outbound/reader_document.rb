@@ -22,6 +22,10 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #get_chapter"
           end
 
+          def chapters
+            raise NotImplementedError, "#{self.class} must implement #chapters"
+          end
+
           def toc_entries
             raise NotImplementedError, "#{self.class} must implement #toc_entries"
           end

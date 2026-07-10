@@ -63,7 +63,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
     )
   end
   let(:translator_workflow) do
-    instance_double('MenuStateController', fetch_translation_languages: [], translate_text: nil)
+    instance_double(Shoko::Adapters::Input::Controllers::Menu::StateController, fetch_translation_languages: [], translate_text: nil)
   end
   let(:menu_translator_control) { double('MenuTranslatorControl', move_translator_cursor: nil) }
 

@@ -26,9 +26,9 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
   end
 
   let(:repository) { RssReaderServiceTestRepository.new }
-  let(:feed_fetcher) { instance_double('FeedFetcher') }
-  let(:article_content_fetcher) { instance_double('ArticleContentFetcher', fetch: nil) }
-  let(:wall_clock) { instance_double('Clock', utc_now: Time.utc(2026, 4, 6, 8, 30, 0)) }
+  let(:feed_fetcher) { instance_double(Shoko::Adapters::Rss::FeedFetcher) }
+  let(:article_content_fetcher) { instance_double(Shoko::Adapters::Rss::ArticleContentFetcher, fetch: nil) }
+  let(:wall_clock) { instance_double(Shoko::Application::Ports::Outbound::WallClock, utc_now: Time.utc(2026, 4, 6, 8, 30, 0)) }
 
   subject(:service) do
     described_class.new(

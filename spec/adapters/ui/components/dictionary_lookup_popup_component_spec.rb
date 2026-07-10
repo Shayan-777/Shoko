@@ -36,7 +36,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryLookupPopupComponent d
       dictionary_query: 'revolution',
     }
   end
-  let(:reader_state_reader) { instance_double('ReaderStateReader', **dictionary_state) }
+  let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, **dictionary_state) }
 
   subject(:component) { described_class.new(reader_state_reader: reader_state_reader) }
 

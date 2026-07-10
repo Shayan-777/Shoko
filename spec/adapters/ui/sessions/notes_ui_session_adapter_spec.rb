@@ -3,11 +3,11 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Sessions::NotesUiSessionAdapter do
-  let(:popup) { instance_double('NotesLookupPopup', update_color_mode: nil) }
-  let(:reader_state_reader) { instance_double('ReaderStateReader', notes_lookup_popup: nil, mode: :notes) }
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
-  let(:ui_component_factory) { instance_double('UIFactory', notes_lookup_popup: popup) }
-  let(:logger) { instance_double('Logger', error: nil) }
+  let(:popup) { instance_double(Shoko::Adapters::Ui::Components::NotesLookupPopupComponent, update_color_mode: nil) }
+  let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, notes_lookup_popup: nil, mode: :notes) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil) }
+  let(:ui_component_factory) { instance_double(Shoko::Adapters::Ui::ComponentFactory, notes_lookup_popup: popup) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, error: nil) }
 
   subject(:session) do
     described_class.new(

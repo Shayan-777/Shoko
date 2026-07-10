@@ -6,7 +6,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService::LineAssem
   let(:tokenizer) { described_class::Tokenizer }
   let(:runtime_config) do
     instance_double(
-      'RuntimeConfig',
+      Shoko::Application::Ports::Outbound::RuntimeConfig,
       line_assembler_tokenize_cache_disabled?: false,
       line_assembler_token_width_hints_disabled?: false,
       text_metrics_cache_disabled?: false,

@@ -3,10 +3,10 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
-  let(:catalog) { instance_double('Catalog', start_scan: nil) }
+  let(:catalog) { instance_double(Shoko::Application::UseCases::CatalogService, start_scan: nil) }
   let(:reader_launch_service) do
     instance_double(
-      'ReaderLaunchService',
+      Shoko::Application::Workflows::Menu::ReaderLaunchService,
       open_selected_book: nil,
       open_book: nil,
       run_reader: nil,
@@ -16,12 +16,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
       valid_cache_path?: true
     )
   end
-  let(:download_workflow) { instance_double('DownloadWorkflow', search_downloads: nil, download_book: nil) }
-  let(:dictionary_workflow) { instance_double('DictionaryWorkflow', fetch_dictionary_catalog: nil, download_dictionary: nil) }
-  let(:translator_workflow) { instance_double('TranslatorWorkflow', fetch_languages: [], translate_text: nil) }
+  let(:download_workflow) { instance_double(Shoko::Application::Workflows::Menu::DownloadWorkflow, search_downloads: nil, download_book: nil) }
+  let(:dictionary_workflow) { instance_double(Shoko::Application::Workflows::Menu::DictionaryWorkflow, fetch_dictionary_catalog: nil, download_dictionary: nil) }
+  let(:translator_workflow) { instance_double(Shoko::Application::Workflows::Menu::TranslatorWorkflow, fetch_languages: [], translate_text: nil) }
   let(:rss_reader_workflow) do
     instance_double(
-      'RssReaderWorkflow',
+      Shoko::Application::Workflows::Menu::RssReaderWorkflow,
       open_reader: nil,
       refresh_view: nil,
       sync_feeds: nil,
@@ -33,7 +33,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   end
   let(:annotation_workflow) do
     instance_double(
-      'AnnotationWorkflow',
+      Shoko::Application::Workflows::Menu::AnnotationWorkflow,
       open_selected_annotation: nil,
       open_selected_annotation_for_edit: nil,
       delete_selected_annotation: nil,

@@ -61,10 +61,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::TranslatorMouseHandler
     Shoko::Adapters::Ui::Components::Screens::TranslatorScreenComponent.new(dependencies: dependencies)
   end
   let(:menu_session_mutator) { menu_mutator_class.new(menu_state) }
-  let(:input_controller) { instance_double('InputController', activate: nil) }
-  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
+  let(:input_controller) { instance_double(Shoko::Adapters::Input::Controllers::Menu::InputController, activate: nil) }
+  let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService, set_message: nil) }
   let(:clipboard_service) do
-    instance_double('ClipboardService', available?: true, read_available?: true)
+    instance_double(Shoko::Adapters::Output::Clipboard::ClipboardService, available?: true, read_available?: true)
   end
 
   subject(:support) do

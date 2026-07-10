@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Application::UseCases::Reader::Actions::Notes do
   let(:reader_notes_control) do
     instance_double(
-      'ReaderNotesControl',
+      Shoko::Application::Ports::Outbound::ReaderNotesControl,
       open_notes_lookup: :handled,
       close_notes_lookup: :handled,
       move_notes_selection: :handled,

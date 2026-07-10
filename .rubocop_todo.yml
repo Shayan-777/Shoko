@@ -29,10 +29,6 @@ Lint/DuplicateBranch:
   Exclude:
     - 'lib/shoko/application/use_cases/reader/actions/search.rb'
 
-Lint/IneffectiveAccessModifier:
-  Exclude:
-    - 'lib/shoko/application/use_cases/catalog_service.rb'
-
 # Configuration parameters: AllowedMethods, AllowedPatterns, CountRepeatedAttributes, Max.
 Metrics/AbcSize:
   Exclude:

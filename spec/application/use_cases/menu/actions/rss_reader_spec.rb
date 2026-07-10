@@ -75,7 +75,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
   end
   let(:rss_reader_workflow) do
     instance_double(
-      'MenuStateController',
+      Shoko::Adapters::Input::Controllers::Menu::StateController,
       refresh_rss_reader: nil,
       sync_rss_feeds: nil,
       set_rss_article_read: nil,

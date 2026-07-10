@@ -207,21 +207,21 @@ RSpec.describe Shoko::Composition::DependencyContainer do
 
         it 'builds folder import warmup against the reader view state store' do
           page_calculator = instance_double(
-            'PageCalculator',
+            Shoko::Application::Services::Pagination::PageCalculatorService,
             reset_session!: nil,
             build_dynamic_map!: { total_pages: 42 }
           )
-          config = instance_double('Config', page_numbering_mode: :dynamic)
-          app_config_store = instance_double('AppConfigStore', load: config)
+          config = instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, page_numbering_mode: :dynamic)
+          app_config_store = instance_double(Shoko::Application::Ports::Outbound::AppConfigStore, load: config)
           reader_view_state_store = instance_double(
-            'ReaderViewStateStore',
+            Shoko::Application::Ports::Outbound::ReaderViewStateStore,
             load: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build
           )
           reader_runtime_context = instance_double(
-            'ReaderRuntimeContext',
+            Shoko::Application::Ports::Outbound::ReaderRuntimeContext,
             terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 100, height: 30)
           )
-          logger = instance_double('Logger', debug: nil)
+          logger = instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil)
           builder_container = double('Container')
 
           allow(builder_container).to receive(:resolve).with(:page_calculator).and_return(page_calculator)
@@ -231,7 +231,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           allow(builder_container).to receive(:resolve).with(:logger).and_return(logger)
 
           warmup = Shoko::Composition::ContainerFactory.send(:build_folder_import_document_warmup, builder_container)
-          document = instance_double('Document', canonical_path: '/books/a.epub')
+          document = instance_double(Shoko::Application::Models::ReaderDocument, canonical_path: '/books/a.epub')
 
           expect(page_calculator).to receive(:build_dynamic_map!).with(
             100,

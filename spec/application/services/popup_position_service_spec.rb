@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Application::Services::PopupPositionService do
   let(:reader_runtime_context) do
     instance_double(
-      'ReaderRuntimeContext',
+      Shoko::Application::Ports::Outbound::ReaderRuntimeContext,
       terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24)
     )
   end

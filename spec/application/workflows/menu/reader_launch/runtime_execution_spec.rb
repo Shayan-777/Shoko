@@ -47,22 +47,22 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
   end
   let(:reader_launch_state) do
     Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new.tap do |state|
-      state.preloaded_document = instance_double('Document')
-      state.background_worker = instance_double('BackgroundWorker')
+      state.preloaded_document = instance_double(Shoko::Application::Models::ReaderDocument)
+      state.background_worker = instance_double(Shoko::Adapters::Storage::BackgroundWorker)
     end
   end
   let(:menu_launch_state) { Shoko::Adapters::Runtime::SessionState::MenuLaunchStateAdapter.new }
-  let(:recent_files_repository) { instance_double('RecentFilesRepository', add: nil) }
-  let(:catalog) { instance_double('Catalog', update_scan_state: nil) }
-  let(:menu_runtime) { instance_double('MenuRuntime', run_reader: nil, switch_mode: nil) }
+  let(:recent_files_repository) { instance_double(Shoko::Application::Ports::Outbound::RecentFilesRepository, add: nil) }
+  let(:catalog) { instance_double(Shoko::Application::UseCases::CatalogService, update_scan_state: nil) }
+  let(:menu_runtime) { instance_double(Shoko::Application::Ports::Outbound::MenuReaderRuntime, run_reader: nil, switch_mode: nil) }
   let(:path_resolution) do
     instance_double(
-      'PathResolution',
+      Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::PathResolution,
       canonical_path: '/books/a.epub',
       canonical_recent_path: '/books/a.epub'
     )
   end
-  let(:logger) { instance_double('Logger', debug: nil, error: nil, warn: nil, respond_to?: true) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, debug: nil, error: nil, warn: nil) }
 
   subject(:service) do
     described_class.new(

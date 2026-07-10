@@ -124,7 +124,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
   end
 
   it 'uses the injected chapter cache factory' do
-    cache = instance_double('ChapterCache',
+    cache = instance_double(Shoko::Core::Services::Pagination::Internal::ChapterCache,
                             get_wrapped_lines: ['wrapped'],
                             clear_cache_for_width: nil)
     factory_calls = 0

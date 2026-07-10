@@ -18,7 +18,7 @@ RSpec.describe Shoko::Adapters::Monitoring::LoggerAdapter do
   end
 
   it 'raises logging error when output write fails' do
-    failing_output = instance_double('Output')
+    failing_output = instance_double(IO)
     allow(failing_output).to receive(:puts).and_raise(IOError, 'stream closed')
 
     logger = described_class.new(level: :debug, output: failing_output)

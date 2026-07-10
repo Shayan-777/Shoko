@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Core::Services::TranslationService do
-  let(:repository) { instance_double('TranslationRepository') }
+  let(:repository) { instance_double(Shoko::Application::Ports::Outbound::TranslationRepository) }
 
   subject(:service) { described_class.new(translation_repository: repository, logger: Shoko::Core::Services::NullLogger.new) }
 

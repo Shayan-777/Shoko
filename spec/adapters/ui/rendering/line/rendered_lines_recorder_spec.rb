@@ -12,7 +12,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::RenderedLinesRecorder d
     end
   end
   let(:runtime_config) { runtime_config_class.new }
-  let(:dependencies) { instance_double('RenderDependencies', runtime_config: runtime_config, logger: nil) }
+  let(:dependencies) { instance_double(Shoko::Adapters::Ui::Components::Reading::RenderDependencies, runtime_config: runtime_config, logger: nil) }
   let(:recorder) { described_class.new(buffer: buffer, dependencies: dependencies) }
 
   it 'records link spans and chapter source path for display lines with links' do

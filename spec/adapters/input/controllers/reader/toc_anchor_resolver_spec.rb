@@ -3,18 +3,18 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Reader::TocAnchorResolver do
-  let(:document) { instance_double('Document') }
+  let(:document) { instance_double(Shoko::Application::Models::ReaderDocument) }
   let(:document_reader) { -> { document } }
-  let(:formatting_service) { instance_double('FormattingService') }
+  let(:formatting_service) { instance_double(Shoko::Adapters::Output::Formatting::FormattingService) }
   let(:layout_service) do
     instance_double(
-      'LayoutService',
+      Shoko::Application::Services::LayoutService,
       effective_content_width: 80,
       calculate_metrics: [80, 20],
       adjust_for_line_spacing: 20
     )
   end
-  let(:config_reader) { instance_double('ConfigReader', view_mode: :single, line_spacing: :normal) }
+  let(:config_reader) { instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, view_mode: :single, line_spacing: :normal) }
   let(:resolver) do
     described_class.new(
       document_reader: document_reader,
@@ -108,7 +108,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::TocAnchorResolver do
     lines_137[181] = line_for_three_137
     lines_137[285] = line_for_thirty_five
 
-    dynamic_formatting_service = instance_double('FormattingService')
+    dynamic_formatting_service = instance_double(Shoko::Adapters::Output::Formatting::FormattingService)
     allow(dynamic_formatting_service).to receive(:wrap_all) do |_doc, _chapter_index, width, config:, lines_per_page:|
       case width
       when 137 then lines_137
@@ -116,14 +116,14 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::TocAnchorResolver do
       end
     end
 
-    dynamic_layout_service = instance_double('LayoutService')
+    dynamic_layout_service = instance_double(Shoko::Application::Services::LayoutService)
     allow(dynamic_layout_service).to receive(:effective_content_width) { |width| width }
     allow(dynamic_layout_service).to receive(:calculate_metrics) do |width, _height, _view_mode|
       [width, 20]
     end
     allow(dynamic_layout_service).to receive(:adjust_for_line_spacing).and_return(20)
 
-    ui_state = instance_double('UiStateReader', terminal_width: 137, terminal_height: 40)
+    ui_state = instance_double(Shoko::Adapters::Runtime::SessionState::ReaderRuntimeContextAdapter, terminal_width: 137, terminal_height: 40)
     resolver_with_ui = described_class.new(
       document_reader: document_reader,
       formatting_service: dynamic_formatting_service,

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative 'support/session_outcome_helpers'
 
 module Shoko
@@ -283,7 +284,7 @@ module Shoko
           private
 
           def editor_seed_attributes(text:, chapter_index:, annotation:)
-            normalized = annotation.is_a?(Hash) ? symbolize_annotation(annotation) : {}
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(annotation) || {}
             note_source = normalized[:note]
             note = (note_source || '').to_s
             {
@@ -293,10 +294,6 @@ module Shoko
               annotation_editor_chapter_index: chapter_index,
               annotation_editor_annotation_id: normalized[:id],
             }
-          end
-
-          def symbolize_annotation(annotation)
-            annotation.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
           end
 
           def annotations_overlay

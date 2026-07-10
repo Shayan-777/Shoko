@@ -5,8 +5,8 @@ require 'fileutils'
 require 'tmpdir'
 
 RSpec.describe Shoko::Adapters::BookSources::DownloadService do
-  let(:gutendex_client) { instance_double('GutendexClient') }
-  let(:libgen_client) { instance_double('LibgenClient') }
+  let(:gutendex_client) { instance_double(Shoko::Adapters::BookSources::GutendexClient) }
+  let(:libgen_client) { instance_double(Shoko::Adapters::BookSources::LibgenClient) }
   let(:downloads_root) { Dir.mktmpdir }
   let(:service) do
     described_class.new(

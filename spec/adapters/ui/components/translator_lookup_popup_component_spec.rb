@@ -32,7 +32,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TranslatorLookupPopupComponent d
       translator_cursor: 11,
     }
   end
-  let(:reader_state_reader) { instance_double('ReaderStateReader', **translator_state) }
+  let(:reader_state_reader) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, **translator_state) }
 
   subject(:component) { described_class.new(reader_state_reader: reader_state_reader) }
 

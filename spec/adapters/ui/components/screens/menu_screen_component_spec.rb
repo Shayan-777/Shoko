@@ -8,11 +8,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::MenuScreenComponent do
   let(:palette) { Shoko::Adapters::Ui::Components::StatusBar::Palette }
 
   let(:menu_state_reader) do
-    instance_double('MenuStateReader', selected: selected, translator_source_lang: 'auto',
+    instance_double(Shoko::Adapters::Runtime::SessionState::MenuSnapshotProjectionAdapter, selected: selected, translator_source_lang: 'auto',
                                        translator_target_lang: 'en')
   end
   let(:dependencies) do
-    instance_double('Dependencies',
+    instance_double(Shoko::Adapters::Ui::MenuUiDependencies,
                     menu_state_reader: menu_state_reader,
                     menu_hit_registry: nil)
   end

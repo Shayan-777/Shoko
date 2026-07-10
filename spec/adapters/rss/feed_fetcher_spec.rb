@@ -5,7 +5,7 @@ require 'zlib'
 require 'stringio'
 
 RSpec.describe Shoko::Adapters::Rss::FeedFetcher do
-  let(:parser) { instance_double('FeedParser') }
+  let(:parser) { instance_double(Shoko::Adapters::Rss::FeedParser) }
 
   subject(:fetcher) { described_class.new(parser: parser, open_timeout: 1, read_timeout: 1, redirect_limit: 2) }
 

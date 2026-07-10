@@ -4,11 +4,11 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
   let(:epub_path) { '/books/example.epub' }
-  let(:reader_controller) { instance_double('ReaderController', run: nil) }
-  let(:build_reader_controller) { instance_double('ReaderControllerBuilder', call: reader_controller) }
-  let(:terminal_session) { instance_double('TerminalSession', setup: nil, cleanup: nil) }
-  let(:instrumentation_service) { instance_double('InstrumentationService', start_trace: nil, cancel_trace: nil) }
-  let(:cache_availability) { instance_double('CacheAvailability', cache_available?: false) }
+  let(:reader_controller) { instance_double(Shoko::Adapters::Input::Controllers::ReaderController, run: nil) }
+  let(:build_reader_controller) { instance_double(Proc, call: reader_controller) }
+  let(:terminal_session) { instance_double(Shoko::Application::Ports::Outbound::TerminalSession, setup: nil, cleanup: nil) }
+  let(:instrumentation_service) { instance_double(Shoko::Adapters::Output::InstrumentationService, start_trace: nil, cancel_trace: nil) }
+  let(:cache_availability) { instance_double(Shoko::Application::Ports::Outbound::CacheAvailability, cache_available?: false) }
   let(:document_loader) do
     Class.new do
       include Shoko::Application::Ports::Outbound::DocumentLoader
@@ -16,23 +16,23 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
       def load(path:, progress_reporter: nil, background_worker: nil); end
     end.new
   end
-  let(:document) { instance_double('Document', cached?: false) }
-  let(:presenter) { instance_double('CLIProgressPresenter', start: nil, update_status: nil, finish: nil) }
-  let(:cli_progress_renderer) { instance_double('CLIProgressRenderer') }
-  let(:page_calculator) { instance_double('PageCalculatorService') }
+  let(:document) { instance_double(Shoko::Application::Models::ReaderDocument, cached?: false) }
+  let(:presenter) { instance_double(Shoko::Adapters::Runtime::CLIProgressPresenter, start: nil, update_status: nil, finish: nil) }
+  let(:cli_progress_renderer) { instance_double(Shoko::Adapters::Output::Terminal::CLIProgressRenderer) }
+  let(:page_calculator) { instance_double(Shoko::Application::Services::Pagination::PageCalculatorService) }
   let(:config_snapshot) { Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(page_numbering_mode: :dynamic) }
   # The production session snapshot deliberately carries NO pagination fields —
   # using it here (not the broad ReaderSnapshot) is what catches misrouted writes.
   let(:reader_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot.build(pending_progress: nil) }
   let(:pagination_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot.build }
-  let(:app_config_store) { instance_double('AppConfigStore', load: config_snapshot) }
-  let(:reader_session_store) { instance_double('ReaderSessionStore', load: reader_snapshot) }
-  let(:reader_pagination_store) { instance_double('ReaderPaginationStore', load: pagination_snapshot) }
+  let(:app_config_store) { instance_double(Shoko::Application::Ports::Outbound::AppConfigStore, load: config_snapshot) }
+  let(:reader_session_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderSessionStore, load: reader_snapshot) }
+  let(:reader_pagination_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderPaginationStore, load: pagination_snapshot) }
   let(:terminal_size) { Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24) }
-  let(:reader_runtime_context) { instance_double('ReaderRuntimeContext', terminal_size: terminal_size) }
-  let(:instrumentation_port) { instance_double('Instrumentation', measure: nil) }
-  let(:reader_launch_state) { instance_double('ReaderLaunchState', :'preloaded_document=' => nil) }
-  let(:logger) { instance_double('Logger', error: nil) }
+  let(:reader_runtime_context) { instance_double(Shoko::Application::Ports::Outbound::ReaderRuntimeContext, terminal_size: terminal_size) }
+  let(:instrumentation_port) { instance_double(Shoko::Application::Ports::Outbound::Instrumentation, measure: nil) }
+  let(:reader_launch_state) { instance_double(Shoko::Application::Ports::Outbound::ReaderLaunchState, :'preloaded_document=' => nil) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, error: nil) }
 
   subject(:runner) do
     described_class.new(

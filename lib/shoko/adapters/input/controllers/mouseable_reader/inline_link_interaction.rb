@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 module Shoko
   module Adapters
     module Input
@@ -69,7 +71,7 @@ module Shoko
             def normalize_hovered_inline_link(value)
               return nil unless value.is_a?(Hash)
 
-              normalized = symbolize_hash(value)
+              normalized = Shoko::Shared::HashNormalizer.symbolize_keys(value)
               start_char = normalized[:start_char].to_i
               end_char = normalized[:end_char].to_i
               href = normalized[:href].to_s.strip
@@ -82,12 +84,6 @@ module Shoko
                 end_char: end_char,
                 href: href,
               }
-            end
-
-            def symbolize_hash(value)
-              value.transform_keys do |key|
-                key.is_a?(String) ? key.to_sym : key
-              end
             end
 
             def released_primary_click?(event)

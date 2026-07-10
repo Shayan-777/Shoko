@@ -10,9 +10,11 @@ module Shoko
       module Fb2
         # Parses an FB2 section fragment into the common ContentBlock representation.
         class Fb2ContentParser
+          # Every handler here takes the element as its single argument;
+          # `title` — the only depth-aware element — is dispatched explicitly
+          # in #process_element.
           ELEMENT_HANDLERS = {
             'p' => :process_paragraph,
-            'title' => :process_title,
             'subtitle' => :process_subtitle,
             'image' => :process_image,
             'poem' => :process_poem,
@@ -64,28 +66,10 @@ module Shoko
             name = element_name(element)
             return process_children(element, depth: depth) if name == 'annotation'
             return process_children(element, depth: depth + 1) if name == 'section'
+            return process_title(element, depth: depth) if name == 'title'
 
             handler = ELEMENT_HANDLERS[name]
-            return unless handler
-
-            dispatch_handler(handler, element, depth: depth)
-          end
-
-          def dispatch_handler(handler, element, depth:)
-            parameters = method(handler).parameters
-            args = accepts_positional_argument?(parameters) ? [element] : []
-            kwargs = accepts_depth_keyword?(parameters) ? { depth: depth } : {}
-            send(handler, *args, **kwargs)
-          end
-
-          def accepts_positional_argument?(parameters)
-            parameters.any? { |kind, _name| %i[req opt rest].include?(kind) }
-          end
-
-          def accepts_depth_keyword?(parameters)
-            parameters.any? do |kind, name|
-              %i[key keyreq keyrest].include?(kind) && name == :depth
-            end
+            send(handler, element) if handler
           end
 
           def process_paragraph(element)
@@ -131,7 +115,7 @@ module Shoko
             append_block(:code, segments)
           end
 
-          def process_empty_line
+          def process_empty_line(_element = nil)
             append_block(:break, [])
           end
 

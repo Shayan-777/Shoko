@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::UseCases::Reader::Actions::Dictionary do
   let(:reader_dictionary_control) do
-    instance_double('ReaderDictionaryControl',
+    instance_double(Shoko::Application::Ports::Outbound::ReaderDictionaryControl,
                     open_dictionary_lookup: :handled,
                     close_dictionary_lookup: :handled,
                     submit_dictionary_lookup: :handled,
@@ -17,10 +17,10 @@ RSpec.describe Shoko::Application::UseCases::Reader::Actions::Dictionary do
                     move_dictionary_setup: :handled,
                     apply_dictionary_setup: :handled)
   end
-  let(:reader_view_mutator) { instance_double('ReaderViewMutator', update_reader: nil) }
-  let(:reader_view_state_store) { instance_double('ReaderViewStateStore', load: snapshot) }
+  let(:reader_view_mutator) { instance_double(Shoko::Application::Ports::Outbound::ReaderViewMutator, update_reader: nil) }
+  let(:reader_view_state_store) { instance_double(Shoko::Application::Ports::Outbound::ReaderViewStateStore, load: snapshot) }
   let(:snapshot) do
-    instance_double('ReaderViewSnapshot',
+    instance_double(Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot,
                     dictionary_query: dictionary_query,
                     dictionary_results_query: dictionary_results_query,
                     dictionary_selected_index: dictionary_selected_index,

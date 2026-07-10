@@ -15,7 +15,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::SessionSchemaResetGuard d
 
   let(:config_storage) { Shoko::Adapters::Storage::ConfigStorageAdapter.new }
   let(:cache_paths) { Shoko::Adapters::Storage::CachePaths }
-  let(:logger) { instance_double('Logger', info: nil) }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, info: nil) }
 
   def config_root = Shoko::Adapters::Storage::ConfigPaths.config_root
 

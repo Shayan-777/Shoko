@@ -9,7 +9,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
 
   let(:translator_ui_session) do
     instance_double(
-      'TranslatorUiSession',
+      Shoko::Adapters::Ui::Sessions::TranslatorUiSessionAdapter,
       open: success_outcome(code: :translator_opened, status: :opened),
       close: success_outcome(code: :translator_closed, status: :closed),
       write_source: success_outcome,
@@ -29,11 +29,11 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
       query: 'hello', translated_text: 'Hallo', source_lang: 'auto', target_lang: 'de'
     )
   end
-  let(:translation_service) { instance_double('TranslationService', translate: translation_result) }
-  let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
-  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
-  let(:clipboard_service) { instance_double('ClipboardService', read_text: 'world', copy_text?: true) }
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
+  let(:translation_service) { instance_double(Shoko::Core::Services::TranslationService, translate: translation_result) }
+  let(:input_controller) { instance_double(Shoko::Adapters::Input::ReaderInputController, enter_modal_mode: nil, exit_modal_mode: nil) }
+  let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService, set_message: nil) }
+  let(:clipboard_service) { instance_double(Shoko::Adapters::Output::Clipboard::ClipboardService, read_text: 'world', copy_text?: true) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil) }
 
   let(:state) do
     {
@@ -54,7 +54,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
   end
 
   let(:reader_state) do
-    rs = instance_double('ReaderState')
+    rs = instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter)
     state.each_key { |field| allow(rs).to receive(field) { state[field] } }
     rs
   end
@@ -94,13 +94,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
 
     it 'pre-fills and translates the selected text when opened from the popup Translate action' do
       state[:translator_query] = ''
-      selection_service = instance_double('SelectionService', extract_text: '  Bonjour le  monde ')
-      rendered = instance_double('RenderedContentReader', rendered_lines: {})
+      selection_service = instance_double(Shoko::Application::Services::SelectionService, extract_text: '  Bonjour le  monde ')
+      rendered = instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader, rendered_lines: {})
       selection_text_source = described_class::SelectionTextSource.new(
         selection_service: selection_service, rendered_content_reader: rendered
       )
       controller = described_class.new(
-        reader_state: reader_state, reader_session_mutator: instance_double('ReaderSessionMutator', update_reader: nil),
+        reader_state: reader_state, reader_session_mutator: instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil),
         translation_service: translation_service, translator_ui_session: translator_ui_session,
         input_controller: input_controller, selection_text_source: selection_text_source,
         notification_service: notification_service,

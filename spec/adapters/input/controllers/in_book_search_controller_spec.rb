@@ -8,26 +8,26 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
   end
 
   let(:in_book_search_ui_session) do
-    instance_double('InBookSearchUiSession',
+    instance_double(Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter,
                     open: success_outcome(code: :in_book_search_opened, status: :opened),
                     close: success_outcome(code: :in_book_search_closed, status: :closed),
                     apply_results: success_outcome(code: :in_book_search_results_applied),
                     visible?: true)
   end
-  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
-  let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
-  let(:state_controller) { instance_double('StateController', jump_to_chapter_offset: nil) }
-  let(:page_calculator) { instance_double('PageCalculator', pages_data: [], get_page: nil) }
-  let(:reader_controller) { instance_double('ReaderController', draw_screen: nil, page_calculator: page_calculator) }
+  let(:reader_session_mutator) { instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator, update_reader: nil) }
+  let(:input_controller) { instance_double(Shoko::Adapters::Input::ReaderInputController, enter_modal_mode: nil, exit_modal_mode: nil) }
+  let(:state_controller) { instance_double(Shoko::Adapters::Input::Controllers::StateController, jump_to_chapter_offset: nil) }
+  let(:page_calculator) { instance_double(Shoko::Application::Services::Pagination::PageCalculatorService, pages_data: [], get_page: nil) }
+  let(:reader_controller) { instance_double(Shoko::Adapters::Input::Controllers::ReaderController, draw_screen: nil, page_calculator: page_calculator) }
   let(:search_result) do
-    instance_double('SearchResult', query: 'many', matches: [{ match: 'many' }], total_matches: 1)
+    instance_double(Shoko::Core::Services::InBookSearchService::SearchResult, query: 'many', matches: [{ match: 'many' }], total_matches: 1)
   end
-  let(:search_service) { instance_double('SearchService', search: search_result) }
+  let(:search_service) { instance_double(Shoko::Core::Services::InBookSearchService, search: search_result) }
   let(:reader_state) do
-    instance_double('ReaderState', in_book_search_popup: nil, mode: :read, current_page_index: 17, search_query: 'many')
+    instance_double(Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter, in_book_search_popup: nil, mode: :read, current_page_index: 17, search_query: 'many')
   end
-  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
-  let(:clock) { instance_double('Clock', monotonic_now: 100.0) }
+  let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService, set_message: nil) }
+  let(:clock) { instance_double(Shoko::Application::Ports::Outbound::Clock, monotonic_now: 100.0) }
 
   subject(:controller) do
     described_class.new(

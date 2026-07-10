@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::ComponentFactory do
-  let(:config_reader) { instance_double('ConfigReader', theme: :default) }
+  let(:config_reader) { instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, theme: :default) }
   subject(:factory) { described_class.new(config_reader: config_reader) }
 
   it 'builds popup components with the active theme-derived color mode' do

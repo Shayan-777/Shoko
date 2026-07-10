@@ -2,6 +2,7 @@
 
 require_relative '../../application/ports/outbound/folder_importer'
 require_relative '../../application/ports/outbound/document_loader'
+require_relative '../../application/ports/outbound/document_warmup'
 require_relative '../support/progress_range_reporter'
 
 module Shoko
@@ -11,11 +12,12 @@ module Shoko
       class CacheImportAdapter
         include Shoko::Application::Ports::Outbound::FolderImporter
 
-        PROGRESS_REPORTER_KEYWORD_KINDS = %i[key keyreq keyrest].freeze
-
         def initialize(document_loader:, document_warmup: nil)
           unless document_loader.is_a?(Shoko::Application::Ports::Outbound::DocumentLoader)
             raise ArgumentError, 'document_loader must implement Application::Ports::Outbound::DocumentLoader'
+          end
+          if document_warmup && !document_warmup.is_a?(Shoko::Application::Ports::Outbound::DocumentWarmup)
+            raise ArgumentError, 'document_warmup must implement Application::Ports::Outbound::DocumentWarmup'
           end
 
           @document_loader = document_loader
@@ -40,12 +42,7 @@ module Shoko
         def warm_document(document, progress_reporter:)
           return unless @document_warmup
 
-          reporter = warmup_progress_reporter(progress_reporter)
-          if reporter && warmup_supports_progress_reporter?
-            @document_warmup.warm(document, progress_reporter: reporter)
-          else
-            @document_warmup.warm(document)
-          end
+          @document_warmup.warm(document, progress_reporter: warmup_progress_reporter(progress_reporter))
         end
 
         def load_progress_reporter(progress_reporter)
@@ -68,14 +65,6 @@ module Shoko
 
         def warmup_enabled?
           !@document_warmup.nil?
-        end
-
-        def warmup_supports_progress_reporter?
-          parameters = @document_warmup.method(:warm).parameters
-          parameters.any? do |kind, name|
-            PROGRESS_REPORTER_KEYWORD_KINDS.include?(kind) && name == :progress_reporter
-          end ||
-            parameters.any? { |kind, _name| kind == :keyrest }
         end
       end
     end

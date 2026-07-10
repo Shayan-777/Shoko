@@ -17,6 +17,10 @@ module Shoko
           def selected_library_path
             raise NotImplementedError, "#{self.class} must implement #selected_library_path"
           end
+
+          def selected_library_source_path
+            raise NotImplementedError, "#{self.class} must implement #selected_library_source_path"
+          end
         end
       end
     end

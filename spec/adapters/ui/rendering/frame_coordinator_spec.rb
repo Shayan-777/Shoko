@@ -35,7 +35,7 @@ RSpec.describe Shoko::Adapters::Ui::Rendering::FrameCoordinator do
   it 'renders loading overlay without raising' do
     terminal.reset!
     terminal_service = FakeTerminalService.new(terminal)
-    ui_state_reader = instance_double('UIStateReader', loading_progress: 0.5, loading_message: 'Loading')
+    ui_state_reader = instance_double(Shoko::Adapters::Runtime::SessionState::ReaderRuntimeContextAdapter, loading_progress: 0.5, loading_message: 'Loading')
     coordinator = described_class.new(
       terminal_service: terminal_service,
       terminal_state_writer: DummyTerminalStateWriter.new,

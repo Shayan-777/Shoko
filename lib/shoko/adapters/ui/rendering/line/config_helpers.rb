@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/core/models/reader_settings'
+require 'shoko/shared/hash_normalizer'
 
 module Shoko
   module Adapters
@@ -37,16 +38,10 @@ module Shoko
             end
 
             def hash_config_reader(config)
-              reader = symbolize_hash(config)[:config_reader]
+              reader = Shoko::Shared::HashNormalizer.symbolize_keys(config)[:config_reader]
               return config_reader_from(reader) if reader
 
               raise ArgumentError, 'config must expose config-like accessors'
-            end
-
-            def symbolize_hash(config)
-              config.transform_keys do |key|
-                key.is_a?(String) ? key.to_sym : key
-              end
             end
 
             def line_spacing(config)

@@ -3,10 +3,10 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Core::Services::DictionaryService do
-  let(:logger) { instance_double('Logger', error: nil, debug: nil) }
-  let(:repository) { instance_double('DictionaryRepository') }
+  let(:logger) { instance_double(Shoko::Application::Ports::Outbound::Logging, error: nil, debug: nil) }
+  let(:repository) { instance_double(Shoko::Application::Ports::Outbound::DictionaryRepository) }
   let(:config_reader) do
-    instance_double('ConfigReader',
+    instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot,
                     dictionary_source_lang: 'de',
                     dictionary_target_lang: 'en')
   end
@@ -78,7 +78,7 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     end
 
     it 'falls back to default languages when config is blank' do
-      blank_config = instance_double('ConfigReader', dictionary_source_lang: nil, dictionary_target_lang: '')
+      blank_config = instance_double(Shoko::Application::Ports::Outbound::State::ConfigSnapshot, dictionary_source_lang: nil, dictionary_target_lang: '')
       fallback_service = described_class.new(
         dictionary_repository: repository,
         config_reader: blank_config,
