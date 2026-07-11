@@ -32,18 +32,12 @@ module Shoko
           end
 
           def sanitize_display(text)
-            string = text.to_s
-            Shoko::Shared::TextSanitizer.sanitize(string, preserve_newlines: false, preserve_tabs: false)
-          rescue Shoko::Error
-            string.to_s
+            Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
           end
           private_class_method :sanitize_display
 
           def sanitize_content(text)
-            string = text.to_s
-            Shoko::Shared::TextSanitizer.sanitize(string, preserve_newlines: true, preserve_tabs: true)
-          rescue Shoko::Error
-            string.to_s
+            Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: true, preserve_tabs: true)
           end
           private_class_method :sanitize_content
 

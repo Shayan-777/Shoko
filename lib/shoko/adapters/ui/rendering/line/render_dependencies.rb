@@ -21,7 +21,8 @@ module Shoko
             :formatting_service,
             :wrapping_service,
             :kitty_image_renderer,
-            :runtime_config
+            :runtime_config,
+            :terminal_output
           )
         end
       end

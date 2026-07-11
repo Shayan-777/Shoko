@@ -30,8 +30,6 @@ module Shoko
 
         pre = decode_control_numeric_references(str)
         sanitize(pre, preserve_newlines: preserve_newlines, preserve_tabs: preserve_tabs)
-      rescue Shoko::Error
-        sanitize(text.to_s, preserve_newlines: preserve_newlines, preserve_tabs: preserve_tabs)
       end
 
       # @param text [String,nil]

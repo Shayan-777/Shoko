@@ -119,7 +119,6 @@ module Shoko
           register_application_services(container)
           register_state_management(container)
           register_library_services(container)
-          apply_test_configuration(container)
           container
         end
 
@@ -246,10 +245,6 @@ module Shoko
           lambda do
             Shoko::Adapters::Runtime::CLIProgressPresenter.new(renderer: renderer)
           end
-        end
-
-        def apply_test_configuration(container)
-          Shoko::TestSupport::TestMode.configure_container(container) if defined?(Shoko::TestSupport::TestMode)
         end
 
         def lazy_container_service(container, service_name)

@@ -290,8 +290,6 @@ module Shoko
             cleaned = cleaned.gsub('&amp;', '&').gsub('&lt;', '<').gsub('&gt;', '>')
                              .gsub('&quot;', '"').gsub('&#39;', "'").gsub('&apos;', "'")
             Shoko::Shared::TextSanitizer.sanitize(cleaned, preserve_newlines: false, preserve_tabs: false)
-          rescue Shoko::Error
-            text.to_s
           end
 
           def fallback_title(path)

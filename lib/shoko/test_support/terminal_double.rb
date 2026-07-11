@@ -47,15 +47,13 @@ module Shoko
         end
 
         def push_input(*keys)
-          ensure_input_queue
-          keys.flatten.each { |k| @input_queue << k }
+          keys.flatten.each { |k| input_queue << k }
         end
 
         def drain_input
-          ensure_input_queue
           drained = []
           loop do
-            drained << @input_queue.pop(true)
+            drained << input_queue.pop(true)
           rescue ThreadError
             break
           end
@@ -153,18 +151,19 @@ module Shoko
 
         private
 
-        def ensure_input_queue
-          @ensure_input_queue ||= Queue.new
+        def input_queue
+          @input_queue ||= Queue.new
         end
 
+        # Matches the production contract: a non-blocking read returns nil when
+        # no input is queued, and a timed read returns nil on timeout.
         def pop_key(non_block: false, timeout: nil)
-          ensure_input_queue
           if non_block
-            @input_queue.pop(true)
+            input_queue.pop(timeout: 0)
           elsif timeout
-            @input_queue.pop(timeout: timeout)
+            input_queue.pop(timeout: timeout)
           else
-            @input_queue.pop
+            input_queue.pop
           end
         end
       end

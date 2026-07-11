@@ -107,8 +107,6 @@ module Shoko
                 return [empty_page] if list.empty?
 
                 build_pages(list, per_page)
-              rescue Shoko::Error
-                [fallback_page(list)]
               end
 
               def build_pages(list, per_page)
@@ -207,10 +205,6 @@ module Shoko
 
               def empty_page
                 { start_line: 0, end_line: -1, lines: [] }
-              end
-
-              def fallback_page(list)
-                { start_line: 0, end_line: [list.length - 1, -1].max, lines: list }
               end
 
               def image_group_length(lines, start_index)

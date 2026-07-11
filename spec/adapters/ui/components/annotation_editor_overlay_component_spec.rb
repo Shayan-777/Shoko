@@ -111,6 +111,21 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
       expect(plain).to include('Annotation')
     end
 
+    it 'wraps and pads wide (CJK) quotes by display width so they stay inside the panel' do
+      wide_state = build_state(selected_text: ('漢字テキスト ' * 10).strip)
+      wide_component = described_class.new(reader_state_reader: wide_state, reader_session_mutator: mutator)
+
+      wide_component.render(surface, bounds)
+
+      metrics = Shoko::Shared::Terminal::TextMetrics
+      quote_rows = terminal.writes.map { |write| strip_ansi(write[:text]) }.select { |text| text.include?('│') }
+      layout = wide_component.send(:overlay_layout, bounds)
+      max_width = layout.width - (2 * described_class::PADDING_H)
+
+      expect(quote_rows).not_to be_empty
+      expect(quote_rows.map { |text| metrics.visible_length(text) }).to all(be <= max_width)
+    end
+
     it 'uses reduced-visibility backdrop tint in light mode as well' do
       component.update_color_mode(:light)
       layout = component.send(:overlay_layout, bounds)

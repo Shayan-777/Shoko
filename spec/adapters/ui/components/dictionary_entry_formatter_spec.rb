@@ -79,6 +79,27 @@ RSpec.describe Shoko::Adapters::Ui::Components::Dictionary::EntryFormatter do
       lines = formatter.format_result(error_result)
       expect(lines.join("\n")).to include('Lookup failed')
     end
+
+    it 'wraps wide (CJK) senses and translations by display width, not character count' do
+      wide_entry = Shoko::Core::Models::DictionaryEntry.new(
+        word: 'Haus',
+        language: 'German',
+        senses: ['家 家 家 家 家 家 家 家 家 家 家 家 家 家 家 家 家 家 家 家'],
+        translations: ['房子 房子 房子 房子 房子 房子 房子 房子 房子 房子 房子 房子']
+      )
+      wide_result = Shoko::Core::Models::DictionaryResult.new(
+        query: 'Haus',
+        entries: [wide_entry],
+        source_lang: 'de',
+        target_lang: 'en',
+        search_mode: :grouped
+      )
+
+      lines = described_class.new(width: 30).format_result(wide_result)
+      metrics = Shoko::Shared::Terminal::TextMetrics
+      overflowing = lines.select { |line| metrics.visible_length(line) > 30 }
+      expect(overflowing).to eq([])
+    end
   end
 
   describe '#format_fuzzy_results' do

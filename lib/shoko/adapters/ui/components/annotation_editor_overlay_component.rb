@@ -8,6 +8,7 @@ require_relative 'ui/overlay_layout'
 require_relative 'ui/annotation_markup'
 require 'shoko/shared/annotation_list_input'
 require_relative 'ui/cursor_blink'
+require_relative 'ui/text_utils'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/shared/key_definitions'
@@ -302,7 +303,7 @@ module Shoko
             return start_row if text.empty?
 
             quote_width = context[:width] - 3
-            lines = word_wrap(text, quote_width).first(2)
+            lines = Ui::TextUtils.wrap_prose(text, quote_width).first(2)
             render_quote_lines(context, start_row, quote_width, lines)
           end
 
@@ -334,40 +335,6 @@ module Shoko
             Shoko::Shared::Terminal::TextSanitizer.sanitize(
               text.to_s, preserve_newlines: false, preserve_tabs: false
             ).gsub(/\s+/, ' ').strip
-          rescue Shoko::Error
-            text.to_s.gsub(/\s+/, ' ').strip
-          end
-
-          def word_wrap(text, width)
-            return [''] if text.nil? || text.empty? || width <= 0
-
-            lines = []
-            text.split("\n", -1).each do |paragraph|
-              append_wrapped_paragraph(lines, paragraph, width)
-            end
-
-            lines.empty? ? [''] : lines
-          end
-
-          def append_wrapped_paragraph(lines, paragraph, width)
-            if paragraph.empty?
-              lines << ''
-              return
-            end
-
-            current = ''
-            paragraph.split(/\s+/).each do |word|
-              current = append_wrapped_word(lines, current, word, width)
-            end
-            lines << current
-          end
-
-          def append_wrapped_word(lines, current, word, width)
-            return word if current.empty?
-            return "#{current} #{word}" if current.length + 1 + word.length <= width
-
-            lines << current
-            word
           end
 
           def calc_viewport(cursor_line, height, total)
@@ -427,7 +394,7 @@ module Shoko
             qbg = quote_bg
             current_row = start_row
             lines.each do |line|
-              padded = line.ljust(quote_width)
+              padded = Shoko::Shared::Terminal::TextMetrics.pad_right(line, quote_width)
               content = "#{bg}#{glass_fg}#{DIM}│#{RESET_STYLE}" \
                         "#{qbg}#{panel_fg_emphasis} #{DIM}#{ITALIC}#{padded}#{RESET_STYLE}" \
                         "#{bg}#{panel_fg}"
@@ -493,8 +460,6 @@ module Shoko
 
           def visible_length(text)
             Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          rescue Shoko::Error
-            text.to_s.gsub(/\e\[[0-9;]*m/, '').length
           end
 
           def render_footer(context)

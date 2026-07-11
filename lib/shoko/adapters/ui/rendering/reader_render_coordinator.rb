@@ -254,6 +254,7 @@ module Shoko
               wrapping_service: reader_deps.wrapping_service,
               kitty_image_renderer: reader_deps.kitty_image_renderer,
               runtime_config: reader_deps.runtime_config,
+              terminal_output: reader_deps.terminal_service.output,
             }
           end
         end

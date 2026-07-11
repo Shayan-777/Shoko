@@ -140,8 +140,6 @@ module Shoko
 
           def sanitize_display(text)
             Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
-          rescue Shoko::Error
-            text.to_s
           end
         end
       end

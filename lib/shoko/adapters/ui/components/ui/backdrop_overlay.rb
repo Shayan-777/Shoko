@@ -7,8 +7,7 @@ module Shoko
         module Ui
           # Adapter-owned helper that exposes blended backdrop glyphs for overlays.
           class BackdropOverlay
-            def initialize(rendered_lines: nil, resilient: false)
-              @resilient = resilient == true
+            def initialize(rendered_lines: nil)
               @backdrop_rows_key = nil
               @backdrop_rows = {}
               update_rendered_lines(rendered_lines)
@@ -25,10 +24,6 @@ module Shoko
               return '' if normalized_width <= 0
 
               build_segment(row, col, normalized_width)
-            rescue Shoko::Error, StandardError
-              raise unless @resilient
-
-              ' ' * normalized_width
             end
 
             private

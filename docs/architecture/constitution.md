@@ -167,6 +167,57 @@ Every resilient boundary:
 
 ## Amendments
 
+- **2026-07-11 — Dead test-mode seam deleted; R4 enforced in the inverse direction; the last two width-blind word-wraps consolidated.**
+  - **The test-mode terminal seam is gone — it never did what it claimed.**
+    `TestSupport::TestMode` promised "deterministic test behaviour by swapping
+    in lightweight adapters": its const-swap replaced `Shoko::Terminal`, an
+    alias (`lib/shoko/terminal.rb`) that no file named explicitly, and
+    `TerminalService` resolves `Terminal` lexically to the real facade anyway,
+    so the swapped-in `TestTerminalService` still drove the real terminal. Its
+    `queue_input`/`drain_input`/`configure_size` helpers had no callers and
+    pushed keys into a queue nothing read. All of it — the alias file,
+    `test_mode.rb`, the composition root's `apply_test_configuration` hook,
+    and the stale `test_container_registration.rb`/`test_mode.rb`
+    composition-wiring allowlist entries — is deleted. The alias's one
+    *implicit* consumer surfaced by the deletion — `KittyImageLineRenderer`
+    reached the facade through bare-constant lookup (`output: Terminal`) —
+    now receives the sink as `RenderDependencies#terminal_output`, wired from
+    `terminal_service.output` like every other dependency. `TerminalDouble`
+    (the part that was real: specs inject it explicitly) survives, with its
+    `ensure_input_queue` bug fixed (it populated `@ensure_input_queue` instead
+    of `@input_queue`) and a contract-accurate non-blocking read (`nil` when
+    empty, matching `TerminalInput#read_key`, instead of raising
+    `ThreadError`).
+  - **R4 now also bans the inverse defect: `rescue Shoko::Error` over code
+    that cannot raise it.** Seventeen sites guarded pure primitives with dead
+    rescue+fallback branches — untested code that either never ran
+    (`TextSanitizer.sanitize` and `RenderStyle.color` never raise; the pdf/
+    fb2/kindle importers, epub serializer, cached-library repository,
+    lifecycle helpers, annotation editor, `sanitize_xml_source`'s
+    self-rescue, and the kitty line renderer's `String#split` guard all lost
+    theirs, as did the page-map builders' pure pagination loops) or, worse,
+    swallowed a wiring bug: the only
+    `Shoko::Error` that `TextMetrics` can raise is `ConfigurationError` for an
+    unconfigured runtime config, which the annotation-editor and
+    dictionary-popup rescues converted into a silently degraded regex-strip
+    render. Those now fail fast — composition configures TextMetrics on every
+    entry path, so the error is always a wiring defect. `BackdropOverlay`'s
+    `rescue Shoko::Error, StandardError` with a never-true `@resilient` flag
+    (no constructor ever passed it) is deleted along with the flag. The
+    rescue-conventions analyzer's `PROVABLY_NON_SHOKO_CALLS` table now also
+    lists the never-raising Shoko primitives (`TextSanitizer.sanitize`,
+    `sanitize_xml_source`, `HashNormalizer`, `RenderStyle.color`), so the
+    pattern regresses loudly.
+  - **The last two width-blind word-wraps are consolidated.** The 2026-07-10
+    sweep's "wide input can no longer overflow the panels" had two surviving
+    counterexamples, both measuring by `String#length`: the annotation
+    editor's quote wrap (plus its char-based `ljust` padding) and the
+    dictionary `EntryFormatter`'s sense/translation wrap. Both now use
+    `Ui::TextUtils.wrap_prose`/`wrap_words` (display-width-aware, long words
+    cell-wrapped) and `TextMetrics.pad_right`; wide-character regression specs
+    cover both. `EntryFormatter` also lost its now-unused `color_mode:`
+    parameter with the dead accent fallback.
+
 - **2026-07-11 — Spec doubles verify for real; signature probing joins the reflection ban; the last duplicated primitives consolidated.**
   - **Mock verification is on and every `instance_double` names a real constant.**
     The suite had 435 `instance_double('Name')` doubles whose string names did

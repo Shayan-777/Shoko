@@ -47,8 +47,6 @@ module Shoko
 
                   segments = Array(text_metrics.wrap_plain_text(text, width))
                   wrapped.concat(segments.empty? ? [text] : segments)
-                rescue Shoko::Error
-                  wrapped << text
                 end
               end
             end

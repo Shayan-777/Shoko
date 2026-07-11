@@ -144,8 +144,6 @@ module Shoko
 
             def core_src(src)
               src.to_s.split(/[?#]/, 2).first.to_s
-            rescue Shoko::Error
-              src.to_s
             end
 
             def normalize_placement_id(raw)
@@ -202,7 +200,7 @@ module Shoko
             def prepare_virtual_args(context:, chapter_entry:, src:, cols:, rows:, placement_id:)
               doc = context&.document
               {
-                output: Terminal,
+                output: @dependencies.terminal_output,
                 book_sha: doc&.cache_sha,
                 epub_path: doc&.canonical_path,
                 chapter_entry_path: chapter_entry,

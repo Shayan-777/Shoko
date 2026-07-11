@@ -37,8 +37,6 @@ RSpec.describe 'Composition is the only concrete wiring' do
       'composition/container_factory/domain_application_registration.rb',
       'composition/container_factory/infrastructure_registration.rb',
       'composition/container_factory/port_and_repository_registration.rb',
-      'composition/container_factory/test_container_registration.rb',
-      'test_support/test_mode.rb',
     ]
   end
 

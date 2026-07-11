@@ -33,11 +33,10 @@ module Shoko
               'ko' => 'Korean',
             }.freeze
 
-            def initialize(width:, background: nil, color_mode: :dark, accent: nil)
+            def initialize(width:, background: nil, accent: nil)
               @width = width
               @content_width = [width - 2, 10].max
               @bg = background || ''
-              @color_mode = color_mode
               @accent_override = accent
             end
 
@@ -152,7 +151,7 @@ module Shoko
 
               lines = []
               senses.first(4).each_with_index do |sense, idx|
-                wrapped = word_wrap(sense, @content_width - 4)
+                wrapped = Ui::TextUtils.wrap_words(sense, @content_width - 4)
                 wrapped.each_with_index do |line, line_idx|
                   lines << if line_idx.zero?
                              "#{DIM}#{idx + 1}.#{RESET_STYLE} #{line}"
@@ -220,20 +219,8 @@ module Shoko
 
             def formatted_translation_lines(translations)
               translations.first(4).flat_map do |translation|
-                word_wrap(translation, @content_width - 4).each_with_index.map do |line, idx|
+                Ui::TextUtils.wrap_words(translation, @content_width - 4).each_with_index.map do |line, idx|
                   idx.zero? ? "  #{accent}→#{RESET_STYLE} #{line}" : "    #{line}"
-                end
-              end
-            end
-
-            def word_wrap(text, width)
-              return [text] if text.length <= width
-
-              text.split.each_with_object([]) do |word, lines|
-                if lines.empty? || (lines.last.length + word.length + 1) > width
-                  lines << word
-                else
-                  lines[-1] = "#{lines.last} #{word}"
                 end
               end
             end
@@ -248,8 +235,6 @@ module Shoko
               return @accent_override if @accent_override
 
               RenderStyle.color(:accent)
-            rescue Shoko::Error
-              @color_mode == :light ? "\e[34m" : "\e[96m"
             end
           end
         end

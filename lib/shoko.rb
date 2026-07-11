@@ -5,7 +5,6 @@ $LOAD_PATH.unshift(lib_root) unless $LOAD_PATH.include?(lib_root)
 
 require_relative 'shoko/shared/version'
 require_relative 'shoko/shared/errors'
-require_relative 'shoko/terminal'
 require_relative 'shoko/application/unified_application'
 require_relative 'shoko/composition/runtime_composition'
 require_relative 'shoko/composition/container_factory'

@@ -2,7 +2,6 @@
 
 require_relative 'base_component'
 require_relative 'ui/overlay_layout'
-require_relative 'ui/text_utils'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/shared/key_definitions'
 require_relative '../constants/ui_constants'
@@ -590,8 +589,6 @@ module Shoko
 
           def truncate_visible(text, width)
             Shared::Terminal::TextMetrics.truncate_to(text.to_s, width.to_i)
-          rescue Shoko::Error
-            Ui::TextUtils.truncate_text(text.to_s.gsub(/\e\[[0-9;]*m/, ''), width)
           end
 
           def language_chip(value, active:)
@@ -729,8 +726,6 @@ module Shoko
 
           def visible_length(text)
             Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          rescue Shoko::Error
-            text.to_s.gsub(/\e\[[0-9;]*m/, '').length
           end
 
           def panel_bg

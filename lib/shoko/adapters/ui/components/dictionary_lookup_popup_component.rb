@@ -167,7 +167,6 @@ module Shoko
             Dictionary::EntryFormatter.new(
               width: [width - 1, 12].max,
               background: Palette::DICT_BG,
-              color_mode: @color_mode,
               accent: Palette::DICT_TRANS_FG
             )
           end

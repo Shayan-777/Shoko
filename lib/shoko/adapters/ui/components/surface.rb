@@ -9,7 +9,7 @@ module Shoko
       module Components
         # Terminal wrapper that applies bounds and basic clipping
         class Surface
-          def initialize(output = Terminal)
+          def initialize(output)
             @output = output
             @style_stack = []
           end

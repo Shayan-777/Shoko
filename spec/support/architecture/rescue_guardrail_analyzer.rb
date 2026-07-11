@@ -11,16 +11,26 @@ module SpecSupport
       NUMERIC_LITERAL_TAGS = %i[@int @float @rational @imaginary].freeze
       PASS_THROUGH_VAR_TAGS = %i[@ident @ivar @cvar @gvar].freeze
 
-      # Calls that provably cannot raise Shoko::Error: their failures are raw
-      # stdlib exceptions (JSON::ParserError, Errno::*, IOError). A
-      # `rescue Shoko::Error` sitting directly over one of these is the R4
-      # regression — the handler promises containment the class can't deliver,
-      # and the real error escapes (constitution §VIII).
+      # Calls that provably cannot raise Shoko::Error. Two families:
+      # - raw stdlib calls whose failures are stdlib exceptions
+      #   (JSON::ParserError, Errno::*, IOError) — the handler promises
+      #   containment the class can't deliver, and the real error escapes;
+      # - pure Shoko primitives that never raise at all (TextSanitizer and
+      #   HashNormalizer handle malformed input internally; RenderStyle.color
+      #   is a hash lookup) — the rescue is dead code and its fallback branch
+      #   is untested behavior that never runs.
+      # Either way, a `rescue Shoko::Error` directly over one of these is the
+      # R4 regression: rescue breadth must match what the guarded code can
+      # actually raise (constitution §VIII).
       PROVABLY_NON_SHOKO_CALLS = {
         'JSON.parse' => /\bJSON\.parse\b/,
         'JSON.load' => /\bJSON\.load\b/,
         'File.read' => /\bFile\.read\b/,
-        'File.binread' => /\bFile\.binread\b/
+        'File.binread' => /\bFile\.binread\b/,
+        'TextSanitizer.sanitize' => /\bTextSanitizer\.sanitize\b/,
+        'TextSanitizer.sanitize_xml_source' => /\bTextSanitizer\.sanitize_xml_source\b/,
+        'HashNormalizer' => /\bHashNormalizer\./,
+        'RenderStyle.color' => /\bRenderStyle\.color\b/
       }.freeze
 
       def fallback_literal_rescue_offenders(lib_root:)

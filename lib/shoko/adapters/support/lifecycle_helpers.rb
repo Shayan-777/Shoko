@@ -60,8 +60,6 @@ module Shoko
                     Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
                   end
           value.to_s
-        rescue Shoko::Error
-          text.to_s
         end
       end
     end

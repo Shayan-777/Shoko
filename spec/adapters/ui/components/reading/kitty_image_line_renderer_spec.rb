@@ -17,6 +17,10 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::KittyImageLineRenderer 
     def kitty_image_renderer
       @kitty
     end
+
+    def terminal_output
+      :terminal_output
+    end
   end
 
   Line = Struct.new(:metadata)
