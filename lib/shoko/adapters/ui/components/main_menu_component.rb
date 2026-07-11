@@ -13,6 +13,7 @@ require_relative 'screens/browse_screen_component'
 require_relative 'screens/library_screen_component'
 require_relative 'screens/settings_screen_component'
 require_relative 'screens/dictionary_settings_screen_component'
+require_relative 'screens/translator_packs_screen_component'
 require_relative 'screens/download_books_screen_component'
 require_relative 'screens/translator_screen_component'
 require_relative 'screens/rss_reader_screen_component'
@@ -43,7 +44,8 @@ module Shoko
             rss_reader: :rss_reader, rss_reader_feed_input: :rss_reader, rss_reader_filter: :rss_reader,
             download: :download, download_search: :download, download_source_select: :download,
             translator: :translator, translator_source_dropdown: :translator, translator_target_dropdown: :translator,
-            settings: :settings, dictionary: :settings, dictionary_search: :settings
+            settings: :settings, dictionary: :settings, dictionary_search: :settings,
+            translator_packs: :settings, translator_packs_search: :settings
           }.freeze
 
           SCREEN_FACTORY_BUILDERS = {
@@ -52,6 +54,7 @@ module Shoko
             library: :build_library_screen,
             settings: :build_settings_screen,
             dictionary: :build_dictionary_screen,
+            translator_packs: :build_translator_packs_screen,
             download: :build_download_screen,
             translator: :build_translator_screen,
             rss_reader: :build_rss_reader_screen,
@@ -82,6 +85,7 @@ module Shoko
             mapped = case new_value
                      when :search then :browse
                      when :dictionary_search then :dictionary
+                     when :translator_packs_search then :translator_packs
                      when :download_search, :download, :download_source_select then :download
                      when :translator_source_dropdown, :translator_target_dropdown then :translator
                      when :rss_reader_feed_input, :rss_reader_filter then :rss_reader
@@ -287,6 +291,13 @@ module Shoko
 
           def build_dictionary_screen
             Screens::DictionarySettingsScreenComponent.new(
+              dependencies: @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+          end
+
+          def build_translator_packs_screen
+            Screens::TranslatorPacksScreenComponent.new(
               dependencies: @menu_ui_dependencies,
               menu_visual_profile: @menu_visual_profile
             )

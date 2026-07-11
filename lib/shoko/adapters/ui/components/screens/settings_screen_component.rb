@@ -103,6 +103,10 @@ module Shoko
                 description: 'Open dictionary catalog, download, and lookup settings.',
                 controls: 'Enter or Space opens dictionary settings.',
               },
+              open_translator_packs: {
+                description: 'Open translator settings: on-device language packs and the backend choice.',
+                controls: 'Enter or Space opens translator settings.',
+              },
               toggle_kitty_images: {
                 description: 'Enable inline images when Kitty graphics are supported.',
                 controls: 'Enter or Space toggles image rendering.',
@@ -326,7 +330,7 @@ module Shoko
             def static_value_for(action)
               case action
               when :back_to_menu then ['Return', Palette::LANDING_DIM_FG]
-              when :open_dictionary_settings then ['Open', Palette::LANDING_DIM_FG]
+              when :open_dictionary_settings, :open_translator_packs then ['Open', Palette::LANDING_DIM_FG]
               when :wipe_cache then ['Run', Palette::LIST_MATCH_FG]
               end
             end

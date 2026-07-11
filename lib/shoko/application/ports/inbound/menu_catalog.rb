@@ -45,6 +45,7 @@ module Shoko
             SettingsItem.new(action: :toggle_page_numbers, icon_key: :page_numbers, label: 'Page Numbers'),
             SettingsItem.new(action: :toggle_highlight_quotes, icon_key: :highlight, label: 'Text Highlighting'),
             SettingsItem.new(action: :open_dictionary_settings, icon_key: :dictionary, label: 'Dictionary'),
+            SettingsItem.new(action: :open_translator_packs, icon_key: :translator, label: 'Translator'),
             SettingsItem.new(action: :toggle_kitty_images, icon_key: :images, label: 'Inline Images'),
             SettingsItem.new(action: :toggle_prepaginate_on_resize, icon_key: :page_mode,
                              label: 'Pre-paginate Library'),
@@ -73,6 +74,16 @@ module Shoko
                                      action: :dictionary_refresh),
           ].freeze
 
+          TRANSLATOR_PACKS_ACTION_ITEMS = [
+            DictionaryActionItem.new(key: :back, label: 'Back', value_key: :back_value,
+                                     action: :translator_packs_back),
+            DictionaryActionItem.new(key: :backend, label: 'Backend', value_key: :backend_value,
+                                     action: :toggle_translator_backend),
+            DictionaryActionItem.new(key: :engine, label: 'Engine', value_key: :engine_value, action: nil),
+            DictionaryActionItem.new(key: :refresh, label: 'Refresh Catalog', value_key: :refresh_value,
+                                     action: :translator_packs_refresh),
+          ].freeze
+
           module_function
 
           def main_menu_items
@@ -97,6 +108,14 @@ module Shoko
 
           def dictionary_action_item(index)
             DICTIONARY_ACTION_ITEMS[index]
+          end
+
+          def translator_packs_action_items
+            TRANSLATOR_PACKS_ACTION_ITEMS
+          end
+
+          def translator_packs_action_item(index)
+            TRANSLATOR_PACKS_ACTION_ITEMS[index]
           end
         end
       end

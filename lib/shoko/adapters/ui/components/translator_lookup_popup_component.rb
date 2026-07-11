@@ -358,7 +358,7 @@ module Shoko
           def error_lines
             message = @result.error_message.to_s.strip
             message = 'Translation failed' if message.empty?
-            [dim_line(message), dim_line('Is a LibreTranslate server running?')]
+            [dim_line(message), dim_line('Check Settings → Translator for language packs and backend.')]
           end
 
           def stale?

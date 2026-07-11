@@ -102,6 +102,7 @@ RSpec.describe 'Ports contract' do
         Shoko::Application::UseCases::Menu::Actions::Browse::SUPPORTED_INTENTS +
         Shoko::Application::UseCases::Menu::Actions::Search::SUPPORTED_INTENTS +
         Shoko::Application::UseCases::Menu::Actions::Dictionary::SUPPORTED_INTENTS +
+        Shoko::Application::UseCases::Menu::Actions::TranslatorPacks::SUPPORTED_INTENTS +
         Shoko::Application::UseCases::Menu::Actions::Download::SUPPORTED_INTENTS +
         Shoko::Application::UseCases::Menu::Actions::Translator::SUPPORTED_INTENTS +
         Shoko::Application::UseCases::Menu::Actions::RssReader::SUPPORTED_INTENTS +

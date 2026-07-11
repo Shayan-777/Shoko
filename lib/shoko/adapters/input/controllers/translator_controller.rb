@@ -347,7 +347,7 @@ module Shoko
           # (translating the text it just extracted, no state round-trip).
           #
           # The HTTP call runs through the async relay so a slow or unreachable
-          # LibreTranslate server cannot freeze the reader; the event loop's
+          # translation backend cannot freeze the reader; the event loop's
           # translator poll drains the result onto this thread.
           def translate_text(text, announce: false)
             text = text.to_s.strip
@@ -375,10 +375,15 @@ module Shoko
 
           def announce_translation(result)
             if result.error?
-              set_message('Translation failed — is LibreTranslate running?', 3)
+              set_message(translation_failure_message(result), 3)
             else
               set_message("Translated to #{LanguageDirectory.name_for(@reader_state.translator_target_lang)}", 2)
             end
+          end
+
+          def translation_failure_message(result)
+            detail = result.error_message.to_s.strip
+            detail.empty? ? 'Translation failed' : "Translation failed — #{detail}"
           end
 
           # ----- language picker -----

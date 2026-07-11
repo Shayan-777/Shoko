@@ -23,6 +23,9 @@ module Shoko
               %i[menu dictionary_status],
               %i[menu dictionary_results],
               %i[menu dictionary_selected],
+              %i[menu translator_packs_status],
+              %i[menu translator_packs_results],
+              %i[menu translator_packs_selected],
             ].freeze
 
             THROTTLED_PATHS = [
@@ -32,6 +35,8 @@ module Shoko
               %i[menu download_progress],
               %i[menu dictionary_message],
               %i[menu dictionary_progress],
+              %i[menu translator_packs_message],
+              %i[menu translator_packs_progress],
             ].freeze
 
             OBSERVED_PATHS = (FORCED_PATHS + THROTTLED_PATHS).freeze

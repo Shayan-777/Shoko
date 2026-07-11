@@ -19,6 +19,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   let(:download_workflow) { instance_double(Shoko::Application::Workflows::Menu::DownloadWorkflow, search_downloads: nil, download_book: nil) }
   let(:dictionary_workflow) { instance_double(Shoko::Application::Workflows::Menu::DictionaryWorkflow, fetch_dictionary_catalog: nil, download_dictionary: nil) }
   let(:translator_workflow) { instance_double(Shoko::Application::Workflows::Menu::TranslatorWorkflow, fetch_languages: [], translate_text: nil) }
+  let(:translator_packs_workflow) { instance_double(Shoko::Application::Workflows::Menu::TranslatorPacksWorkflow, fetch_pack_catalog: nil, download_pack: nil) }
   let(:rss_reader_workflow) do
     instance_double(
       Shoko::Application::Workflows::Menu::RssReaderWorkflow,
@@ -45,6 +46,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
     workflows = described_class::WorkflowDependencies.new(
       download_workflow: download_workflow,
       dictionary_workflow: dictionary_workflow,
+      translator_packs_workflow: translator_packs_workflow,
       translator_workflow: translator_workflow,
       rss_reader_workflow: rss_reader_workflow,
       annotation_workflow: annotation_workflow

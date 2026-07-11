@@ -25,6 +25,7 @@ module Shoko
               library: %i[move_library_selection_up move_library_selection_down],
               settings: %i[move_settings_selection_up move_settings_selection_down],
               dictionary: %i[move_dictionary_selection_up move_dictionary_selection_down],
+              translator_packs: %i[move_translator_packs_selection_up move_translator_packs_selection_down],
               download: %i[move_download_selection_up move_download_selection_down],
               download_source: %i[move_download_source_selection_up move_download_source_selection_down],
               annotations: %i[move_annotation_selection_up move_annotation_selection_down],
@@ -41,6 +42,7 @@ module Shoko
               library: :activate_library_selection,
               settings: :activate_settings_selection,
               dictionary: :activate_dictionary_selection,
+              translator_packs: :activate_translator_packs_selection,
               download: :activate_download_selection,
               download_source: :activate_download_source_selection,
               annotations: :activate_annotation_selection,
@@ -54,6 +56,7 @@ module Shoko
               library: :library_selected,
               settings: :settings_selected,
               dictionary: :dictionary_selected,
+              translator_packs: :translator_packs_selected,
               download: :download_selected,
               download_source: :download_source_selected,
             }.freeze

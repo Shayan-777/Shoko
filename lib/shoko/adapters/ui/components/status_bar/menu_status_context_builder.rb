@@ -27,12 +27,14 @@ module Shoko
               rss_reader: { label: 'RSS', title: 'RSS Reader' },
               annotations: { label: 'NOTES', title: 'Annotations' },
               dictionary: { label: 'DICTIONARY', title: 'Dictionary' },
+              translator_packs: { label: 'TRANSLATOR', title: 'Translator Settings' },
             }.freeze
 
             # Sub-modes collapse onto their canonical view.
             MODE_ALIASES = {
               search: :browse,
               dictionary_search: :dictionary,
+              translator_packs_search: :translator_packs,
               download_search: :download,
               download_source_select: :download,
               translator_source_dropdown: :translator,
@@ -52,6 +54,8 @@ module Shoko
               download_search: { label: 'SEARCH', query: :download_query, placeholder: 'search the catalog' },
               dictionary_search: { label: 'FILTER', query: :dictionary_query,
                                    placeholder: 'filter the dictionary catalog' },
+              translator_packs_search: { label: 'FILTER', query: :translator_packs_query,
+                                         placeholder: 'filter the language packs' },
               rss_reader_feed_input: { label: 'ADD FEED', query: :rss_feed_input,
                                        placeholder: 'paste an RSS or Atom feed URL' },
               rss_reader_filter: { label: 'FILTER', query: :rss_filter_query,

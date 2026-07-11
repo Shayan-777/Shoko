@@ -10,6 +10,7 @@ module Shoko
             WorkflowDependencies = Data.define(
               :download_workflow,
               :dictionary_workflow,
+              :translator_packs_workflow,
               :translator_workflow,
               :rss_reader_workflow,
               :annotation_workflow
@@ -89,6 +90,14 @@ module Shoko
               @dictionary_workflow.fetch_dictionary_catalog
             end
 
+            def fetch_pack_catalog
+              @translator_packs_workflow.fetch_pack_catalog
+            end
+
+            def download_pack(entry)
+              @translator_packs_workflow.download_pack(entry)
+            end
+
             def download_dictionary(entry)
               @dictionary_workflow.download_dictionary(entry)
             end
@@ -163,6 +172,7 @@ module Shoko
             def assign_workflows(workflows)
               @download_workflow = workflows.download_workflow
               @dictionary_workflow = workflows.dictionary_workflow
+              @translator_packs_workflow = workflows.translator_packs_workflow
               @translator_workflow = workflows.translator_workflow
               @rss_reader_workflow = workflows.rss_reader_workflow
               @annotation_workflow = workflows.annotation_workflow

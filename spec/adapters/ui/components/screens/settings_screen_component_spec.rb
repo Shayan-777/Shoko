@@ -84,7 +84,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
     end
 
     it 'shows the highlighted setting description in the inspector well on wide canvases' do
-      allow(menu_state_reader).to receive(:settings_selected).and_return(22)
+      allow(menu_state_reader).to receive(:settings_selected).and_return(23)
 
       writes = render_component(component, width: 110, height: 30)
       text = strip_ansi(rendered_text(writes))
@@ -94,7 +94,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
     end
 
     it 'keeps the selected setting visible near the end of the list' do
-      allow(menu_state_reader).to receive(:settings_selected).and_return(22)
+      allow(menu_state_reader).to receive(:settings_selected).and_return(23)
 
       writes = render_component(component, width: 80, height: 24)
       text = strip_ansi(rendered_text(writes))

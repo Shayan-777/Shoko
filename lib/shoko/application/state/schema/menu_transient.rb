@@ -32,6 +32,10 @@ module Shoko
             translator_message
             translator_selection
             translator_context_menu
+            translator_packs_results
+            translator_packs_status
+            translator_packs_message
+            translator_packs_progress
             rss_feeds
             rss_articles
             rss_status
@@ -67,6 +71,10 @@ module Shoko
             translator_message: 'Type text to translate.',
             translator_selection: nil,
             translator_context_menu: nil,
+            translator_packs_results: [],
+            translator_packs_status: :idle,
+            translator_packs_message: '',
+            translator_packs_progress: 0.0,
             rss_feeds: [],
             rss_articles: [],
             rss_status: :empty,

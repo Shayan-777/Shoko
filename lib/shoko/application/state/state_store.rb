@@ -32,7 +32,8 @@ module Shoko
           end
         end
 
-        SYMBOL_KEYS = %i[view_mode line_spacing download_source page_numbering_mode theme dictionary_backend].freeze
+        SYMBOL_KEYS = %i[view_mode line_spacing download_source page_numbering_mode theme dictionary_backend
+                         translator_backend].freeze
         LINE_SPACING_ALIASES = { tight: :compact, wide: :relaxed }.freeze
         private_constant :SYMBOL_KEYS, :LINE_SPACING_ALIASES
 

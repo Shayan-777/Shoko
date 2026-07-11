@@ -23,6 +23,8 @@ module Shoko
               register_settings_bindings
               register_dictionary_bindings
               register_dictionary_search_bindings
+              register_translator_packs_bindings
+              register_translator_packs_search_bindings
               register_download_bindings
               register_download_search_bindings
               register_download_source_bindings
@@ -251,6 +253,34 @@ module Shoko
               bind_intent!(bindings, ['/'], :open_dictionary_mode, payload: mode_change(:dictionary_search))
               bind_intent!(bindings, ['r'], :refresh_dictionary_results)
               dispatcher.register_mode(:dictionary, bindings)
+            end
+
+            def register_translator_packs_bindings
+              bindings = {}
+              add_nav_up_down(bindings, :move_translator_packs_selection_up, :move_translator_packs_selection_down)
+              add_confirm_bindings(bindings, :activate_translator_packs_selection)
+              bind_intent!(bindings, @key_classifier.action_keys(:space), :activate_translator_packs_selection)
+              keys = Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
+              bind_intent!(bindings, keys, :close_translator_packs_mode)
+              bind_intent!(bindings, ['/'], :open_translator_packs_mode, payload: mode_change(:translator_packs_search))
+              bind_intent!(bindings, ['r'], :refresh_translator_packs)
+              dispatcher.register_mode(:translator_packs, bindings)
+            end
+
+            def register_translator_packs_search_bindings
+              bindings = {}
+              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_translator_packs_query,
+                           payload: edit_op(:backspace))
+              bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_translator_packs_query,
+                           payload: edit_op(:delete))
+              bindings[:__default__] = edit_op_text_binding(:edit_translator_packs_query)
+              add_confirm_bindings(bindings, :submit_translator_packs_query)
+              bind_intent!(bindings, ['/'], :close_translator_packs_mode, payload: mode_change(:translator_packs))
+              bind_intent!(bindings,
+                           @key_classifier.action_keys(:cancel),
+                           :close_translator_packs_mode,
+                           payload: mode_change(:translator_packs))
+              dispatcher.register_mode(:translator_packs_search, bindings)
             end
 
             def register_translator_bindings

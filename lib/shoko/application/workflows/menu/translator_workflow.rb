@@ -9,10 +9,11 @@ module Shoko
       module Menu
         # Coordinates menu-side translation requests and transient translator state.
         #
-        # Network calls run through an AsyncResultRelay so a slow or
-        # unreachable LibreTranslate server cannot freeze the menu; results are
-        # applied on the menu thread when the relay drains. Without a relay
-        # executor the workflow stays fully synchronous.
+        # Backend calls run through an AsyncResultRelay so a slow backend (a
+        # first model load, or an unreachable LibreTranslate server) cannot
+        # freeze the menu; results are applied on the menu thread when the
+        # relay drains. Without a relay executor the workflow stays fully
+        # synchronous.
         class TranslatorWorkflow
           include Shoko::Application::UseCases::Support::MenuSessionAccess
 

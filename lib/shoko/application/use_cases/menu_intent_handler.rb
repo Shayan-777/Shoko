@@ -6,6 +6,7 @@ require_relative 'menu/actions/navigation'
 require_relative 'menu/actions/browse'
 require_relative 'menu/actions/search'
 require_relative 'menu/actions/dictionary'
+require_relative 'menu/actions/translator_packs'
 require_relative 'menu/actions/download'
 require_relative 'menu/actions/translator'
 require_relative 'menu/actions/rss_reader'
@@ -33,6 +34,7 @@ module Shoko
           reader_launch_service:,
           download_workflow:,
           dictionary_workflow:,
+          translator_packs_workflow:,
           translator_workflow:,
           rss_reader_workflow:,
           annotation_workflow:,
@@ -64,6 +66,12 @@ module Shoko
           @dictionary = Shoko::Application::UseCases::Menu::Actions::Dictionary.new(
             menu_session_store: menu_session_store,
             dictionary_workflow: dictionary_workflow,
+            settings_service: settings_service,
+            menu_transient_store: menu_transient_store
+          )
+          @translator_packs = Shoko::Application::UseCases::Menu::Actions::TranslatorPacks.new(
+            menu_session_store: menu_session_store,
+            translator_packs_workflow: translator_packs_workflow,
             settings_service: settings_service,
             menu_transient_store: menu_transient_store
           )
@@ -100,6 +108,7 @@ module Shoko
             catalog: catalog,
             navigation_actions: @navigation,
             dictionary_actions: @dictionary,
+            translator_packs_actions: @translator_packs,
             menu_transient_store: menu_transient_store
           )
           @lifecycle = Shoko::Application::UseCases::Menu::Actions::Lifecycle.new(
@@ -126,6 +135,7 @@ module Shoko
             browse: @browse,
             search: @search,
             dictionary: @dictionary,
+            translator_packs: @translator_packs,
             download: @download,
             translator: @translator,
             rss_reader: @rss_reader,

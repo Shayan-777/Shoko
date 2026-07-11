@@ -87,6 +87,13 @@ module Shoko
           new_backend
         end
 
+        def toggle_translator_backend
+          current = current_config.translator_backend.to_s
+          new_backend = current == 'libretranslate' ? :local : :libretranslate
+          dispatch_config(translator_backend: new_backend)
+          new_backend
+        end
+
         def cycle_dictionary_pair
           pairs = available_dictionary_pairs.map { |pair| [pair[:source], pair[:target]] }
           next_pair = next_dictionary_pair(

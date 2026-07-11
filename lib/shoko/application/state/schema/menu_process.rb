@@ -49,6 +49,9 @@ module Shoko
             dictionary_selected
             dictionary_query
             dictionary_cursor
+            translator_packs_selected
+            translator_packs_query
+            translator_packs_cursor
             translator_input_text
             translator_input_cursor
             translator_source_lang
@@ -99,6 +102,9 @@ module Shoko
             dictionary_selected: 0,
             dictionary_query: '',
             dictionary_cursor: 0,
+            translator_packs_selected: 0,
+            translator_packs_query: '',
+            translator_packs_cursor: 0,
             translator_input_text: '',
             translator_input_cursor: 0,
             translator_source_lang: 'auto',

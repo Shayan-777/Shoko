@@ -33,6 +33,7 @@ module Shoko
             dictionary_target_lang
             dictionary_path
             dictionary_backend
+            translator_backend
             paragraph_style
             justify
             book_colors
@@ -60,6 +61,9 @@ module Shoko
             dictionary_target_lang: 'en',
             dictionary_path: nil,
             dictionary_backend: nil,
+            # :local runs the bundled on-device engine over downloaded
+            # Firefox translation models; :libretranslate talks to a server.
+            translator_backend: :local,
             # Typesetting: paragraph_style follows the book's own design by
             # default (spaced/indent force the classic modes); justify adds
             # full justification; book_colors toggles book-specified colors.

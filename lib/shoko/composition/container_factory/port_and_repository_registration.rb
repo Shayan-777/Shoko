@@ -19,6 +19,11 @@ require_relative '../format_registry_composition'
 require_relative '../../adapters/storage/dictionary_availability_adapter'
 require_relative '../../adapters/storage/dictionary_storage_adapter'
 require_relative '../../adapters/translation/libre_translate_adapter'
+require_relative '../../adapters/translation/local_translate_adapter'
+require_relative '../../adapters/translation/backend_selector'
+require_relative '../../adapters/translation/engine_client'
+require_relative '../../adapters/translation/model_store'
+require_relative '../../adapters/translation/model_catalog_service'
 require_relative '../../adapters/storage/data_cleanup_adapter'
 require_relative '../../adapters/storage/cache_manager_adapter'
 require_relative '../../adapters/storage/cache_paths'
@@ -238,13 +243,45 @@ module Shoko
         end
 
         def register_translation_ports(container)
+          container.register_singleton(:translation_model_store) do |c|
+            Shoko::Adapters::Translation::ModelStore.new(logger: c.resolve(:logger))
+          end
+          container.register_singleton(:translation_engine_client) do |c|
+            Shoko::Adapters::Translation::EngineClient.new(logger: c.resolve(:logger))
+          end
+          container.register_singleton(:translation_model_catalog) do |c|
+            Shoko::Adapters::Translation::ModelCatalogService.new(logger: c.resolve(:logger))
+          end
+          register_translation_repository(container)
+        end
+
+        def register_translation_repository(container)
           container.register_singleton(:translation_repository) do |c|
-            Shoko::Adapters::Translation::LibreTranslateAdapter.new(
-              base_url: c.resolve(:runtime_config).translate_base_url ||
-                        Shoko::Adapters::Translation::LibreTranslateAdapter::DEFAULT_BASE_URL,
+            Shoko::Adapters::Translation::BackendSelector.new(
+              backend_factories: {
+                local: -> { build_local_translate_adapter(c) },
+                libretranslate: -> { build_libre_translate_adapter(c) },
+              },
+              config_reader: c.resolve(:app_config_store),
               logger: c.resolve(:logger)
             )
           end
+        end
+
+        def build_local_translate_adapter(container)
+          Shoko::Adapters::Translation::LocalTranslateAdapter.new(
+            engine_client: container.resolve(:translation_engine_client),
+            model_store: container.resolve(:translation_model_store),
+            logger: container.resolve(:logger)
+          )
+        end
+
+        def build_libre_translate_adapter(container)
+          Shoko::Adapters::Translation::LibreTranslateAdapter.new(
+            base_url: container.resolve(:runtime_config).translate_base_url ||
+                      Shoko::Adapters::Translation::LibreTranslateAdapter::DEFAULT_BASE_URL,
+            logger: container.resolve(:logger)
+          )
         end
 
         def register_storage_ports(container)

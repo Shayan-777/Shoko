@@ -25,12 +25,13 @@ module Shoko
             ].freeze
 
             def initialize(menu_session_store:, settings_service:, catalog:, navigation_actions:, dictionary_actions:,
-                           menu_transient_store:)
+                           translator_packs_actions:, menu_transient_store:)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @settings_service = settings_service
               @catalog = catalog
               @navigation_actions = navigation_actions
               @dictionary_actions = dictionary_actions
+              @translator_packs_actions = translator_packs_actions
             end
 
             def call(intent, payload = nil)
@@ -105,6 +106,8 @@ module Shoko
                 @navigation_actions.call(:switch_to_menu_mode)
               when :open_dictionary_settings
                 @dictionary_actions.call(:open_dictionary_mode)
+              when :open_translator_packs
+                @translator_packs_actions.call(:open_translator_packs_mode)
               when :wipe_cache
                 wipe_cache
               when :toggle_wipe_cache_nuke

@@ -34,6 +34,14 @@ module Shoko
             activate_dictionary_selection
             edit_menu_dictionary_query
             submit_dictionary_query
+            open_translator_packs_mode
+            close_translator_packs_mode
+            refresh_translator_packs
+            move_translator_packs_selection_up
+            move_translator_packs_selection_down
+            activate_translator_packs_selection
+            edit_translator_packs_query
+            submit_translator_packs_query
             open_download_mode
             close_download_mode
             open_download_source_mode

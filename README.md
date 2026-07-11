@@ -7,7 +7,7 @@ Terminal ebook reader for `.epub`, `.fb2`, `.pdf`, `.mobi`, `.azw`, `.azw3`, and
 - **Library** — scans common directories for supported files and lists them, opens a file directly when given a path, and imports a directory recursively, grouped by format.
 - **Reader** — single or split view, adjustable line spacing, selectable themes, optional page numbers, and a table-of-contents overlay.
 - **Bookmarks and annotations** — quick bookmarking, in-book annotation notes, an annotations overlay with editing, and mouse selection for highlighting.
-- **In-book tools** — full-text search, dictionary lookup, and a translator. The dictionary needs the optional `sqlite3` gem and an installed dictionary; the translator needs a reachable LibreTranslate server.
+- **In-book tools** — full-text search, dictionary lookup, and a translator. The dictionary needs the optional `sqlite3` gem and an installed dictionary. The translator runs **fully offline on your device** using the same neural translation models Firefox ships (downloadable in Settings → Translator, 105 language pairs); a LibreTranslate server is supported as an alternative backend.
 - **Inline images** — rendered through the Kitty graphics protocol when the terminal supports it.
 - **Downloads** — search and download books through Gutendex or Libgen.
 - **RSS reader** — subscribe to feeds and read articles from the menu.
@@ -17,6 +17,19 @@ Terminal ebook reader for `.epub`, `.fb2`, `.pdf`, `.mobi`, `.azw`, `.azw3`, and
 
 - Ruby `>= 3.4.9`. The reader has no third-party gem dependencies, so `bundle install` is not required to run it — only the development and test suites need it.
 - Optional: install the `sqlite3` gem (`gem install sqlite3`) to enable dictionary lookup. It is loaded only when the dictionary is used, and is found even when running outside Bundler.
+- Optional: build the offline translation engine with `make -C ext/shoko_translate` (needs only a C compiler and `make`; the engine itself has no dependencies beyond libc). Without it the translator falls back to needing a LibreTranslate server.
+
+### Offline translator
+
+The in-app translator runs Mozilla's Firefox translation models (Bergamot
+"student" transformers) locally through `ext/shoko_translate`, a small
+dependency-free C program that Shoko manages as a child process. Language
+packs (~18–35 MB per direction) are downloaded inside the app: **Settings →
+Translator** lists every pair Mozilla publishes, downloads with progress and
+sha256 verification, and removes packs. Pairs without a direct model are
+translated through English automatically, exactly like Firefox does. The
+backend row in the same screen switches between the on-device engine
+(default) and a LibreTranslate server.
 
 ## Usage
 
@@ -73,6 +86,7 @@ Directory import scans recursively, skips hidden files and directories, shows co
   - `config.json`, `annotations.json`, `bookmarks.json`, `progress.json`, `recent.json`, `rss_reader.json`
   - `epub_cache.json` — library scan cache (file name retained for compatibility)
   - `downloads/` — downloaded books
+  - `translator/models/` — downloaded translation language packs
 - Cache root: `${XDG_CACHE_HOME:-~/.cache}/shoko/` — cached book payloads, pagination/layout data, resource blobs, and manifest files
 
 ### Environment variables
@@ -88,7 +102,8 @@ Other runtime settings:
 
 - `SHOKO_BOOK_SCAN_DIRS=dir1:dir2` — `PATH`-style list of directories to scan for the library
 - `SHOKO_LIBGEN_URL=https://...` — override the Libgen base URL
-- `SHOKO_TRANSLATE_URL=http://host:5000` — override the LibreTranslate base URL (default `http://127.0.0.1:5000`)
+- `SHOKO_TRANSLATE_URL=http://host:5000` — override the LibreTranslate base URL for the LibreTranslate backend (default `http://127.0.0.1:5000`)
+- `SHOKO_TRANSLATE_ENGINE=/path/to/shoko-translate` — override the offline translation engine binary (default: the copy built in `ext/shoko_translate`, then `PATH`)
 - `SHOKO_COLOR_MODE=light|dark` — force the color mode instead of detecting it
 - `SHOKO_ASCII_ICONS=1` — use ASCII icons instead of glyphs
 
