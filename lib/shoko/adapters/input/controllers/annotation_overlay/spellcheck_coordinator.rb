@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative '../dictionary/constants'
 require_relative '../support/message_notifier'
-require_relative '../support/session_outcome_helpers'
+require_relative '../support/session_outcome_access'
 require 'shoko/shared/type_coercion'
 
 module Shoko
@@ -13,7 +14,7 @@ module Shoko
           # Handles annotation-editor spell suggestion lookup and cycling.
           class SpellcheckCoordinator
             include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
+            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
 
             SPELL_SUGGESTION_LIMIT = 5
             SPELL_SUGGESTION_FETCH_LIMIT = 15
@@ -53,7 +54,7 @@ module Shoko
             def spellcheck_word(target)
               return nil unless target.is_a?(Hash)
 
-              word = target.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }[:word]
+              word = Shoko::Shared::HashNormalizer.symbolize_keys(target)[:word]
               normalized = word.to_s.strip
               normalized.empty? ? nil : normalized
             end
@@ -262,9 +263,7 @@ module Shoko
             end
 
             def normalize_spell_payload(payload)
-              return payload unless payload.is_a?(Hash)
-
-              payload.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
+              Shoko::Shared::HashNormalizer.symbolize_keys(payload) || payload
             end
 
             def spell_lookup_scopes
@@ -349,7 +348,7 @@ module Shoko
             def normalize_pair(pair)
               return nil unless pair.is_a?(Hash)
 
-              normalized = pair.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
+              normalized = Shoko::Shared::HashNormalizer.symbolize_keys(pair)
               source = normalize_language(normalized[:source])
               target = normalize_language(normalized[:target])
               return nil if source.nil? || target.nil?

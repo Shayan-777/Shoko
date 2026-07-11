@@ -33,6 +33,10 @@ module Shoko
           def metadata
             raise NotImplementedError, "#{self.class} must implement #metadata"
           end
+
+          def source_path
+            raise NotImplementedError, "#{self.class} must implement #source_path"
+          end
         end
       end
     end

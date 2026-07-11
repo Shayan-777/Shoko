@@ -118,7 +118,7 @@ Style/Documentation:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/RedundantEach:
   Exclude:
-    - 'lib/shoko/adapters/book_sources/epub/parser/opf/element_name_helpers.rb'
+    - 'lib/shoko/adapters/book_sources/epub/parser/opf/element_queries.rb'
     - 'lib/shoko/adapters/book_sources/epub/parser/opf/navigation_document_scanner.rb'
 
 # This cop supports unsafe autocorrection (--autocorrect-all).

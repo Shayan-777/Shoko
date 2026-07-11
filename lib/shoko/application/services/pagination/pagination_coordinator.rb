@@ -2,7 +2,7 @@
 
 require_relative 'page_info_calculator'
 require_relative 'pagination_orchestrator'
-require 'shoko/core/services/progress_helper'
+require 'shoko/core/services/progress_ratio'
 require 'shoko/application/ports/outbound/app_config_store'
 require 'shoko/application/ports/outbound/reader_session_store'
 require 'shoko/application/ports/outbound/reader_runtime_context'
@@ -322,7 +322,7 @@ module Shoko
           # late callback after a coalesced restart re-arms the spinner.
           def report_recalc_progress(done, total)
             current = recalc_status
-            ratio = Shoko::Core::Services::ProgressHelper.ratio(done, total)
+            ratio = Shoko::Core::Services::ProgressRatio.compute(done, total)
             @recalc_status = RecalcStatus.new(
               active: true,
               message: current.active ? current.message : 'Repaginating…',

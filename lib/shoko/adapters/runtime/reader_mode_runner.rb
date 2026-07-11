@@ -2,7 +2,7 @@
 
 require_relative 'cli_progress_presenter'
 require_relative '../../application/ports/outbound/document_loader'
-require_relative '../../core/services/progress_helper'
+require_relative '../../core/services/progress_ratio'
 
 module Shoko
   module Adapters
@@ -140,7 +140,7 @@ module Shoko
           lambda do |done, total|
             presenter.update_status(
               message: pagination_progress_message(done, total),
-              progress: Shoko::Core::Services::ProgressHelper.ratio(done, total)
+              progress: Shoko::Core::Services::ProgressRatio.compute(done, total)
             )
           end
         end

@@ -4,7 +4,7 @@ require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
 require_relative 'ui/panel_spans'
-require_relative 'ui/list_helpers'
+require_relative 'ui/list_windowing'
 require_relative 'dictionary/entry_formatter'
 require 'shoko/shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
@@ -226,7 +226,7 @@ module Shoko
 
           def ensure_candidate_visible!(visible)
             @selected_index = @selected_index.clamp(0, [@fuzzy_matches.length - 1, 0].max)
-            @fuzzy_scroll = Ui::ListHelpers.scroll_to_reveal(
+            @fuzzy_scroll = Ui::ListWindowing.scroll_to_reveal(
               @selected_index, scroll: @fuzzy_scroll, visible: visible, total: @fuzzy_matches.length
             )
           end

@@ -6,7 +6,7 @@ module Shoko
       module Components
         module Ui
           # Shared helpers for list-based components to keep pagination logic consistent.
-          module ListHelpers
+          module ListWindowing
             module_function
 
             def visible_window(total_items, per_page, selected)

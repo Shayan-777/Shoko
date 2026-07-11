@@ -2,7 +2,7 @@
 
 require 'rexml/document'
 
-require_relative 'element_name_helpers'
+require_relative 'element_queries'
 
 module Shoko
   module Adapters
@@ -10,7 +10,7 @@ module Shoko
       module Epub
         # Walks nav/NCX trees to populate navigation context entries.
         class OPFNavigationWalker
-          include OPFElementNameHelpers
+          include OPFElementQueries
 
           def initialize(context)
             @context = context

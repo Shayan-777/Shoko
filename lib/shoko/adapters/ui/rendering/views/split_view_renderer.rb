@@ -3,6 +3,7 @@
 require_relative 'base_view_renderer'
 require_relative '../../components/render_style'
 require 'shoko/application/ports/outbound/formatting/display_line'
+require 'shoko/core/models/block_type'
 
 module Shoko
   module Adapters
@@ -254,8 +255,7 @@ module Shoko
               meta = line.metadata
               return false unless meta.is_a?(Hash)
 
-              block_type = meta[:block_type]
-              block_type == :image || block_type.to_s == 'image'
+              Shoko::Core::Models::BlockType.image?(meta[:block_type])
             end
           end
         end

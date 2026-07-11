@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative 'dependencies/state_controller_dependencies'
 require_relative 'support/message_notifier'
 require 'shoko/core/models/reading_progress'
@@ -512,11 +513,7 @@ module Shoko
           end
 
           def normalize_annotation(annotation)
-            return {} unless annotation.is_a?(Hash)
-
-            annotation.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
+            Shoko::Shared::HashNormalizer.symbolize_keys(annotation) || {}
           end
         end
       end

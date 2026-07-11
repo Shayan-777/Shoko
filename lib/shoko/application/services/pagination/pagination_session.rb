@@ -146,7 +146,7 @@ module Shoko
           end
 
           def update_progress(done, total)
-            progress = Shoko::Core::Services::ProgressHelper.ratio(done, total)
+            progress = Shoko::Core::Services::ProgressRatio.compute(done, total)
             persist_view(loading_progress: progress)
           end
 

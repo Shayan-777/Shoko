@@ -4,7 +4,7 @@ require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
 require_relative 'ui/panel_spans'
-require_relative 'ui/list_helpers'
+require_relative 'ui/list_windowing'
 require_relative 'status_bar/palette'
 
 module Shoko
@@ -226,7 +226,7 @@ module Shoko
           # the in-book search list.
           def render_scrollbar(surface, bounds, layout)
             rows = layout[:visible]
-            thumb = Ui::ListHelpers.scrollbar_thumb(total: @entries.length, visible: rows, scroll: @scroll_offset)
+            thumb = Ui::ListWindowing.scrollbar_thumb(total: @entries.length, visible: rows, scroll: @scroll_offset)
             top = layout[:rule_row] + 1
             col = layout[:col] + layout[:width] - 1
             rows.times do |offset|
@@ -237,7 +237,7 @@ module Shoko
           end
 
           def ensure_selection_visible!(visible)
-            @scroll_offset = Ui::ListHelpers.scroll_to_reveal(
+            @scroll_offset = Ui::ListWindowing.scroll_to_reveal(
               @selected_index, scroll: @scroll_offset, visible: visible, total: @entries.length
             )
           end

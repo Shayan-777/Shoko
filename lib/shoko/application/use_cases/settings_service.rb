@@ -4,6 +4,7 @@ require_relative 'settings_service/wipe_cache_plan'
 require_relative 'settings_service/wipe_cache_message_builder'
 require_relative '../../core/models/reader_settings'
 require_relative '../../shared/download_source_policy'
+require 'shoko/shared/hash_normalizer'
 require_relative '../../shared/theme_policy'
 
 module Shoko
@@ -286,10 +287,7 @@ module Shoko
         def normalize_language_pair(pair)
           raise ArgumentError, "dictionary language pair must be a Hash, got #{pair.class}" unless pair.is_a?(Hash)
 
-          pair.each_with_object({}) do |(key, value), acc|
-            normalized_key = key.is_a?(String) ? key.to_sym : key
-            acc[normalized_key] = value
-          end
+          Shoko::Shared::HashNormalizer.symbolize_keys(pair)
         end
       end
     end

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require 'cgi'
 
 module Shoko
@@ -118,16 +119,9 @@ module Shoko
               end
 
               def build_chapter_index_map(doc)
-                chapters_for_document(doc).each_with_index.with_object({}) do |(chapter, idx), map|
+                Array(doc.chapters).each_with_index.with_object({}) do |(chapter, idx), map|
                   register_chapter_paths(map, chapter, idx)
                 end
-              end
-
-              def chapters_for_document(doc)
-                return Array(doc.chapters) if doc.respond_to?(:chapters)
-
-                count = doc.respond_to?(:chapter_count) ? doc.chapter_count.to_i : 0
-                Array.new(count) { |idx| doc.get_chapter(idx) }
               end
 
               def register_chapter_paths(map, chapter, idx)
@@ -170,23 +164,13 @@ module Shoko
               end
 
               def document_chapter(index)
-                doc = document
-                return nil unless doc
-
-                if doc.respond_to?(:chapters)
-                  Array(doc.chapters)[index]
-                else
-                  doc.get_chapter(index)
-                end
+                document&.get_chapter(index)
               end
 
               def value_for(source, key)
                 return nil unless source.respond_to?(:[])
 
-                normalized = source.transform_keys do |entry_key|
-                  entry_key.is_a?(String) ? entry_key.to_sym : entry_key
-                end
-                normalized[key]
+                Shoko::Shared::HashNormalizer.symbolize_keys(source)[key]
               end
             end
           end

@@ -2,7 +2,7 @@
 
 require_relative '../html_processor'
 require_relative '../rexml_safe_parser'
-require_relative 'element_name_helpers'
+require_relative 'element_queries'
 
 module Shoko
   module Adapters
@@ -10,7 +10,7 @@ module Shoko
       module Epub
         # Scans document content for anchor and heading labels.
         class OPFNavigationDocumentScanner
-          include OPFElementNameHelpers
+          include OPFElementQueries
 
           # Value object for extracted anchor and heading labels.
           ScanResult = Struct.new(:anchors, :headings)

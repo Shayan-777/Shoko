@@ -10,7 +10,7 @@ require 'shoko/adapters/book_sources/pdf/parser/pdf_text_extractor'
 require 'shoko/adapters/book_sources/pdf/parser/pdf_metadata_extractor'
 require 'shoko/adapters/book_sources/pdf/parser/metadata_parser'
 require 'shoko/adapters/book_sources/format_registry'
-require_relative '../../support/lifecycle_helpers'
+require_relative '../../support/importer_lifecycle'
 require_relative 'importer/metadata_normalizer'
 require_relative 'importer/page_extraction_coordinator'
 
@@ -26,7 +26,7 @@ module Shoko
         # Uses PDF Outline (bookmark) entries for chapter boundaries. Falls back to
         # grouping pages when no outlines are present.
         class PdfImporter
-          include Shoko::Adapters::Support::LifecycleHelpers
+          include Shoko::Adapters::Support::ImporterLifecycle
 
           DEFAULT_LANGUAGE = 'en_US'
           PAGES_PER_AUTO_CHAPTER = 20

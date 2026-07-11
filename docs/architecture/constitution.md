@@ -167,6 +167,61 @@ Every resilient boundary:
 
 ## Amendments
 
+- **2026-07-11 — Class fragments banned (R1's other door); the symbolize sweep
+  actually finished; both naming/reflection ratchets closed.**
+  - **Reopening a class in a second file to inject methods is now a violation,
+    enforced.** Two hosts had their private methods smeared across satellite
+    files that reopened the class — `JsonCacheStore` (5 fragment files:
+    `payload_helpers`, `chapters`, `layouts`, `resources`, `manifest`) and
+    `EpubCache` (`memory_cache`, `persistence`, `source_reference`, plus its
+    `Serializer` module split across `serialize`/`deserialize`/`helpers`
+    behind a require-stub). This is the include-once mixin without the
+    `include` — the same fragment indirection R1/R3 ban, invisible to the
+    include scanner (whose own comment noted reopenings are not flagged) and
+    in direct violation of §III's one-constant-per-file rule. All fragments
+    are merged into their host files (`json_cache_store.rb`, `epub_cache.rb`,
+    one `serializer.rb` — R2: length is never a reason to split), and
+    `no_include_once_mixin` gains a third example backed by
+    `ClassReopeningScanner`: no class or module may receive direct method
+    definitions from two or more files. No allowlist. Files that reopen a
+    class purely to define a nested collaborator constant (`WrappingService::
+    FetchRequest`, `BookFinder::ScannerContext`, `StateStore::ChangeSet`, …)
+    are unaffected — the nested constant owns its defs.
+  - **The 2026-07-11 symbolize consolidation is now actually complete.** The
+    earlier sweep removed only helpers *named* `symbolize_*`; ~36 sites in 30
+    files still re-implemented `HashNormalizer.symbolize_keys` inline or under
+    `normalize_*` names, with drift already present (two
+    `respond_to?(:to_sym)` variants). Every site now delegates to
+    `Shared::HashNormalizer` (`symbolize_keys`/`deep_symbolize`), preserving
+    each site's own non-Hash contract (`|| {}`, nil, raise). The related
+    `block_type == :image || block_type.to_s == 'image'` dual-typing trilogy
+    (dynamic page-map builder, single/split view renderers) now delegates to
+    the existing `Core::Models::BlockType.image?`/`canonical` — the canonical
+    predicate had existed all along and simply wasn't used.
+  - **The naming-banlist ratchet closed: the allowlist is gone.** All twelve
+    pre-rule holdouts were renamed to role nouns or folded:
+    `OPFElementNameHelpers`→`OPFElementQueries`; `LifecycleHelpers`→
+    `ImporterLifecycle`; `StyleSupport`→`StylePrimitives`; `ListHelpers`→
+    `ListWindowing`; `ConfigHelpers`→`ConfigResolution`; `ContextHelpers`→
+    `SnapshotQueries`; `ProgressHelper.ratio`→`ProgressRatio.compute`; the two
+    same-named `session_outcome_helpers.rb` files became
+    `SessionOutcomeAccess` (controllers read outcomes) and
+    `SessionOutcomeConstruction` (UI sessions build them);
+    `dependency_record_mixins.rb` split into `dependency_builder.rb` +
+    `dependency_validation.rb` (one module per file, §III); the four-constant
+    `annotation_rendering_helpers.rb` split into `annotation_screen_rendering`
+    / `annotation_view` / `annotation_text_box` / `annotation_edit_state`,
+    losing its `defined?(@ivar)` probes; `payload_helpers.rb` died in the
+    fragment merge. `naming_banlist` now enforces the suffix ban with no
+    allowlist.
+  - **Two stale reflection-allowlist entries removed.** `destination_resolver`
+    probed `doc.respond_to?(:chapters)`/`chapter_count` with fallbacks though
+    `Ports::Outbound::ReaderDocument` pins `chapters`/`chapter_count`/
+    `get_chapter` (this amendment cycle itself had added `chapters` to that
+    port) — it now calls the port directly. `reader_view_model_builder` probed
+    `source_path`, which the port did *not* declare: the port now pins
+    `source_path` (its implementer always exposed it) and the probe is gone.
+
 - **2026-07-11 — Dead test-mode seam deleted; R4 enforced in the inverse direction; the last two width-blind word-wraps consolidated.**
   - **The test-mode terminal seam is gone — it never did what it claimed.**
     `TestSupport::TestMode` promised "deterministic test behaviour by swapping

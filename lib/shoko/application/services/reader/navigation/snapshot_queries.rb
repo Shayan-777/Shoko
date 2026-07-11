@@ -8,7 +8,7 @@ module Shoko
           # Helpers for extracting navigation-relevant values from a state snapshot.
           # These are pure functions that work on hash snapshots, keeping them
           # decoupled from specific state store implementations.
-          module ContextHelpers
+          module SnapshotQueries
             module_function
 
             def dynamic_mode?(snapshot)

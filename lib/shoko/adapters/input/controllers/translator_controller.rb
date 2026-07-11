@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'support/message_notifier'
-require_relative 'support/session_outcome_helpers'
+require_relative 'support/session_outcome_access'
 require 'shoko/shared/text_sanitizer'
 require 'shoko/shared/language_directory'
 
@@ -30,7 +30,7 @@ module Shoko
         #     Source⇄Target, ↵ applies the language and re-translates, Esc backs out.
         class TranslatorController
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
+          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
 
           LanguageDirectory = Shoko::Shared::LanguageDirectory
 

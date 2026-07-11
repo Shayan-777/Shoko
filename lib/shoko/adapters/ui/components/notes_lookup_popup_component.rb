@@ -5,7 +5,7 @@ require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
 require_relative 'ui/cursor_blink'
 require_relative 'ui/panel_spans'
-require_relative 'ui/list_helpers'
+require_relative 'ui/list_windowing'
 require_relative 'ui/text_utils'
 require_relative 'ui/note_markup'
 require_relative 'status_bar/palette'
@@ -410,8 +410,8 @@ module Shoko
 
           def render_scrollbar(surface, bounds, layout)
             rows = layout[:content_rows]
-            thumb = Ui::ListHelpers.scrollbar_thumb(total: @notes.length, visible: layout[:visible],
-                                                    scroll: @scroll_offset, track_rows: rows)
+            thumb = Ui::ListWindowing.scrollbar_thumb(total: @notes.length, visible: layout[:visible],
+                                                      scroll: @scroll_offset, track_rows: rows)
             top = layout[:rule_row] + 1
             col = layout[:col] + layout[:width] - 1
             rows.times do |offset|
@@ -422,7 +422,7 @@ module Shoko
           end
 
           def ensure_selection_visible!(visible)
-            @scroll_offset = Ui::ListHelpers.scroll_to_reveal(
+            @scroll_offset = Ui::ListWindowing.scroll_to_reveal(
               @selected_index, scroll: @scroll_offset, visible: visible, total: @notes.length
             )
           end

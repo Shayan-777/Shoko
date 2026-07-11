@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/errors'
 require_relative 'constants'
-require_relative '../support/session_outcome_helpers'
+require_relative '../support/session_outcome_access'
 require_relative '../support/message_notifier'
 
 module Shoko
@@ -21,7 +22,7 @@ module Shoko
           # receives every dependency explicitly. DictionaryController drives it
           # through a small public surface and never reaches into its internals.
           class SetupSession
-            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
+            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
             include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
 
             # Built from DictionaryController's own typed dependency bundle so the
@@ -718,10 +719,7 @@ module Shoko
                 raise Shoko::MalformedDictionaryInputError, "language pair must be Hash, got #{pair.class}"
               end
 
-              pair.each_with_object({}) do |(key, value), acc|
-                normalized_key = key.is_a?(String) ? key.to_sym : key
-                acc[normalized_key] = value
-              end
+              Shoko::Shared::HashNormalizer.symbolize_keys(pair)
             end
 
             def source_setup_candidate_codes

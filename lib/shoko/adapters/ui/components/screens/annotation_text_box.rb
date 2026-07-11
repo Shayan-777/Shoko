@@ -2,73 +2,14 @@
 
 require_relative '../ui/text_utils'
 require_relative '../ui/annotation_markup'
-require 'shoko/shared/hash_normalizer'
+require_relative '../ui/box_drawer'
 require 'shoko/shared/terminal/text_metrics'
-require 'shoko/shared/terminal/text_sanitizer'
 
 module Shoko
   module Adapters
     module Ui
       module Components
         module Screens
-          # Shared state access for annotation detail and edit screens.
-          module AnnotationScreenRendering
-            private
-
-            def resolve_book_label
-              book_path = resolve_menu_reader&.selected_annotation_book
-              return 'Unknown Book' unless book_path
-
-              raw = File.basename(book_path)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(raw, preserve_newlines: false, preserve_tabs: false)
-            end
-
-            def resolve_menu_reader
-              return @menu_state_reader if defined?(@menu_state_reader) && @menu_state_reader
-
-              @menu_state_reader = @dependencies&.menu_state_reader if defined?(@dependencies)
-              @menu_state_reader
-            end
-          end
-
-          # Normalized view of annotation data for screen rendering.
-          class AnnotationView
-            def initialize(annotation)
-              @annotation = if annotation.is_a?(Hash)
-                              Shoko::Shared::HashNormalizer.deep_symbolize(annotation) || {}
-                            else
-                              {}
-                            end
-            end
-
-            def text
-              fetch(:text).to_s
-            end
-
-            def note
-              fetch(:note).to_s
-            end
-
-            def chapter_index
-              fetch(:chapter_index)
-            end
-
-            def id
-              fetch(:id)
-            end
-
-            def formatted_date
-              created = fetch(:created_at)
-              created.to_s.tr('T', ' ').sub('Z', '')
-            end
-
-            private
-
-            def fetch(key)
-              @annotation[key]
-            end
-          end
-
           # Text box helper for annotation screens.
           class AnnotationTextBox
             BOX_COLUMN = 2
@@ -180,68 +121,6 @@ module Shoko
               cursor_row = row + 1 + [cursor_lines.length - 1, 0].max
               cursor_col = TEXT_COLUMN + Shoko::Shared::Terminal::TextMetrics.visible_length(last_line)
               [cursor_row, cursor_col]
-            end
-          end
-
-          # Menu-state helper for annotation edit screens.
-          class AnnotationEditState
-            def initialize(dependencies = nil)
-              @dependencies = dependencies
-              @menu_state_reader = nil
-              @menu_session_mutator = nil
-            end
-
-            def text
-              (menu_state_reader&.annotation_edit_text || '').to_s
-            end
-
-            def cursor(text = self.text)
-              (menu_state_reader&.annotation_edit_cursor || text.length).to_i
-            end
-
-            def update_from
-              current_text = text
-              current_cursor = cursor(current_text)
-              updated = yield(current_text, current_cursor)
-              update(text: updated[0], cursor: updated[1]) if updated
-            end
-
-            def update(text:, cursor:)
-              menu_session_mutator&.update_menu(annotation_edit_text: text, annotation_edit_cursor: cursor)
-            end
-
-            def selected_annotation
-              ann = menu_state_reader&.selected_annotation
-              return unless ann.is_a?(Hash)
-
-              ann.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
-            end
-
-            def annotation_update_payload
-              annotation = selected_annotation || {}
-              path = menu_state_reader&.selected_annotation_book
-              ann_id = annotation[:id]
-              return nil unless path && ann_id
-
-              { path: path, ann_id: ann_id, text: text }
-            end
-
-            def refresh_annotations(service)
-              menu_session_mutator&.update_menu(annotations_all: service.list_all)
-            end
-
-            def return_to_annotations_list
-              menu_session_mutator&.update_menu(mode: :annotations)
-            end
-
-            private
-
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
-
-            def menu_session_mutator
-              @menu_session_mutator ||= @dependencies&.menu_session_mutator
             end
           end
         end

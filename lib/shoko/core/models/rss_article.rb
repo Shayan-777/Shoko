@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 module Shoko
   module Core
     module Models
@@ -78,9 +80,7 @@ module Shoko
         def self.normalize_hash(payload)
           raise ArgumentError, "rss article payload must be a Hash, got #{payload.class}" unless payload.is_a?(Hash)
 
-          payload.transform_keys do |key|
-            key.is_a?(String) ? key.to_sym : key
-          end
+          Shoko::Shared::HashNormalizer.symbolize_keys(payload)
         end
 
         def blank_to_nil(value)

@@ -4,6 +4,7 @@ require 'shoko/application/ports/outbound/app_config_store'
 require 'shoko/application/ports/outbound/menu_session_store'
 require 'shoko/application/ports/outbound/menu_transient_store'
 require 'shoko/core/models/dictionary_catalog_entry'
+require 'shoko/shared/hash_normalizer'
 require_relative '../../ports/outbound/state/menu_snapshot'
 require_relative '../../ports/outbound/state/menu_state_partition'
 require_relative 'menu_state_persistence'
@@ -211,10 +212,7 @@ module Shoko
               raise Shoko::MalformedDictionaryInputError, "download result must be a Hash, got #{value.class}"
             end
 
-            normalized = value.each_with_object({}) do |(key, item), acc|
-              normalized_key = key.is_a?(String) ? key.to_sym : key
-              acc[normalized_key] = item
-            end
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(value)
             unless normalized.key?(:path) && normalized.key?(:existing)
               raise Shoko::MalformedDictionaryInputError, 'download result missing required keys (:path, :existing)'
             end

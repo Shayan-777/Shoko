@@ -5,7 +5,7 @@ require_relative '../models/rendering_context'
 require_relative '../models/render_params'
 require 'shoko/shared/terminal/text_metrics'
 require_relative '../line/render_dependencies'
-require_relative '../line/config_helpers'
+require_relative '../line/config_resolution'
 require_relative '../line/line_drawer'
 require_relative '../line/wrapped_lines_fetcher'
 
@@ -76,7 +76,7 @@ module Shoko
             # Returns `[col_width, content_height, spacing, displayable]`.
             def compute_layout(bounds, view_mode, config)
               col_width, content_height = layout_metrics(bounds.width, bounds.height, view_mode)
-              spacing = ConfigHelpers.line_spacing(config)
+              spacing = ConfigResolution.line_spacing(config)
               displayable = adjust_for_line_spacing(content_height, spacing)
               [col_width, content_height, spacing, displayable]
             end
@@ -248,7 +248,7 @@ module Shoko
             end
 
             def draw_line_spacing(context)
-              context ? ConfigHelpers.line_spacing(context.config_reader) : :normal
+              context ? ConfigResolution.line_spacing(context.config_reader) : :normal
             end
           end
         end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 module Shoko
   module Core
     module Models
@@ -11,9 +13,7 @@ module Shoko
               raise ArgumentError, "DictionaryCatalogEntry payload must be a Hash, got #{hash.class}"
             end
 
-            normalized = hash.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(hash)
 
             name = normalized[:name].to_s.strip
             raise ArgumentError, 'DictionaryCatalogEntry name cannot be blank' if name.empty?

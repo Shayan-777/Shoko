@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/hash_normalizer'
+require 'shoko/core/models/block_type'
 
 require_relative '../../pagination'
 
@@ -191,8 +192,7 @@ module Shoko
               def block_type_of(meta)
                 return nil unless meta
 
-                raw = meta[:block_type]
-                raw.is_a?(String) ? raw.to_sym : raw
+                Shoko::Core::Models::BlockType.canonical(meta[:block_type])
               end
 
               def blank_line?(line)
@@ -241,9 +241,7 @@ module Shoko
               def same_image_block?(line, expected_src)
                 meta = metadata_for(line)
                 return false unless meta
-
-                block_type = meta[:block_type]
-                return false unless block_type == :image || block_type.to_s == 'image'
+                return false unless Shoko::Core::Models::BlockType.image?(meta[:block_type])
 
                 cur_src = extract_image_src(meta)
                 cur_src == expected_src

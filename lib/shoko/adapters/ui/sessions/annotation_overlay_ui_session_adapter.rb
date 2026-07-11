@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/hash_normalizer'
-require_relative 'support/session_outcome_helpers'
+require_relative 'support/session_outcome_construction'
 
 module Shoko
   module Adapters
@@ -9,7 +9,7 @@ module Shoko
       module Sessions
         # Adapter-owned lifecycle for annotations/editor overlays.
         class AnnotationOverlayUiSessionAdapter
-          include Support::SessionOutcomeHelpers
+          include Support::SessionOutcomeConstruction
 
           def initialize(
             reader_state_reader:,
@@ -29,7 +29,7 @@ module Shoko
             overlay = annotation_editor_overlay
             overlay&.update_color_mode(color_mode)
             success_outcome(:handled, :annotation_theme_refreshed)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.refresh_theme', e)
             failure_outcome(:error, :annotation_theme_refresh_failed, e.message)
           end
@@ -48,7 +48,7 @@ module Shoko
 
             @reader_session_mutator.update_reader(annotations_overlay: overlay)
             success_outcome(:opened, :annotations_overlay_opened)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.open_annotations', e)
             failure_outcome(:error, :annotations_overlay_open_failed, e.message)
           end
@@ -58,7 +58,7 @@ module Shoko
             overlay&.hide
             @reader_session_mutator.update_reader(annotations_overlay: nil)
             success_outcome(:closed, :annotations_overlay_closed)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.close_annotations', e)
             failure_outcome(:error, :annotations_overlay_close_failed, e.message)
           end
@@ -77,7 +77,7 @@ module Shoko
 
             @reader_session_mutator.update_reader(annotation_editor_overlay: overlay)
             success_outcome(:opened, :annotation_editor_opened)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.open_editor', e)
             failure_outcome(:error, :annotation_editor_open_failed, e.message)
           end
@@ -94,7 +94,7 @@ module Shoko
               annotation_editor_annotation_id: nil
             )
             success_outcome(:closed, :annotation_editor_closed)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.close_editor', e)
             failure_outcome(:error, :annotation_editor_close_failed, e.message)
           end
@@ -102,7 +102,7 @@ module Shoko
           def annotations_visible?
             overlay = annotations_overlay
             overlay&.visible?
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.annotations_visible?', e)
             false
           end
@@ -110,7 +110,7 @@ module Shoko
           def annotation_editor_visible?
             overlay = annotation_editor_overlay
             overlay&.visible?
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.annotation_editor_visible?', e)
             false
           end
@@ -162,7 +162,7 @@ module Shoko
 
             overlay.selected_index = index
             success_outcome(:handled, :annotations_selection_updated)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.update_annotations_selected_index', e)
             failure_outcome(:error, :annotations_selection_update_failed, e.message)
           end
@@ -257,7 +257,7 @@ module Shoko
               **spell_suggestion_options(scope_key, scope_label, can_cycle)
             )
             success_outcome(:handled, :annotation_editor_spell_suggestions_shown)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.editor_show_spell_suggestions', e)
             failure_outcome(:error, :annotation_editor_spell_suggestions_failed, e.message)
           end
@@ -276,7 +276,7 @@ module Shoko
               note: overlay.note,
               chapter_index: overlay.chapter_index,
             }
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.editor_context', e)
             nil
           end
@@ -298,14 +298,14 @@ module Shoko
 
           def annotations_overlay
             @reader_state_reader.annotations_overlay
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.annotations_overlay', e)
             nil
           end
 
           def annotation_editor_overlay
             @reader_state_reader.annotation_editor_overlay
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.annotation_editor_overlay', e)
             nil
           end
@@ -313,7 +313,7 @@ module Shoko
           def current_rendered_lines
             lines = @rendered_content_reader&.rendered_lines
             lines.is_a?(Hash) ? lines : {}
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.current_rendered_lines', e)
             {}
           end
@@ -323,7 +323,7 @@ module Shoko
             return nil unless overlay
 
             overlay.current_annotation
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error('annotation.session.current_annotation', e)
             nil
           end
@@ -336,7 +336,7 @@ module Shoko
 
             payload = ANNOTATION_OVERLAY_COMMANDS.fetch(command).call(overlay)
             success_outcome(:handled, :"#{command}_handled", payload: payload)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error("annotation.session.#{command}", e)
             failure_outcome(:error, :"#{command}_failed", e.message)
           end
@@ -373,7 +373,7 @@ module Shoko
 
             payload = EDITOR_COMMANDS.fetch(command).call(overlay, *)
             success_outcome(:handled, :"#{command}_handled", payload: payload)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeConstruction::RESCUABLE_ERRORS => e
             log_error("annotation.session.#{command}", e)
             failure_outcome(:error, :"#{command}_failed", e.message)
           end

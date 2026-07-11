@@ -8,7 +8,7 @@ require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/application/ports/outbound/runtime_config'
 require_relative 'inline_segment_highlighter'
-require_relative 'config_helpers'
+require_relative 'config_resolution'
 
 module Shoko
   module Adapters
@@ -105,9 +105,9 @@ module Shoko
 
             def compose_options(config_store, line_offset:, hovered_inline_link:)
               ComposeOptions.new(
-                highlight_quotes: ConfigHelpers.highlight_quotes?(config_store),
-                highlight_keywords: ConfigHelpers.highlight_keywords?(config_store),
-                book_colors: ConfigHelpers.book_colors?(config_store),
+                highlight_quotes: ConfigResolution.highlight_quotes?(config_store),
+                highlight_keywords: ConfigResolution.highlight_keywords?(config_store),
+                book_colors: ConfigResolution.book_colors?(config_store),
                 hover_signature: hover_signature_for(hovered_inline_link, line_offset),
                 line_offset: line_offset,
                 hovered_inline_link: hovered_inline_link

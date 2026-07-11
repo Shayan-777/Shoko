@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-require_relative 'context_helpers'
+require_relative 'snapshot_queries'
 require_relative 'absolute_layout'
 require 'shoko/application/ports/outbound/formatting/display_line'
+require 'shoko/shared/hash_normalizer'
 
 module Shoko
   module Application
@@ -143,7 +144,9 @@ module Shoko
               return nil unless line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
 
               meta = line.metadata
-              normalize_meta_hash(meta)
+              return nil unless meta.is_a?(Hash)
+
+              Shoko::Shared::HashNormalizer.deep_symbolize(meta)
             end
 
             def image_src(meta)
@@ -153,27 +156,10 @@ module Shoko
               image[:src]
             end
 
-            def normalize_meta_hash(value)
-              return nil unless value.is_a?(Hash)
-
-              value.each_with_object({}) do |(key, raw), acc|
-                normalized_key = key.is_a?(String) ? key.to_sym : key
-                acc[normalized_key] = normalize_meta_value(raw)
-              end
-            end
-
-            def normalize_meta_value(value)
-              if value.is_a?(Hash)
-                return value.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
-              end
-
-              value
-            end
-
             def snap_context(updates, layout_state)
               snapshot = layout_state.snapshot
               SnapContext.new(
-                chapter_index: updates[:current_chapter] || ContextHelpers.current_chapter(snapshot),
+                chapter_index: updates[:current_chapter] || SnapshotQueries.current_chapter(snapshot),
                 col_width: @layout.column_width(snapshot, layout_state.view_mode),
                 stride: layout_state.stride,
                 snapshot: snapshot

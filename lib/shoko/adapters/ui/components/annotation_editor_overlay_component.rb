@@ -14,7 +14,7 @@ require 'shoko/shared/terminal/ansi'
 require 'shoko/shared/key_definitions'
 require 'shoko/shared/terminal/text_sanitizer'
 require_relative '../constants/component_palettes'
-require_relative 'ui/list_helpers'
+require_relative 'ui/list_windowing'
 
 module Shoko
   module Adapters
@@ -704,7 +704,7 @@ module Shoko
             suggestions = Array(popup[:suggestions])
             return [empty_spell_popup_line] if suggestions.empty?
 
-            start_index, visible_suggestions = Ui::ListHelpers.slice_visible(
+            start_index, visible_suggestions = Ui::ListWindowing.slice_visible(
               suggestions,
               [max_lines, 1].max,
               popup[:selected_index].to_i

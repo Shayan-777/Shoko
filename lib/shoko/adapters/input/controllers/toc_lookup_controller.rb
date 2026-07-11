@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'support/message_notifier'
-require_relative 'support/session_outcome_helpers'
+require_relative 'support/session_outcome_access'
 require 'shoko/core/services/toc_tree_service'
 require 'shoko/shared/text_sanitizer'
 
@@ -18,7 +18,7 @@ module Shoko
         # in-chapter anchor offset when the entry's href resolves to one).
         class TocLookupController
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
+          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
 
           def initialize(reader_state:, navigation_service:, state_controller:, document_reader:,
                          toc_ui_session:, anchor_resolver: nil, input_controller: nil,

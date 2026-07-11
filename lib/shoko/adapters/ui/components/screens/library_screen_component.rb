@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative 'base_screen_component'
 require_relative '../rect'
 require_relative '../menu_design/canvas_frame'
@@ -351,10 +352,7 @@ module Shoko
               return entry[key] if entry.is_a?(Struct)
               return entry.to_h[key] if entry.is_a?(Data)
 
-              normalized = entry.transform_keys do |entry_key|
-                entry_key.is_a?(String) ? entry_key.to_sym : entry_key
-              end
-              normalized[key]
+              Shoko::Shared::HashNormalizer.symbolize_keys(entry)[key]
             end
 
             def selected_index(total)

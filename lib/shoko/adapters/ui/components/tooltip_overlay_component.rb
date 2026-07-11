@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/type_coercion'
 
 require_relative 'base_component'
@@ -681,11 +682,7 @@ module Shoko
           end
 
           def normalize_search_highlight(highlight)
-            return nil unless highlight.is_a?(Hash)
-
-            highlight.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
+            Shoko::Shared::HashNormalizer.symbolize_keys(highlight)
           end
 
           def search_highlight_expired?(highlight)

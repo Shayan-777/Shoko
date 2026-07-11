@@ -10,7 +10,9 @@ require_relative '../menu_design/canvas_frame'
 require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
 require 'shoko/shared/terminal/ansi'
-require_relative 'annotation_rendering_helpers'
+require_relative 'annotation_screen_rendering'
+require_relative 'annotation_view'
+require_relative 'annotation_edit_state'
 
 module Shoko
   module Adapters

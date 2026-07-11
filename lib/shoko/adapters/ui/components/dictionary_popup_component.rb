@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative 'base_component'
 require_relative 'ui/overlay_layout'
 require 'shoko/shared/terminal/ansi'
@@ -537,9 +538,7 @@ module Shoko
           end
 
           def normalize_setup_suggestion_hash(item)
-            normalized = item.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(item)
             code = normalized[:code]
             label = normalized[:label] || code
             code_text = code.to_s.strip.downcase

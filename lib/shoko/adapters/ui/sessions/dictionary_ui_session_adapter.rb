@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'support/session_outcome_helpers'
+require_relative 'support/session_outcome_construction'
 
 module Shoko
   module Adapters
@@ -17,9 +17,9 @@ module Shoko
         # session owns the component instances, the dictionary mode flag, and the
         # result/fuzzy writes. Mirrors InBookSearchUiSessionAdapter.
         class DictionaryUiSessionAdapter
-          include Support::SessionOutcomeHelpers
+          include Support::SessionOutcomeConstruction
 
-          RESCUABLE = Support::SessionOutcomeHelpers::RESCUABLE_ERRORS
+          RESCUABLE = Support::SessionOutcomeConstruction::RESCUABLE_ERRORS
 
           # Reset to a clean slate whenever the bar opens or closes.
           BLANK_LOOKUP_STATE = {

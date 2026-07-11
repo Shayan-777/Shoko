@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'style_support'
+require_relative 'style_primitives'
 
 module Shoko
   module Adapters
@@ -10,7 +10,7 @@ module Shoko
           module AnnotationMarkup
             # Renders styled lines while hiding paired markup delimiters.
             class RenderEngine
-              include StyleSupport
+              include StylePrimitives
 
               def initialize(text:, open_at:, close_at:)
                 @text = text

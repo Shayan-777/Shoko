@@ -7,7 +7,7 @@ module Shoko
         module Ui
           module AnnotationMarkup
             # Shared style and width helpers for annotation markup collaborators.
-            module StyleSupport
+            module StylePrimitives
               private
 
               def remove_style(active, style)

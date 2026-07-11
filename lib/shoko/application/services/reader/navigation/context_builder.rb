@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'nav_context'
-require_relative 'context_helpers'
+require_relative 'snapshot_queries'
 
 module Shoko
   module Application
@@ -28,7 +28,7 @@ module Shoko
             attr_reader :page_calculator
 
             def build_snapshot
-              ContextHelpers.build_snapshot(
+              SnapshotQueries.build_snapshot(
                 config_snapshot: @app_config_store.load,
                 reader_session_snapshot: @reader_session_store.load,
                 reader_pagination_snapshot: @reader_state_reader.load
@@ -37,15 +37,15 @@ module Shoko
 
             def build_context_from_snapshot(snapshot)
               NavContext.new(
-                mode: ContextHelpers.dynamic_mode?(snapshot) ? :dynamic : :absolute,
-                view_mode: ContextHelpers.current_view_mode(snapshot),
-                current_chapter: ContextHelpers.current_chapter(snapshot),
-                total_chapters: ContextHelpers.total_chapters(snapshot),
-                current_page_index: ContextHelpers.current_page_index(snapshot),
+                mode: SnapshotQueries.dynamic_mode?(snapshot) ? :dynamic : :absolute,
+                view_mode: SnapshotQueries.current_view_mode(snapshot),
+                current_chapter: SnapshotQueries.current_chapter(snapshot),
+                total_chapters: SnapshotQueries.total_chapters(snapshot),
+                current_page_index: SnapshotQueries.current_page_index(snapshot),
                 dynamic_total_pages: dynamic_total_pages,
-                single_page: ContextHelpers.single_page(snapshot),
-                left_page: ContextHelpers.left_page(snapshot),
-                right_page: ContextHelpers.right_page(snapshot),
+                single_page: SnapshotQueries.single_page(snapshot),
+                left_page: SnapshotQueries.left_page(snapshot),
+                right_page: SnapshotQueries.right_page(snapshot),
                 max_page_in_chapter: 0,
                 lines_per_page: 0,
                 column_lines_per_page: 0,

@@ -10,7 +10,7 @@ module Shoko
         module Reading
           # Shared helpers for resolving configuration values from the state store.
           # Accepts either a config_reader port or a rendering context with config_reader.
-          module ConfigHelpers
+          module ConfigResolution
             module_function
 
             def config_reader_from(config)

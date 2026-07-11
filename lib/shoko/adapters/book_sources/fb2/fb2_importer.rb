@@ -13,7 +13,7 @@ require 'shoko/adapters/book_sources/fb2/parser/fb2_metadata_extractor'
 require 'shoko/adapters/book_sources/fb2/parser/metadata_parser'
 require 'shoko/adapters/book_sources/fb2/parser/fb2_inline_parser'
 require 'shoko/adapters/book_sources/format_registry'
-require_relative '../../support/lifecycle_helpers'
+require_relative '../../support/importer_lifecycle'
 
 module Shoko
   module Adapters
@@ -22,7 +22,7 @@ module Shoko
         # Imports an FB2 (FictionBook 2) file into the common BookData representation.
         # Handles both plain `.fb2` and zipped `.fb2.zip` sources.
         class Fb2Importer
-          include Shoko::Adapters::Support::LifecycleHelpers
+          include Shoko::Adapters::Support::ImporterLifecycle
 
           DEFAULT_LANGUAGE = 'en_US'
 

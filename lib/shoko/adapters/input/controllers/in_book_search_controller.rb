@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'support/message_notifier'
-require_relative 'support/session_outcome_helpers'
+require_relative 'support/session_outcome_access'
 require_relative 'in_book_search/result_navigator'
 
 module Shoko
@@ -16,7 +16,7 @@ module Shoko
         # search service, and navigating to a selected result.
         class InBookSearchController
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
+          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
 
           def initialize(reader_state:, reader_session_mutator:, search_service:,
                          input_controller: nil, reader_controller: nil, state_controller: nil,

@@ -11,7 +11,7 @@ require_relative '../menu_design/canvas_well'
 require_relative '../menu_design/icon_set'
 require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
-require_relative '../ui/list_helpers'
+require_relative '../ui/list_windowing'
 require_relative '../ui/text_utils'
 
 module Shoko
@@ -219,7 +219,7 @@ module Shoko
 
               list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
               list.register_wheel(top: top, height: height, action: { type: :list_wheel, list: :settings })
-              start_index, visible = Ui::ListHelpers.slice_visible(SETTINGS_ITEMS, height, selection[:index])
+              start_index, visible = Ui::ListWindowing.slice_visible(SETTINGS_ITEMS, height, selection[:index])
               visible.each_with_index do |item, offset|
                 render_row(list, frame, item: item, index: start_index + offset,
                                         row: top + offset, selected: start_index + offset == selection[:index])

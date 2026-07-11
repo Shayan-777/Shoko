@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'style_support'
+require_relative 'style_primitives'
 
 module Shoko
   module Adapters
@@ -10,7 +10,7 @@ module Shoko
           module AnnotationMarkup
             # Builds cursor-index to visible-position mapping for navigation.
             class CursorMapBuilder
-              include StyleSupport
+              include StylePrimitives
 
               def initialize(text:, open_at:, close_at:)
                 @text = text

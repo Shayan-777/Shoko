@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require_relative 'dependency_record_mixins'
+require_relative 'dependency_builder'
+require_relative 'dependency_validation'
 
 module Shoko
   module Adapters
@@ -18,7 +19,7 @@ module Shoko
             :clock,
             :process_control
           ) do
-            include Validation
+            include DependencyValidation
 
             def self.required_fields
               %i[page_calculator terminal_service clipboard_service clock]
@@ -34,7 +35,7 @@ module Shoko
             :selection_service,
             :wrapping_service
           ) do
-            include Validation
+            include DependencyValidation
 
             def self.required_fields
               %i[config_reader reader_state_reader reader_session_mutator ui_state_reader]
@@ -50,7 +51,7 @@ module Shoko
             :render_registry,
             :coordinate_service
           ) do
-            include Validation
+            include DependencyValidation
 
             def self.required_fields
               %i[rendered_content_reader coordinate_service]
@@ -66,7 +67,7 @@ module Shoko
             :instrumentation_service,
             :warmup_services
           ) do
-            include Validation
+            include DependencyValidation
 
             def self.required_fields
               %i[reader_lifecycle_factory terminal_session background_worker_builder]
@@ -83,7 +84,7 @@ module Shoko
             :annotation_editor_launcher,
             :key_classifier
           ) do
-            include Validation
+            include DependencyValidation
 
             def self.required_fields
               %i[
@@ -102,7 +103,7 @@ module Shoko
             :ui_component_factory,
             :ui_state_reader
           ) do
-            include Validation
+            include DependencyValidation
 
             def self.required_fields
               %i[formatting_service layout_service dictionary_availability ui_component_factory]

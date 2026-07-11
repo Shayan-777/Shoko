@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 module Shoko
   module Adapters
     module Input
@@ -100,10 +102,7 @@ module Shoko
               def value_for(source, key)
                 return nil unless source
 
-                normalized = source.transform_keys do |entry_key|
-                  entry_key.is_a?(String) ? entry_key.to_sym : entry_key
-                end
-                normalized[key]
+                Shoko::Shared::HashNormalizer.symbolize_keys(source)[key]
               end
             end
           end

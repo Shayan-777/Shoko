@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 module Shoko
   module Core
     module Models
@@ -13,9 +15,7 @@ module Shoko
               raise ArgumentError, "AnnotationSelection annotation must be a Hash, got #{annotation.class}"
             end
 
-            normalized_annotation = annotation.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
+            normalized_annotation = Shoko::Shared::HashNormalizer.symbolize_keys(annotation)
             missing = self::REQUIRED_KEYS.select { |key| normalized_annotation[key].nil? }
             unless missing.empty?
               raise ArgumentError, "AnnotationSelection annotation missing keys: #{missing.join(', ')}"

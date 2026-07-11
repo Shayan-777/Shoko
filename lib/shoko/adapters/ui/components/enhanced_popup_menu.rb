@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative 'base_component'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/core/models/selection_anchor'
@@ -228,9 +229,7 @@ module Shoko
           end
 
           def normalize_anchor_position(anchor)
-            normalized = anchor.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(anchor)
             {
               x: (normalized[:x] || 1).to_i,
               y: (normalized[:y] || 1).to_i,

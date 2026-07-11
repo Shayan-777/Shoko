@@ -66,8 +66,7 @@ module Shoko
           end
 
           def source_format
-            path = @doc.respond_to?(:source_path) ? @doc.source_path : nil
-            Shoko::Adapters::Ui::Components::StatusBar::FormatBadge.format_for_path(path)
+            Shoko::Adapters::Ui::Components::StatusBar::FormatBadge.format_for_path(@doc&.source_path)
           end
 
           def config_attributes

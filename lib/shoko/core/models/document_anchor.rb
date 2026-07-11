@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 module Shoko
   module Core
     module Models
@@ -27,7 +29,7 @@ module Shoko
           def from_h(hash)
             return nil unless hash.is_a?(Hash)
 
-            normalized = hash.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(hash)
             new(
               quote: presence(normalized[:quote]),
               prefix: presence(normalized[:prefix]),

@@ -5,15 +5,8 @@ module Shoko
     module Input
       module Controllers
         module Dependencies
-          # Builds dependency records from a wider keyword hash at composition boundaries.
-          module DependencyBuilder
-            def build(**kwargs)
-              new(**kwargs.slice(*members))
-            end
-          end
-
           # Validates dependency records against explicit required field lists.
-          module Validation
+          module DependencyValidation
             def validate!
               missing = Array(self.class.required_fields).select { |field| public_send(field).nil? }
               return self if missing.empty?

@@ -8,7 +8,7 @@ module Shoko
       module Sessions
         module Support
           # Shared outcome/logging helpers for adapter-owned UI sessions.
-          module SessionOutcomeHelpers
+          module SessionOutcomeConstruction
             RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
             private

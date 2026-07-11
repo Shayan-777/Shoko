@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'contracts'
-require 'shoko/core/services/progress_helper'
+require 'shoko/core/services/progress_ratio'
 
 module Shoko
   module Application
@@ -206,7 +206,7 @@ module Shoko
             def build_full_pagination(runtime, width:, height:, presenter:)
               reporter = ScaledProgressReporter.new(presenter: presenter, from: LOAD_PROGRESS_SHARE, to: 1.0)
               runtime.build_full_map(dimensions: [width, height]) do |done, total|
-                reporter.update_status(progress: Shoko::Core::Services::ProgressHelper.ratio(done, total))
+                reporter.update_status(progress: Shoko::Core::Services::ProgressRatio.compute(done, total))
               end
               presenter.update_status(progress: 1.0)
             end

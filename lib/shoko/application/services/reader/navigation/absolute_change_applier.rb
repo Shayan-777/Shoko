@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'context_helpers'
+require_relative 'snapshot_queries'
 
 module Shoko
   module Application
@@ -50,13 +50,13 @@ module Shoko
             end
 
             def advance_to_next_chapter?(layout_state)
-              current_chapter = ContextHelpers.current_chapter(layout_state.snapshot)
+              current_chapter = SnapshotQueries.current_chapter(layout_state.snapshot)
               @advance_callback.call(current_chapter + 1)
               true
             end
 
             def advance_to_previous_chapter?(layout_state)
-              current_chapter = ContextHelpers.current_chapter(layout_state.snapshot)
+              current_chapter = SnapshotQueries.current_chapter(layout_state.snapshot)
               previous = current_chapter - 1
               return true if previous.negative?
 
@@ -81,7 +81,7 @@ module Shoko
             def apply_align_to_last(updates, changes, layout_state)
               return updates unless changes[:align_to_last]
 
-              total = ContextHelpers.total_chapters(layout_state.snapshot)
+              total = SnapshotQueries.total_chapters(layout_state.snapshot)
               total = 1 if total.to_i <= 0
               last_chapter = total - 1
               offset = @absolute_layout.max_offset_for(layout_state.snapshot, last_chapter, layout_state.stride)

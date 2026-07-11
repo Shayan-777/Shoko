@@ -8,7 +8,7 @@ require_relative '../menu_design/canvas_list'
 require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
 require_relative '../ui/text_utils'
-require_relative '../ui/list_helpers'
+require_relative '../ui/list_windowing'
 
 module Shoko
   module Adapters

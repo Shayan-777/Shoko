@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 module Shoko
   module Core
     module Models
@@ -9,9 +11,7 @@ module Shoko
           def from_h(hash)
             raise ArgumentError, "PendingJumpPayload must be a Hash, got #{hash.class}" unless hash.is_a?(Hash)
 
-            normalized = hash.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(hash)
 
             new(
               chapter_index: normalized[:chapter_index],
@@ -27,9 +27,7 @@ module Shoko
             return annotation if annotation.is_a?(Shoko::Core::Models::AnnotationSelection)
             return annotation unless annotation.is_a?(Hash)
 
-            annotation.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end.freeze
+            Shoko::Shared::HashNormalizer.symbolize_keys(annotation).freeze
           end
 
           def normalize_edit(value)

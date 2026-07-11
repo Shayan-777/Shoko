@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/terminal/text_metrics'
-require_relative 'config_helpers'
+require_relative 'config_resolution'
 require_relative 'kitty_image_line_renderer'
 require_relative 'line_content_composer'
 require_relative 'line_geometry_builder'

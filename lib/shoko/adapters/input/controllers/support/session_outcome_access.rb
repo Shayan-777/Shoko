@@ -6,7 +6,7 @@ module Shoko
       module Controllers
         module Support
           # Normalizes adapter-local session outcome handling for UI session collaborators.
-          module SessionOutcomeHelpers
+          module SessionOutcomeAccess
             private
 
             def session_payload(result)

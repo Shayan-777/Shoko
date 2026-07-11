@@ -2,7 +2,7 @@
 
 require 'rexml/document'
 
-require_relative 'element_name_helpers'
+require_relative 'element_queries'
 
 module Shoko
   module Adapters
@@ -10,7 +10,7 @@ module Shoko
       module Epub
         # Extracts href and cleaned label text from a nav list item.
         class OPFNavigationListItem
-          include OPFElementNameHelpers
+          include OPFElementQueries
 
           LIST_CONTAINER_TAGS = %w[ol ul].freeze
           private_constant :LIST_CONTAINER_TAGS

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'support/message_notifier'
-require_relative 'support/session_outcome_helpers'
+require_relative 'support/session_outcome_access'
 require 'shoko/shared/text_sanitizer'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/core/models/annotation_draft'
@@ -30,7 +30,7 @@ module Shoko
         # the state controller.
         class NotesLookupController
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
+          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
 
           AnnotationDraft = Shoko::Core::Models::AnnotationDraft
 

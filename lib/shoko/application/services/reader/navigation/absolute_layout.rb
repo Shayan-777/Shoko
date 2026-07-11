@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'context_helpers'
+require_relative 'snapshot_queries'
 require 'shoko/core/models/reader_settings'
 
 module Shoko
@@ -80,7 +80,7 @@ module Shoko
             private
 
             def build_snapshot
-              ContextHelpers.build_snapshot(
+              SnapshotQueries.build_snapshot(
                 config_snapshot: @app_config_store.load,
                 reader_session_snapshot: @reader_session_store.load,
                 reader_pagination_snapshot: @reader_state_reader.load,

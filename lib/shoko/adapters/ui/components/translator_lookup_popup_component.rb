@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
 require_relative 'ui/cursor_blink'
 require_relative 'ui/panel_spans'
-require_relative 'ui/list_helpers'
+require_relative 'ui/list_windowing'
 require_relative 'ui/text_utils'
 require 'shoko/shared/language_directory'
 require_relative 'status_bar/palette'
@@ -454,7 +455,7 @@ module Shoko
           def normalize_feedback(value)
             return nil unless value.is_a?(Hash)
 
-            normalized = value.transform_keys { |key| key.respond_to?(:to_sym) ? key.to_sym : key }
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(value)
             kind = normalized[:kind]
             kind = kind.to_sym if kind.respond_to?(:to_sym)
             expiry = normalized[:until]
@@ -631,7 +632,7 @@ module Shoko
 
           def render_picker_scrollbar(surface, bounds, layout, total_items)
             rows = layout[:visible]
-            thumb = Ui::ListHelpers.scrollbar_thumb(total: total_items, visible: rows, scroll: @picker_scroll)
+            thumb = Ui::ListWindowing.scrollbar_thumb(total: total_items, visible: rows, scroll: @picker_scroll)
             top = layout[:rule_row] + 1
             col = layout[:col] + layout[:width] - 1
             rows.times do |offset|
@@ -643,7 +644,7 @@ module Shoko
 
           def ensure_candidate_visible!(total, visible)
             @picker_index = @picker_index.clamp(0, [total - 1, 0].max)
-            @picker_scroll = Ui::ListHelpers.scroll_to_reveal(
+            @picker_scroll = Ui::ListWindowing.scroll_to_reveal(
               @picker_index, scroll: @picker_scroll, visible: visible, total: total
             )
           end

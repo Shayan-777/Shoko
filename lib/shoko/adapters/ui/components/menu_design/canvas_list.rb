@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../status_bar/palette'
-require_relative '../ui/list_helpers'
+require_relative '../ui/list_windowing'
 require_relative 'icon_set'
 require_relative 'canvas_frame'
 
@@ -90,8 +90,8 @@ module Shoko
             def render_scrollbar(top:, height:, total:, visible:, offset:)
               return if total <= visible || height <= 0
 
-              thumb = Ui::ListHelpers.scrollbar_thumb(total: total, visible: visible, scroll: offset,
-                                                      track_rows: height)
+              thumb = Ui::ListWindowing.scrollbar_thumb(total: total, visible: visible, scroll: offset,
+                                                        track_rows: height)
               col = @frame.content_x + @frame.content_width - 1
               height.times do |index|
                 in_thumb = index >= thumb[:start] && index < thumb[:start] + thumb[:size]

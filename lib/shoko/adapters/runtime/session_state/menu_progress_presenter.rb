@@ -41,7 +41,7 @@ module Shoko
           end
 
           def update(done:, total:)
-            progress = Shoko::Core::Services::ProgressHelper.ratio(done, total)
+            progress = Shoko::Core::Services::ProgressRatio.compute(done, total)
             update_status(progress: progress)
           end
 

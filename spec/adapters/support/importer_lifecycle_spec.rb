@@ -2,10 +2,10 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Adapters::Support::LifecycleHelpers do
+RSpec.describe Shoko::Adapters::Support::ImporterLifecycle do
   let(:host_class) do
     Class.new do
-      include Shoko::Adapters::Support::LifecycleHelpers
+      include Shoko::Adapters::Support::ImporterLifecycle
 
       def initialize(progress_reporter: nil, instrumentation: nil)
         @progress_reporter = progress_reporter

@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Adapters::Ui::Components::Ui::ListHelpers do
+RSpec.describe Shoko::Adapters::Ui::Components::Ui::ListWindowing do
   describe '.scrollbar_thumb' do
     it 'sizes the thumb to the visible share of the list' do
       thumb = described_class.scrollbar_thumb(total: 20, visible: 5, scroll: 0)

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/application/ports/outbound/catalog_refresh_control'
+require 'shoko/shared/hash_normalizer'
 require 'shoko/application/ports/outbound/app_config_store'
 require 'shoko/application/ports/outbound/menu_session_store'
 require 'shoko/application/ports/outbound/menu_transient_store'
@@ -338,10 +339,7 @@ module Shoko
           def normalize_book_payload(book)
             raise invalid_download_payload("download payload must be a Hash, got #{book.class}") unless book.is_a?(Hash)
 
-            book.each_with_object({}) do |(key, value), acc|
-              normalized_key = key.is_a?(String) ? key.to_sym : key
-              acc[normalized_key] = value
-            end
+            Shoko::Shared::HashNormalizer.symbolize_keys(book)
           end
 
           def invalid_download_payload(message)
@@ -351,10 +349,7 @@ module Shoko
           def summarize_book_payload(book)
             return book.class.name unless book.is_a?(Hash)
 
-            normalized = book.each_with_object({}) do |(key, value), acc|
-              normalized_key = key.is_a?(String) ? key.to_sym : key
-              acc[normalized_key] = value
-            end
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(book)
             title = normalized[:title].to_s.strip
             title.empty? ? '<missing-title>' : title
           end

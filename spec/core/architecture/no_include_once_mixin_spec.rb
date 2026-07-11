@@ -57,4 +57,23 @@ RSpec.describe 'No include-once mixins (constitution R1)' do
       #{fixed.map { |p| "  - #{p}" }.join("\n")}
     MSG
   end
+
+  # R1 through the other door: reopening a class (or module) in a second file
+  # to inject method definitions is an include-once mixin without the
+  # `include` — the same fragment indirection, invisible to the include
+  # scanner. A class's methods live in the one file named after it (§III);
+  # a second file under the class's namespace may only define its own nested
+  # collaborator constants. No allowlist.
+  it 'forbids method-bearing class reopenings across files' do
+    fragments = SpecSupport::Architecture::ClassReopeningScanner.violations(lib_root)
+
+    expect(fragments).to eq([]), <<~MSG
+      Class fragment(s) detected (constitution R1/R3 — methods split across
+      files via reopening). Merge the fragment's methods into the host file
+      (length is never a reason to split, R2), or promote the fragment to a
+      real collaborator object:
+
+      #{fragments.map { |p| "  - #{p}" }.join("\n")}
+    MSG
+  end
 end

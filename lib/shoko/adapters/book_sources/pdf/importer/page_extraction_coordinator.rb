@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require 'json'
 require 'shoko/shared/errors'
 
@@ -82,9 +83,7 @@ module Shoko
             def layout_value(line, key)
               return nil unless line.is_a?(Hash)
 
-              line.transform_keys do |entry_key|
-                entry_key.is_a?(String) ? entry_key.to_sym : entry_key
-              end[key]
+              Shoko::Shared::HashNormalizer.symbolize_keys(line)[key]
             end
 
             def layout_payload(lines)

@@ -2,7 +2,7 @@
 
 require 'rexml/document'
 
-require_relative 'element_name_helpers'
+require_relative 'element_queries'
 require_relative 'navigation_context'
 require_relative '../rexml_safe_parser'
 require_relative 'navigation_walker'
@@ -14,7 +14,7 @@ module Shoko
       module Epub
         # Parses nav/NCX documents and builds navigation entries with fallback labels.
         class OPFNavigationTraversal
-          include OPFElementNameHelpers
+          include OPFElementQueries
 
           NAV_TYPE_ATTRIBUTES = %w[epub:type type role].freeze
           NAV_TOC_TYPES = %w[toc doc-toc].freeze

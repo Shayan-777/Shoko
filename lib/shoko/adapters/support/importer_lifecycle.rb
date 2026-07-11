@@ -6,7 +6,7 @@ module Shoko
   module Adapters
     module Support
       # Shared lifecycle helpers used by importers and cache pipeline stages.
-      module LifecycleHelpers
+      module ImporterLifecycle
         private
 
         def report(message, progress: nil)

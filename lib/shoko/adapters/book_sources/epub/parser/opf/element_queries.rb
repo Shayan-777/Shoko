@@ -7,7 +7,7 @@ module Shoko
     module BookSources
       module Epub
         # Small REXML traversal helpers for EPUB navigation documents.
-        module OPFElementNameHelpers
+        module OPFElementQueries
           private
 
           def element_name?(element, *names)

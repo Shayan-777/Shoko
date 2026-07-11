@@ -7,7 +7,7 @@ require 'shoko/core/models/book_data'
 require 'shoko/adapters/book_sources/rtf/parser/rtf_parser'
 require 'shoko/adapters/book_sources/rtf/parser/rtf_metadata_extractor'
 require 'shoko/adapters/book_sources/rtf/parser/metadata_parser'
-require_relative '../../support/lifecycle_helpers'
+require_relative '../../support/importer_lifecycle'
 
 module Shoko
   module Adapters
@@ -19,7 +19,7 @@ module Shoko
         # patterns or page breaks, converts each chapter to HTML for lazy
         # content parsing, and returns a BookData struct.
         class RtfImporter
-          include Shoko::Adapters::Support::LifecycleHelpers
+          include Shoko::Adapters::Support::ImporterLifecycle
 
           DEFAULT_LANGUAGE = 'en_US'
 

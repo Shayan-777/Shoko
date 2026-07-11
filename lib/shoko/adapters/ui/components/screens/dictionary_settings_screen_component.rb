@@ -8,7 +8,7 @@ require_relative '../menu_design/canvas_list'
 require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
 require_relative '../ui/text_utils'
-require_relative '../ui/list_helpers'
+require_relative '../ui/list_windowing'
 
 module Shoko
   module Adapters
@@ -180,7 +180,7 @@ module Shoko
 
             def catalog_window(items, height)
               selection = [selected_index - action_items.length, 0].max
-              start_index, visible = Ui::ListHelpers.slice_visible(items, height, selection)
+              start_index, visible = Ui::ListWindowing.slice_visible(items, height, selection)
               { start: start_index, items: visible }
             end
 

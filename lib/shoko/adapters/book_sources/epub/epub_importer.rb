@@ -11,7 +11,7 @@ require 'shoko/adapters/book_sources/epub/parser/xml_text_normalizer'
 require 'shoko/core/models/book_data'
 require 'shoko/core/models/chapter'
 require 'shoko/core/models/toc_entry'
-require_relative '../../support/lifecycle_helpers'
+require_relative '../../support/importer_lifecycle'
 
 module Shoko
   module Adapters
@@ -26,7 +26,7 @@ module Shoko
         # not consume the raw bytes. Optional consumers (e.g. Kitty image rendering)
         # should load resources on-demand.
         class EpubImporter
-          include Shoko::Adapters::Support::LifecycleHelpers
+          include Shoko::Adapters::Support::ImporterLifecycle
 
           DEFAULT_LANGUAGE = 'en_US'
           CONTAINER_PATH   = 'META-INF/container.xml'

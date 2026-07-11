@@ -5,7 +5,7 @@ require_relative '../../constants/ui_constants'
 require_relative '../ui/box_drawer'
 require_relative '../ui/cursor_blink'
 require 'shoko/shared/annotation_list_input'
-require_relative 'annotation_rendering_helpers'
+require_relative 'annotation_text_box'
 require 'shoko/core/models/annotation_draft'
 
 module Shoko

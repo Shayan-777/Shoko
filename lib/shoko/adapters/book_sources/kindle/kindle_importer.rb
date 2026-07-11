@@ -13,7 +13,7 @@ require 'shoko/adapters/book_sources/kindle/parser/huff_cdic_decompressor'
 require 'shoko/adapters/book_sources/kindle/parser/kindle_metadata_extractor'
 require 'shoko/adapters/book_sources/kindle/parser/metadata_parser'
 require 'shoko/adapters/book_sources/format_registry'
-require_relative '../../support/lifecycle_helpers'
+require_relative '../../support/importer_lifecycle'
 
 module Shoko
   module Adapters
@@ -27,7 +27,7 @@ module Shoko
         # All three Kindle formats share the PDB container, MOBI header,
         # PalmDOC compression, and HTML/XHTML content structure.
         class KindleImporter
-          include Shoko::Adapters::Support::LifecycleHelpers
+          include Shoko::Adapters::Support::ImporterLifecycle
 
           DEFAULT_LANGUAGE = 'en_US'
           FALLBACK_CHUNK_SIZE = 20_000 # bytes per auto-chapter when no markers found

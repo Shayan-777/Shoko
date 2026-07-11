@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative '../support/message_notifier'
-require_relative '../support/session_outcome_helpers'
+require_relative '../support/session_outcome_access'
 
 module Shoko
   module Adapters
@@ -11,7 +12,7 @@ module Shoko
           # Handles annotation editor modal lifecycle and persistence actions.
           class EditorWorkflow
             include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
+            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
 
             BOUNDARY_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
@@ -155,9 +156,7 @@ module Shoko
             end
 
             def normalize_payload(payload)
-              return payload unless payload.is_a?(Hash)
-
-              payload.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
+              Shoko::Shared::HashNormalizer.symbolize_keys(payload) || payload
             end
 
             def ensure_ui_session!

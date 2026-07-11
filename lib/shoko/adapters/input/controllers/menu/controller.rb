@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../dependencies/dependency_record_mixins'
+require_relative '../dependencies/dependency_builder'
+require_relative '../dependencies/dependency_validation'
 require_relative 'state_controller'
 require_relative 'input_controller'
 require_relative 'intent_runtime_bridge'
@@ -31,7 +32,7 @@ module Shoko
               :process_control
             ) do
               extend Shoko::Adapters::Input::Controllers::Dependencies::DependencyBuilder
-              include Shoko::Adapters::Input::Controllers::Dependencies::Validation
+              include Shoko::Adapters::Input::Controllers::Dependencies::DependencyValidation
 
               def self.required_fields
                 %i[
@@ -56,7 +57,7 @@ module Shoko
               :state_controller_factory
             ) do
               extend Shoko::Adapters::Input::Controllers::Dependencies::DependencyBuilder
-              include Shoko::Adapters::Input::Controllers::Dependencies::Validation
+              include Shoko::Adapters::Input::Controllers::Dependencies::DependencyValidation
 
               def self.required_fields
                 members

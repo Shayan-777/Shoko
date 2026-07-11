@@ -39,24 +39,22 @@ RSpec.describe 'No reflection probing' do
   #   * Ruby protocol-conversion probes on values (:to_h, :to_sym, :call, …),
   #     which normalize external/loose data rather than probe collaborators; and
   #   * the allowlisted files below, each probing a genuinely polymorphic or
-  #     external surface (raw IO capabilities, importer-specific documents,
-  #     the formatting layer's "config-like" values, parsed render geometry,
-  #     heterogeneous screen collections, dynamic command validation, or
-  #     fail-fast argument checks that raise instead of skipping).
+  #     external surface (raw IO capabilities, the formatting layer's
+  #     "config-like" values, parsed render geometry, heterogeneous screen
+  #     collections, dynamic command validation, or fail-fast argument checks
+  #     that raise instead of skipping).
   it 'forbids respond_to? probing of guaranteed collaborators in adapters and shared' do
     allowlist = %w[
       adapters/monitoring/logger_adapter.rb
-      adapters/input/controllers/reader/inline_link/destination_resolver.rb
       adapters/input/dispatcher.rb
       adapters/storage/recent_files_repository.rb
       adapters/rss/rss_reader_service.rb
       adapters/output/formatting/formatting_service.rb
       adapters/output/terminal/input.rb
       adapters/output/kitty/kitty_graphics.rb
-      adapters/ui/rendering/line/config_helpers.rb
+      adapters/ui/rendering/line/config_resolution.rb
       adapters/ui/components/main_menu_component.rb
       adapters/ui/components/ui/backdrop_overlay.rb
-      adapters/ui/view_models/reader_view_model_builder.rb
       adapters/ui/sessions/dictionary_ui_session_adapter.rb
       shared/lazy_proxy.rb
       shared/language_directory.rb

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require_relative 'dependency_record_mixins'
+require_relative 'dependency_builder'
+require_relative 'dependency_validation'
 
 module Shoko
   module Adapters
@@ -17,7 +18,7 @@ module Shoko
               :rendered_content_reader
             ) do
               extend DependencyBuilder
-              include Validation
+              include DependencyValidation
 
               def self.required_fields
                 %i[reader_state config_reader reader_session_mutator]
@@ -34,7 +35,7 @@ module Shoko
               :settings_service
             ) do
               extend DependencyBuilder
-              include Validation
+              include DependencyValidation
 
               def self.required_fields
                 %i[notification_service]
@@ -48,7 +49,7 @@ module Shoko
               :dictionary_ui_session
             ) do
               extend DependencyBuilder
-              include Validation
+              include DependencyValidation
 
               def self.required_fields
                 []
@@ -64,7 +65,7 @@ module Shoko
               :clock
             ) do
               extend DependencyBuilder
-              include Validation
+              include DependencyValidation
 
               def self.required_fields
                 %i[clock]

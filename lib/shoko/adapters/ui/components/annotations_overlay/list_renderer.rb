@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../ui/text_utils'
-require_relative '../ui/list_helpers'
+require_relative '../ui/list_windowing'
 require_relative '../../constants/ui_constants'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/terminal/ansi'
@@ -79,7 +79,7 @@ module Shoko
             end
 
             def render_rows(context, columns, list_top, list_height)
-              start_index, visible = Ui::ListHelpers.slice_visible(context.items, list_height, context.selected_index)
+              start_index, visible = Ui::ListWindowing.slice_visible(context.items, list_height, context.selected_index)
               list_col = context.layout.origin_x + 2
 
               visible.each_with_index do |annotation, offset|

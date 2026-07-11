@@ -5,7 +5,7 @@ require_relative '../menu_design/canvas_frame'
 require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
 require_relative '../ui/box_drawer'
-require_relative '../ui/list_helpers'
+require_relative '../ui/list_windowing'
 require_relative '../ui/text_utils'
 require_relative '../ui/cursor_blink'
 require 'shoko/shared/terminal/text_metrics'
@@ -370,7 +370,7 @@ module Shoko
             def dropdown_window(kind)
               items = language_options(kind)
               visible = self.class::MAX_DROPDOWN_ROWS
-              @dropdown_scroll = Ui::ListHelpers.scroll_to_reveal(
+              @dropdown_scroll = Ui::ListWindowing.scroll_to_reveal(
                 dropdown_selected, scroll: @dropdown_scroll || 0, visible: visible, total: items.length
               )
               { start: @dropdown_scroll, items: items.slice(@dropdown_scroll, visible) || [] }
@@ -506,7 +506,7 @@ module Shoko
               visible = [Array(window[:items]).length, 1].max
               return nil if total <= visible
 
-              Ui::ListHelpers.scrollbar_thumb(total: total, visible: visible, scroll: window[:start])
+              Ui::ListWindowing.scrollbar_thumb(total: total, visible: visible, scroll: window[:start])
             end
 
             # The family scrollbar: a full-height █ track in the lighter tone

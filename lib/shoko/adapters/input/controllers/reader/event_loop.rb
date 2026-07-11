@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 module Shoko
   module Adapters
     module Input
@@ -135,7 +137,7 @@ module Shoko
             end
 
             def landing_highlight_expires_at(highlight)
-              symbolized = highlight.transform_keys { |key| key.respond_to?(:to_sym) ? key.to_sym : key }
+              symbolized = Shoko::Shared::HashNormalizer.symbolize_keys(highlight)
               value = symbolized[:expires_at]
               value&.to_f
             end

@@ -4,7 +4,7 @@ require 'shoko/application/ports/outbound/app_config_store'
 require 'shoko/application/ports/outbound/document_warmup'
 require 'shoko/application/ports/outbound/reader_view_state_store'
 require 'shoko/application/ports/outbound/reader_runtime_context'
-require 'shoko/core/services/progress_helper'
+require 'shoko/core/services/progress_ratio'
 
 module Shoko
   module Application
@@ -92,7 +92,7 @@ module Shoko
             lambda do |done, total|
               progress_reporter.update_status(
                 message: warmup_progress_message(done, total),
-                progress: Shoko::Core::Services::ProgressHelper.ratio(done, total)
+                progress: Shoko::Core::Services::ProgressRatio.compute(done, total)
               )
             end
           end

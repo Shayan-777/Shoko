@@ -152,7 +152,7 @@ RSpec.describe 'Reader settings dependency loading' do
       shoko/application/use_cases/settings_service
       shoko/adapters/ui/view_models/reader_view_model_builder
       shoko/application/services/reader/bookmark_service
-      shoko/adapters/ui/rendering/line/config_helpers
+      shoko/adapters/ui/rendering/line/config_resolution
       shoko/application/services/reader/navigation/absolute_layout
       shoko/application/services/pagination/page_calculator_service
       shoko/application/services/pagination/page_info_calculator

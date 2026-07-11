@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require 'fileutils'
 require_relative '../base_adapter'
 require_relative '../../shared/download_source_policy'
@@ -231,9 +232,7 @@ module Shoko
         def normalize_book_payload(book)
           raise DownloadError, "download payload must be a Hash, got #{book.class}" unless book.is_a?(Hash)
 
-          book.transform_keys do |key|
-            key.is_a?(String) ? key.to_sym : key
-          end
+          Shoko::Shared::HashNormalizer.symbolize_keys(book)
         end
 
         def payload_value(payload, key_sym, key_str, default)

@@ -2,7 +2,7 @@
 
 require 'rexml/document'
 
-require_relative 'element_name_helpers'
+require_relative 'element_queries'
 require_relative 'navigation_label_resolver'
 require_relative 'navigation_list_item'
 
@@ -12,7 +12,7 @@ module Shoko
       module Epub
         # Tracks navigation entries/titles while walking a nav tree.
         class OPFNavigationContext
-          include OPFElementNameHelpers
+          include OPFElementQueries
 
           attr_reader :toc_entries, :titles, :level
 

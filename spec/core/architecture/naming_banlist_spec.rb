@@ -6,10 +6,9 @@ require 'spec_helper'
 # `_mixin(s)`, `_actions` file suffix unless that word is a real role/domain
 # concept. True Coordinator roles (pagination_coordinator, frame_coordinator,
 # spellcheck_coordinator, selection_coordinator) are real patterns and not
-# banned. The remaining banned-suffix files that predate this rule are held in
-# a ratchet allowlist: nothing NEW may take these names, and entries leave the
-# list as their hosts are renamed or folded (constitution amendment
-# 2026-06-10).
+# banned. The pre-rule ratchet allowlist closed on 2026-07-11 — every holdout
+# was renamed to a role noun or folded into its host, so the ban now holds
+# with no exceptions.
 RSpec.describe 'Naming banlist' do
   let(:root) { File.expand_path('../../..', __dir__) }
   let(:lib_root) { File.join(root, 'lib', 'shoko') }
@@ -24,39 +23,17 @@ RSpec.describe 'Naming banlist' do
     *_dispatch.rb
   ].freeze
 
-  # Ratchet baseline as of 2026-06-10. Pre-rule names that must not multiply.
-  # (The two dictionary `*_support` holdouts were retired when the install
-  # wizard became Dictionary::SetupSession — 2026-06-23.)
-  ALLOWLIST = %w[
-    adapters/book_sources/epub/parser/opf/element_name_helpers.rb
-    adapters/input/controllers/dependencies/dependency_record_mixins.rb
-    adapters/input/controllers/support/session_outcome_helpers.rb
-    adapters/storage/json_cache_store/payload_helpers.rb
-    adapters/support/lifecycle_helpers.rb
-    adapters/ui/components/screens/annotation_rendering_helpers.rb
-    adapters/ui/components/ui/annotation_markup/style_support.rb
-    adapters/ui/components/ui/list_helpers.rb
-    adapters/ui/rendering/line/config_helpers.rb
-    adapters/ui/sessions/support/session_outcome_helpers.rb
-    application/services/reader/navigation/context_helpers.rb
-    core/services/progress_helper.rb
-  ].freeze
-
-  it 'forbids new files with banned grab-bag suffixes (ratchet)' do
+  # The ratchet closed on 2026-07-11: the last pre-rule holdouts were renamed
+  # to role nouns or folded into their hosts. No allowlist remains — any
+  # banned-suffix file is a violation.
+  it 'forbids files with banned grab-bag suffixes' do
     offenders = BANNED_SUFFIX_GLOBS.flat_map do |glob|
       Dir[File.join(lib_root, '**', glob)]
-    end.map { |path| path.delete_prefix("#{lib_root}/") } - ALLOWLIST
+    end.map { |path| path.delete_prefix("#{lib_root}/") }
 
     expect(offenders).to eq([]),
-                         "New banned-suffix files (constitution §III — name the role, or keep private methods " \
+                         "Banned-suffix files (constitution §III — name the role, or keep private methods " \
                          "on the host):\n#{offenders.sort.join("\n")}"
-  end
-
-  it 'keeps the allowlist honest: every entry still exists' do
-    stale = ALLOWLIST.reject { |rel| File.exist?(File.join(lib_root, rel)) }
-
-    expect(stale).to eq([]),
-                     "Allowlist entries no longer exist — remove them so the ratchet tightens:\n#{stale.join("\n")}"
   end
 
   it 'forbids shorthand module declarations in runtime code' do

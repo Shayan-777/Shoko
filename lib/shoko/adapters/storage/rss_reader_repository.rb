@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require 'fileutils'
 require 'json'
 
@@ -169,12 +170,7 @@ module Shoko
         end
 
         def normalize_hash_keys(payload)
-          return payload unless payload.is_a?(Hash)
-
-          payload.each_with_object({}) do |(key, value), acc|
-            normalized_key = key.is_a?(String) ? key.to_sym : key
-            acc[normalized_key] = value
-          end
+          Shoko::Shared::HashNormalizer.symbolize_keys(payload) || payload
         end
 
         def serialized_snapshot(feeds:, articles:)

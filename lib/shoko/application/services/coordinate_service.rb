@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../core/models/selection_anchor'
+require 'shoko/shared/hash_normalizer'
 
 module Shoko
   module Application
@@ -204,12 +205,7 @@ module Shoko
         end
 
         def normalize_keys(value)
-          return {} unless value.is_a?(Hash)
-
-          value.each_with_object({}) do |(key, item), acc|
-            normalized_key = key.is_a?(String) ? key.to_sym : key
-            acc[normalized_key] = item
-          end
+          Shoko::Shared::HashNormalizer.symbolize_keys(value) || {}
         end
 
         def relative_column(mouse_x, geometry)

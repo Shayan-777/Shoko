@@ -6,7 +6,8 @@ require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
 require_relative '../ui/text_utils'
 require 'shoko/shared/terminal/text_sanitizer'
-require_relative 'annotation_rendering_helpers'
+require_relative 'annotation_screen_rendering'
+require_relative 'annotation_view'
 
 module Shoko
   module Adapters
@@ -121,10 +122,6 @@ module Shoko
             def selected_annotation
               ann = menu_state_reader&.selected_annotation
               ann if ann.is_a?(Hash)
-            end
-
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
             def safe_text(text)

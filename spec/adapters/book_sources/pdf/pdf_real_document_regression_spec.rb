@@ -2,7 +2,7 @@
 
 require 'json'
 require 'spec_helper'
-require_relative '../../../../lib/shoko/adapters/storage/cache/epub/serializer/serialize'
+require_relative '../../../../lib/shoko/adapters/storage/cache/epub/serializer'
 
 RSpec.describe 'PDF real document regressions' do
   let(:testbooks_dir) { File.expand_path('../../../../testbooks', __dir__) }
