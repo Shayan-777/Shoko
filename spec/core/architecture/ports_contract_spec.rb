@@ -15,7 +15,7 @@ RSpec.describe 'Ports contract' do
   let(:lib_root) { File.join(root, 'lib', 'shoko') }
   let(:ports_root) { File.join(lib_root, 'application', 'ports') }
   let(:reader_builder_paths) do
-    Dir[File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_builder', '*.rb')]
+    [File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_builder.rb')]
   end
   let(:menu_builder_path) do
     File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'menu_builder.rb')
@@ -160,15 +160,15 @@ RSpec.describe 'Ports contract' do
       content = reader_builder_paths.map { |path| non_comment_content(path) }.join("\n")
 
       expect(content).to match(/ReaderIntentHandler\.new\([^)]*reader_session_store:/m),
-                         'Reader intent handler must be wired with reader_session_store in reader_builder/'
+                         'Reader intent handler must be wired with reader_session_store in reader_builder.rb'
       expect(content).to match(/ReaderIntentHandler\.new\([^)]*reader_overlay_control:/m),
-                         'Reader intent handler must be wired with capability ports in reader_builder/'
+                         'Reader intent handler must be wired with capability ports in reader_builder.rb'
       expect(content).to match(/ReaderIntentHandler\.new\([^)]*application_exit_control:/m),
-                         'Reader intent handler must receive application_exit_control in reader_builder/'
+                         'Reader intent handler must receive application_exit_control in reader_builder.rb'
       expect(content).not_to match(/ReaderIntentHandler\.new\([^)]*reader_state_reader:/m),
-                             'Reader intent handler must not receive reader_state_reader in reader_builder/'
+                             'Reader intent handler must not receive reader_state_reader in reader_builder.rb'
       expect(content).not_to match(/ReaderIntentHandler\.new\([^)]*reader_runtime:/m),
-                             'Reader intent handler must not receive reader_runtime in reader_builder/'
+                             'Reader intent handler must not receive reader_runtime in reader_builder.rb'
     end
 
     it 'wires MenuIntentHandler through session stores and capability ports' do

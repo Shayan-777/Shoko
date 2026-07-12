@@ -63,7 +63,7 @@ Metrics/MethodLength:
     - 'lib/shoko/application/use_cases/support/intent_action_group.rb'
     - 'lib/shoko/application/workflows/menu/rss_reader_workflow.rb'
     - 'lib/shoko/composition/container_factory/controller_composition/menu_state_controller_composer.rb'
-    - 'lib/shoko/composition/container_factory/controller_composition/reader_builder/controller_dependency_factory.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_builder.rb'
 
 # Configuration parameters: Max, CountKeywordArgs, MaxOptionalParameters.
 Metrics/ParameterLists:

@@ -5,3 +5,7 @@ spec/examples.txt
 tmp/
 pkg/*.gem
 .rspec_status
+# Build artifact of the offline translation engine — build with
+# `make -C ext/shoko_translate` (see README); never commit the binary.
+ext/shoko_translate/shoko-translate
+ext/shoko_translate/*.o

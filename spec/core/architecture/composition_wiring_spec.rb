@@ -44,7 +44,6 @@ RSpec.describe 'Composition is the only concrete wiring' do
     [
       'composition/container_factory/domain_application_registration/',
       'composition/container_factory/port_and_repository_registration/',
-      'composition/container_factory/controller_composition/reader_builder/',
       'composition/container_factory/controller_composition/menu_builder/',
     ]
   end
@@ -84,10 +83,7 @@ RSpec.describe 'Composition is the only concrete wiring' do
       File.join(lib_root, 'composition', 'container_factory', 'controller_composition',
                 'menu_state_controller_composer.rb'),
     ]
-    allowed_prefixes = [
-      "#{File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_builder')}/",
-      "#{File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_runtime_assembler')}/",
-    ]
+    allowed_prefixes = []
     controller_names = %w[
       UIController
       StateController
@@ -150,9 +146,9 @@ RSpec.describe 'Composition is the only concrete wiring' do
   end
 
   it 'wires reader runtime assembler ui/render consumers to the broad reader state projection' do
-    runtime_files = Dir[
-      File.join(lib_root, 'composition', 'container_factory', 'controller_composition',
-                'reader_runtime_assembler', '**', '*.rb')
+    runtime_files = [
+      File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_runtime_assembler.rb'),
+      File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_builder.rb'),
     ]
     forbidden_patterns = [
       /reader_state_reader:\s*(?:context|runtime_context)\.state\.reader_session_store/,

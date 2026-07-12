@@ -21,6 +21,26 @@ permissions:
   contents: read
 
 jobs:
+  translate-engine:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build offline translation engine
+      run: make -C ext/shoko_translate
+    - name: Smoke-test engine protocol
+      run: |
+        response="$(printf '{"op":"ping"}\n' | ./ext/shoko_translate/shoko-translate)"
+        echo "$response"
+        echo "$response" | grep -q '"ok":true'
+    - name: Ensure no build artifacts are tracked
+      run: |
+        if git ls-files ext | grep -Ev '\.(c|h|md|sh)$|Makefile$' | grep -q .; then
+          echo "Tracked non-source files under ext/:"
+          git ls-files ext | grep -Ev '\.(c|h|md|sh)$|Makefile$'
+          exit 1
+        fi
+
   lint:
     runs-on: ubuntu-22.04
 
