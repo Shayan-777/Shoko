@@ -15,7 +15,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
     Class.new do
       include Shoko::Application::Ports::Outbound::DocumentLoader
 
-      def load(path:, progress_reporter: nil, background_worker: nil); end
+      def load(path:, progress_reporter: nil); end
     end.new
   end
   let(:document_warmup) do
@@ -31,7 +31,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
 
   it 'returns :skipped when document is already cached' do
     document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: true)
-    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
+    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil)
                                             .and_return(document)
 
     adapter = described_class.new(document_loader: document_loader, document_warmup: document_warmup)
@@ -42,7 +42,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
 
   it 'returns :imported when document is newly built' do
     document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false)
-    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
+    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil)
                                             .and_return(document)
 
     adapter = described_class.new(document_loader: document_loader, document_warmup: document_warmup)
@@ -59,7 +59,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
 
   it 'supports import without a warmup collaborator' do
     document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false)
-    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
+    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil)
                                             .and_return(document)
 
     adapter = described_class.new(document_loader: document_loader)
@@ -69,7 +69,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
 
   it 'warms imported documents with reader view state during the batch import path' do
     document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false, canonical_path: '/books/a.epub')
-    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
+    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil)
                                             .and_return(document)
     page_calculator = instance_double(Shoko::Application::Services::Pagination::PageCalculatorService, reset_session!: nil, build_dynamic_map!: { total_pages: 42 })
     warmup = Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup.new(
@@ -112,9 +112,8 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
         @reporters = []
       end
 
-      def load(path: nil, progress_reporter: nil, background_worker: nil)
+      def load(path: nil, progress_reporter: nil)
         _ = path
-        _ = background_worker
         @reporters << progress_reporter
         progress_reporter&.update_status(message: 'Loading cache...', progress: 0.5)
         @document
@@ -151,7 +150,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
   end
 
   it 'raises a file-scoped parse error when the document loader returns nil' do
-    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
+    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil)
                                             .and_return(nil)
 
     adapter = described_class.new(document_loader: document_loader)
@@ -161,7 +160,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
   end
 
   it 'propagates BookParseError when the document service raises malformed-book input' do
-    allow(document_loader).to receive(:load).with(path: '/books/bad.epub', progress_reporter: nil, background_worker: nil)
+    allow(document_loader).to receive(:load).with(path: '/books/bad.epub', progress_reporter: nil)
                                             .and_raise(Shoko::BookParseError.new('bad book', '/books/bad.epub'))
 
     adapter = described_class.new(document_loader: document_loader)

@@ -31,8 +31,7 @@ module Shoko
           @book_resource_warmup = book_resource_warmup
         end
 
-        def load(path:, progress_reporter: nil, background_worker: nil)
-          _unused_worker = background_worker
+        def load(path:, progress_reporter: nil)
           report(progress_reporter, 'Checking cache...')
           cached = @book_cache_store.fetch(path, strict: true)
           return document_for(cached) if cached

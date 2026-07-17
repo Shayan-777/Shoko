@@ -25,9 +25,12 @@ module Shoko
         # Runs the job. The job executes off the UI thread (when an executor is
         # available) and must not touch shared state directly — it reports back
         # exclusively via #enqueue. Returns false when the job could not be
-        # submitted (executor shutting down). Without an executor the job runs
-        # inline and its errors propagate to the caller, exactly like the
-        # blocking code this relay replaces.
+        # submitted (executor shutting down). Once submission succeeds the
+        # return value is true regardless of the job's fate: job errors are
+        # background noise, logged and swallowed — even when an injected
+        # executor happens to run the job synchronously inside #submit. Only
+        # the executorless inline path propagates job errors to the caller,
+        # exactly like the blocking code this relay replaces.
         def submit(&job)
           raise ArgumentError, 'job block required' unless job
 
@@ -76,11 +79,15 @@ module Shoko
         private
 
         # A failed submit must never break the UI path that requested it; the
-        # caller sees false and its "started" status simply stays put.
+        # caller sees false and its "started" status simply stays put. Job
+        # errors are handled inside the submitted block, so the rescue below
+        # fires only when the executor rejected the block before running it —
+        # which is also the only case where the block's ensure never ran and
+        # the pending count must be repaired here.
         def submit_to_executor(executor, job)
           begin_job
           executor.submit do
-            job.call
+            run_job(job)
           ensure
             finish_job
           end
@@ -90,6 +97,16 @@ module Shoko
           finish_job
           swallow_submit_error(e)
           false
+        end
+
+        # Job errors must not escape into the executor (or, for a synchronous
+        # executor, back through #submit as a bogus submit failure); they are
+        # background noise, reported through the logger only.
+        def run_job(job)
+          job.call
+        # resilient-boundary
+        rescue StandardError => e
+          swallow_job_error(e)
         end
 
         # A failing executor factory degrades to inline (blocking) execution
@@ -121,6 +138,14 @@ module Shoko
         def swallow_submit_error(error)
           @logger&.debug(
             'async_result_relay.submit_failed',
+            error: error.class.name,
+            message: error.message
+          )
+        end
+
+        def swallow_job_error(error)
+          @logger&.debug(
+            'async_result_relay.job_failed',
             error: error.class.name,
             message: error.message
           )

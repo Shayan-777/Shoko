@@ -124,8 +124,7 @@ module Shoko
               resolved_path = resolve_source_path(path, path_resolution)
               @document_loader.load(
                 path: resolved_path,
-                progress_reporter: progress_reporter,
-                background_worker: current_background_worker
+                progress_reporter: progress_reporter
               )
             end
 

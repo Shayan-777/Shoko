@@ -8,9 +8,8 @@ module Shoko
         module DocumentLoader
           # @param path [String]
           # @param progress_reporter [Object, nil] Progress reporter with #update_status
-          # @param background_worker [Application::Ports::Outbound::AsyncExecutor, nil]
           # @return [Object] Loaded document
-          def load(path:, progress_reporter: nil, background_worker: nil)
+          def load(path:, progress_reporter: nil)
             raise NotImplementedError, "#{self.class} must implement #load"
           end
         end

@@ -18,7 +18,7 @@ module Shoko
             end
           end
 
-          def initialize(state, component_registry: nil) # rubocop:disable Lint/UnusedMethodArgument
+          def initialize(state)
             @state = state
             @snapshot_root = nil
             @snapshot = nil

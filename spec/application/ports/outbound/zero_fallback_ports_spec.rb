@@ -13,7 +13,7 @@ RSpec.describe 'Zero fallback outbound port contracts' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::DocumentLoader)
 
     expect do
-      implementation.load(path: '/tmp/book.epub', progress_reporter: nil, background_worker: nil)
+      implementation.load(path: '/tmp/book.epub', progress_reporter: nil)
     end.to raise_error(NotImplementedError)
   end
 

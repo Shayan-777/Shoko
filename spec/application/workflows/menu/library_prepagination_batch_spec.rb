@@ -23,7 +23,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch do
         @document = document
       end
 
-      def load(path:, progress_reporter: nil, background_worker: nil)
+      def load(path:, progress_reporter: nil)
         @document
       end
     end.new(document)

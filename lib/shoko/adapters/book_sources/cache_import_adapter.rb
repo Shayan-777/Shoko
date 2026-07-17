@@ -27,8 +27,7 @@ module Shoko
         def import(path, progress_reporter: nil)
           document = @document_loader.load(
             path: path,
-            progress_reporter: load_progress_reporter(progress_reporter),
-            background_worker: nil
+            progress_reporter: load_progress_reporter(progress_reporter)
           )
           raise Shoko::BookParseError.new('document import returned nil', path) unless document
 

@@ -72,6 +72,35 @@ RSpec.describe Shoko::Application::Services::AsyncResultRelay do
       expect(relay.submit { :never_runs }).to be(false)
       expect(relay.busy?).to be(false)
     end
+
+    it 'logs job errors as background noise without failing the submission' do
+      logger = instance_double(Shoko::Application::Ports::Outbound::Logging)
+      allow(logger).to receive(:debug)
+      relay = described_class.new(async_executor: deferred_executor, logger: logger)
+
+      expect(relay.submit { raise Shoko::Error, 'background boom' }).to be(true)
+      deferred_executor.run_all
+
+      expect(logger).to have_received(:debug)
+        .with('async_result_relay.job_failed', error: 'Shoko::Error', message: 'background boom')
+      expect(relay.busy?).to be(false)
+    end
+
+    it 'treats a synchronous executor job error identically: submitted, logged, not a submit failure' do
+      synchronous_executor = Object.new
+      synchronous_executor.define_singleton_method(:submit) { |&job| job.call }
+      logger = instance_double(Shoko::Application::Ports::Outbound::Logging)
+      allow(logger).to receive(:debug)
+      relay = described_class.new(async_executor: synchronous_executor, logger: logger)
+
+      expect(relay.submit { raise Shoko::Error, 'sync boom' }).to be(true)
+
+      expect(logger).to have_received(:debug)
+        .with('async_result_relay.job_failed', error: 'Shoko::Error', message: 'sync boom')
+      expect(logger).not_to have_received(:debug)
+        .with('async_result_relay.submit_failed', anything)
+      expect(relay.busy?).to be(false)
+    end
   end
 
   it 'builds its executor lazily from the factory on first submit' do

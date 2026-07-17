@@ -13,7 +13,7 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
     Class.new do
       include Shoko::Application::Ports::Outbound::DocumentLoader
 
-      def load(path:, progress_reporter: nil, background_worker: nil); end
+      def load(path:, progress_reporter: nil); end
     end.new
   end
   let(:document) { instance_double(Shoko::Application::Models::ReaderDocument, cached?: false) }

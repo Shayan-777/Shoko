@@ -31,7 +31,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
     Class.new do
       include Shoko::Application::Ports::Outbound::DocumentLoader
 
-      def load(path:, progress_reporter: nil, background_worker: nil)
+      def load(path:, progress_reporter: nil)
       end
     end.new
   end
@@ -66,7 +66,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
 
   it 'loads and registers reader document when canonical path differs' do
     allow(document_loader).to receive(:load)
-      .with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
+      .with(path: '/books/a.epub', progress_reporter: nil)
       .and_return(loaded_document)
 
     result = service.ensure_reader_document_for(
