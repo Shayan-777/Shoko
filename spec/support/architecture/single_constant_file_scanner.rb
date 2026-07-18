@@ -24,8 +24,11 @@ module SpecSupport
       # CamelCase constant assignment (contains a lowercase letter): defines
       # a type or alias (`Foo = Struct.new`, `Snapshot = factory(...)`,
       # `TextMetrics = Shared::TextMetrics`). SCREAMING_SNAKE value constants
-      # are not definitions and are ignored.
+      # are not definitions and are ignored — EXCEPT when the right-hand side
+      # is a type constructor: `URL = Data.define(:value)` defines a class no
+      # matter how the constant is cased.
       ASSIGN_PATTERN = /^(\s*)([A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*)\s*=\s*\S/.freeze
+      TYPE_ASSIGN_PATTERN = /^(\s*)([A-Z][A-Za-z0-9_]*)\s*=\s*(?:Struct\.new|Data\.define|Class\.new|Module\.new)/.freeze
       DEF_PATTERN = /^\s*def\s/.freeze
 
       # Codified §III exemptions — each addition is a constitutional
@@ -121,7 +124,7 @@ module SpecSupport
         lines.each_with_index do |line, index|
           if (m = line.match(DECL_PATTERN))
             decls << { indent: m[1].length, short: m[2].split('::').last, line: index, has_defs: false, kind: :decl }
-          elsif (m = line.match(ASSIGN_PATTERN))
+          elsif (m = line.match(TYPE_ASSIGN_PATTERN) || line.match(ASSIGN_PATTERN))
             decls << { indent: m[1].length, short: m[2], line: index, has_defs: false, kind: :assign }
           elsif line.match?(DEF_PATTERN) && (owner = decls.reverse.find { |d| d[:indent] < line[/\A */].length })
             owner[:has_defs] = true

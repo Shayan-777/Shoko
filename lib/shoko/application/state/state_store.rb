@@ -186,7 +186,7 @@ module Shoko
           parent = keys[0...-1].reduce(root) do |node, key|
             branch_for_update(node, key, clones: clones, created: created)
           end
-          parent[keys.last] = Shoko::Shared::DeepStructure.deep_dup_frozen(value)
+          parent[keys.last] = Shoko::Shared::DeepStructure.admit(value)
           nil
         end
 

@@ -99,10 +99,12 @@ module Shoko
           downloaded = 0
           File.open(part_path, 'wb') do |file|
             response.read_body do |chunk|
+              if downloaded + chunk.bytesize > @max_download_bytes
+                raise Error, "Download exceeded #{@max_download_bytes} bytes"
+              end
+
               file.write(chunk)
               downloaded += chunk.bytesize
-              raise Error, "Download exceeded #{@max_download_bytes} bytes" if downloaded > @max_download_bytes
-
               yield(downloaded, total) if block_given?
             end
           end
@@ -201,8 +203,11 @@ module Shoko
         def read_bounded_json_body(response)
           buffer = +''
           response.read_body do |chunk|
+            if buffer.bytesize + chunk.bytesize > @max_json_body_bytes
+              raise Error, "Response exceeded #{@max_json_body_bytes} bytes"
+            end
+
             buffer << chunk
-            raise Error, "Response exceeded #{@max_json_body_bytes} bytes" if buffer.bytesize > @max_json_body_bytes
           end
           buffer
         end

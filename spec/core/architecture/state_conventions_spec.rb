@@ -288,6 +288,24 @@ RSpec.describe 'State conventions' do
       each_state_node(node) { |n, kind| block.call(n) if kind == :container }
     end
 
+    # Reflection is fine in a guardrail: walks the object graph through
+    # instance variables and containers, collecting anything unfrozen
+    # (immutable primitives excepted).
+    def deeply_unfrozen_objects(root, seen = {}.compare_by_identity, acc = [])
+      return acc if root.nil? || root.is_a?(Symbol) || root.is_a?(Numeric) ||
+                    root == true || root == false || seen.key?(root)
+
+      seen[root] = true
+      acc << root unless root.frozen?
+      children = case root
+                 when Hash then root.keys + root.values
+                 when Array, Struct then root.to_a
+                 else root.instance_variables.map { |ivar| root.instance_variable_get(ivar) }
+                 end
+      children.each { |child| deeply_unfrozen_objects(child, seen, acc) }
+      acc
+    end
+
     it 'keeps every data node of the tree frozen after build and after update' do
       Dir.mktmpdir do |dir|
         store = build_store(dir)
@@ -318,28 +336,55 @@ RSpec.describe 'State conventions' do
       end
     end
 
-    it 'admits only effectively immutable opaque leaves (no public writers) into the tree' do
+    it 'rejects unfrozen opaque leaves at the write path (closed value contract)' do
       Dir.mktmpdir do |dir|
         store = build_store(dir)
-        store.update(
-          %i[ui search_results] =>
-            [Shoko::Core::Services::InBookSearchService::SearchMatch.new(0, 'T', 1, 'b', 'm', 'a')],
-          %i[menu dictionary_results] => [Shoko::Core::Models::DictionaryResult.new(query: 'q')]
+        # No public writers, but its readable innards are mutable — exactly
+        # the shape a writer-method check would wrongly admit.
+        reader_only_wrapper = Class.new do
+          attr_reader :items
+
+          def initialize = @items = []
+        end.new
+
+        expect { store.update(%i[ui search_results] => [reader_only_wrapper]) }
+          .to raise_error(Shoko::Shared::DeepStructure::InadmissibleValueError, /not admissible/)
+      end
+    end
+
+    it 'admits born-frozen value objects and verifies their deep immutability' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        result = Shoko::Core::Models::DictionaryResult.new(
+          query: 'q',
+          entries: [Shoko::Core::Models::DictionaryEntry.new(word: 'w', senses: ['s'])]
         )
 
-        offenders = []
-        each_state_node(store.peek) do |node, kind|
-          next unless kind == :opaque_leaf
-          next if node.frozen?
+        store.update(%i[menu dictionary_results] => [result])
 
-          writers = node.public_methods(false).grep(/[a-z_]=\z/)
-          offenders << "#{node.class}: #{writers.join(', ')}" if writers.any?
-        end
-
-        expect(offenders).to eq([]), <<~MSG
-          Opaque state leaves must be frozen or expose no public writers:
-          #{offenders.uniq.join("\n")}
+        stored = store.peek_at(:menu, :dictionary_results).first
+        unfrozen = deeply_unfrozen_objects(stored)
+        expect(unfrozen).to eq([]), <<~MSG
+          Admitted opaque value objects must be deeply frozen (object, ivars, and
+          everything reachable through them):
+          #{unfrozen.map(&:class).uniq.join("\n")}
         MSG
+      end
+    end
+
+    it 'keeps caller ownership for inserted Data values (members are copied, not frozen in place)' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        data_class = Data.define(:items)
+        mine = data_class.new(items: [1, 2])
+
+        store.update(%i[ui search_results] => [mine])
+
+        stored = store.peek_at(:ui, :search_results).first
+        expect(stored).not_to equal(mine)
+        expect(stored).to be_frozen
+        expect(stored.items).to be_frozen
+        expect(mine.items).not_to be_frozen, 'the caller keeps a mutable copy of their own members'
       end
     end
 

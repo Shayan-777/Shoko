@@ -6,7 +6,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
   include MenuScreenRenderHelpers
 
   def build_component_with(kitty_images:)
-    component = described_class.new(nil, dependencies: nil)
+    component = described_class.new(nil)
     component.instance_variable_set(
       :@config_reader,
       double('ConfigReader', kitty_images: kitty_images, theme: :default, download_source: :gutendex)
@@ -65,7 +65,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
       instance_double(Shoko::Adapters::Ui::MenuUiDependencies, menu_state_reader: menu_state_reader, config_reader: config_reader,
                       menu_hit_registry: nil)
     end
-    let(:component) { described_class.new(nil, dependencies: dependencies) }
+    let(:component) { described_class.new(nil, menu_state_reader: menu_state_reader, config_reader: config_reader) }
 
     [
       [80, 24],

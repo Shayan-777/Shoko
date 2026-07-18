@@ -25,7 +25,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorPacksScreenCo
     ]
   end
 
-  subject(:component) { described_class.new(dependencies: dependencies) }
+  subject(:component) { described_class.new(menu_state_reader: menu_state_reader, config_reader: config_reader) }
 
   before do
     allow(config_reader).to receive(:translator_backend).and_return(:local)

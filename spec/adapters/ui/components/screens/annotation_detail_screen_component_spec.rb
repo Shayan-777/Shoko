@@ -22,7 +22,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationDetailScreenC
     )
   end
   let(:dependencies) { instance_double(Shoko::Adapters::Ui::MenuUiDependencies, menu_state_reader: menu_state_reader, menu_hit_registry: nil) }
-  let(:component) { described_class.new(dependencies: dependencies) }
+  let(:component) { described_class.new(menu_state_reader: menu_state_reader) }
 
   [
     [80, 24],

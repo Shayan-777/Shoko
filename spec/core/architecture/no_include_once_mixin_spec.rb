@@ -58,23 +58,27 @@ RSpec.describe 'No include-once mixins (constitution R1)' do
     MSG
   end
 
-  describe 'scanner parsing' do
-    def parse(source)
-      SpecSupport::Architecture::IncludeOnceMixinScanner.parse(source.lines)
+  describe 'scanner parsing (Ripper-backed)' do
+    def sites(source)
+      SpecSupport::Architecture::MixinSiteExtractor.extract(source)[1]
     end
 
-    it 'detects bare, parenthesized, and top-level-qualified mixin sites' do
+    it 'detects bare, parenthesized, multiline, multi-argument, and ::-anchored mixin sites' do
       source = <<~RUBY
         module Host
-          include Alpha
-          prepend(Beta)
-          extend(::Gamma)
-          extend Delta::Epsilon
+          include Alpha, Beta
+          prepend(Gamma)
+          extend(::Delta)
+          include(
+            Epsilon::Zeta
+          )
         end
       RUBY
 
-      _defs, includes = parse(source)
-      expect(includes.map(&:first)).to eq(%w[Alpha Beta Gamma Delta::Epsilon])
+      extracted = sites(source)
+      expect(extracted.map(&:const)).to eq(%w[Alpha Beta Gamma Delta Epsilon::Zeta])
+      expect(extracted.map(&:top_level)).to eq([false, false, false, true, false])
+      expect(extracted.map(&:nesting).uniq).to eq([['Host']])
     end
 
     it 'ignores extend self (the module-function idiom) and non-constant arguments' do
@@ -85,8 +89,17 @@ RSpec.describe 'No include-once mixins (constitution R1)' do
         end
       RUBY
 
-      _defs, includes = parse(source)
-      expect(includes).to eq([])
+      expect(sites(source)).to eq([])
+    end
+
+    it 'resolves ::-anchored constants only at the top level' do
+      scanner = SpecSupport::Architecture::IncludeOnceMixinScanner
+      site = SpecSupport::Architecture::MixinSiteExtractor::Site.new(
+        method: 'include', const: 'Alpha', top_level: true, nesting: %w[Shoko Host]
+      )
+
+      expect(scanner.resolve(site, { 'Shoko::Host::Alpha' => true })).to be_nil
+      expect(scanner.resolve(site, { 'Alpha' => true })).to eq('Alpha')
     end
   end
 

@@ -32,7 +32,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::LibraryScreenComponent 
     instance_double(Shoko::Adapters::Ui::MenuUiDependencies, menu_state_reader: menu_state_reader, catalog_service: catalog_service,
                                     menu_hit_registry: nil)
   end
-  let(:component) { described_class.new(dependencies) }
+  let(:component) { described_class.new(menu_state_reader: menu_state_reader, catalog_service: catalog_service) }
 
   describe 'relative access labels' do
     it 'converts ISO timestamps to relative labels' do

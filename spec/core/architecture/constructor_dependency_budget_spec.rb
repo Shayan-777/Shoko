@@ -219,6 +219,11 @@ RSpec.describe 'Constructor dependency budget' do
   # constructor extras. The pins are EXACT actuals, not upper bounds: any
   # change — up or down — fails until the pin is consciously edited, and
   # edits may only ever lower a pin (constitution amendment 2026-07-18).
+  #
+  # Scope, stated honestly: the audited classes and the nested-record map
+  # are ENUMERATED, not derived from constructors — a brand-new coordinating
+  # class or nested bag must be added here to be governed. This is a curated
+  # review ratchet with exact pins, not universal static analysis.
   # rubocop:disable RSpec/ExampleLength
   it 'pins the aggregate transitive leaf dependencies of the coordinating classes' do
     deps = Shoko::Adapters::Input::Controllers::Dependencies

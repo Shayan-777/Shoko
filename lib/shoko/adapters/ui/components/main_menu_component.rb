@@ -239,6 +239,12 @@ module Shoko
             }
           end
 
+          # Screens receive exactly the collaborators they use — the bag
+          # stops at this component; no screen carries a locator surface.
+          def deps
+            @menu_ui_dependencies
+          end
+
           def setup_screen_factories
             @screen_components = {}
             @screen_factories = SCREEN_FACTORY_BUILDERS.transform_values { |builder| -> { send(builder) } }
@@ -246,7 +252,8 @@ module Shoko
 
           def build_menu_screen
             Screens::MenuScreenComponent.new(
-              @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile,
               preview_screen_provider: ->(key) { preview_screen_for(key) }
             )
@@ -267,7 +274,9 @@ module Shoko
             screen = Screens::BrowseScreenComponent.new(
               @catalog,
               @observer_registry,
-              @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              menu_session_mutator: deps.menu_session_mutator,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
             screen.filtered_epubs = @catalog.entries || []
@@ -276,7 +285,9 @@ module Shoko
 
           def build_library_screen
             Screens::LibraryScreenComponent.new(
-              @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              catalog_service: deps.catalog_service,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
           end
@@ -284,63 +295,81 @@ module Shoko
           def build_settings_screen
             Screens::SettingsScreenComponent.new(
               @catalog,
-              dependencies: @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              config_reader: deps.config_reader,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
           end
 
           def build_dictionary_screen
             Screens::DictionarySettingsScreenComponent.new(
-              dependencies: @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              config_reader: deps.config_reader,
+              runtime_config: deps.runtime_config,
+              dictionary_availability: deps.dictionary_availability,
+              dictionary_storage: deps.dictionary_storage,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
           end
 
           def build_translator_packs_screen
             Screens::TranslatorPacksScreenComponent.new(
-              dependencies: @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              config_reader: deps.config_reader,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
           end
 
           def build_download_screen
             Screens::DownloadBooksScreenComponent.new(
-              dependencies: @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              config_reader: deps.config_reader,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
           end
 
           def build_translator_screen
             Screens::TranslatorScreenComponent.new(
-              dependencies: @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              menu_session_mutator: deps.menu_session_mutator,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
           end
 
           def build_rss_reader_screen
             Screens::RssReaderScreenComponent.new(
-              dependencies: @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
           end
 
           def build_annotations_screen
             Screens::AnnotationsScreenComponent.new(
-              dependencies: @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              reader_state_reader: deps.reader_state_reader,
+              menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
           end
 
           def build_annotation_editor_screen
             Screens::AnnotationEditScreenComponent.new(
-              @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
+              menu_session_mutator: deps.menu_session_mutator,
+              annotation_service: deps.annotation_service,
               menu_visual_profile: @menu_visual_profile
             )
           end
 
           def build_annotation_detail_screen
             Screens::AnnotationDetailScreenComponent.new(
-              dependencies: @menu_ui_dependencies,
+              menu_state_reader: deps.menu_state_reader,
               menu_visual_profile: @menu_visual_profile
             )
           end

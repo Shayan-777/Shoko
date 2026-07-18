@@ -40,7 +40,15 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DictionarySettingsScree
       dictionary_progress: 0.0
     )
   end
-  subject(:component) { described_class.new(dependencies: dependencies) }
+  subject(:component) do
+    described_class.new(
+      menu_state_reader: menu_state_reader,
+      config_reader: config_reader,
+      runtime_config: runtime_config,
+      dictionary_availability: dictionary_availability,
+      dictionary_storage: dictionary_storage
+    )
+  end
 
   before do
     allow(config_reader).to receive_messages(
@@ -49,11 +57,6 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::DictionarySettingsScree
       dictionary_target_lang: 'en',
       dictionary_path: nil
     )
-    allow(dependencies).to receive(:config_reader).and_return(config_reader)
-    allow(dependencies).to receive(:menu_state_reader).and_return(menu_state_reader)
-    allow(dependencies).to receive(:dictionary_availability).and_return(dictionary_availability)
-    allow(dependencies).to receive(:dictionary_storage).and_return(dictionary_storage)
-    allow(dependencies).to receive(:runtime_config).and_return(runtime_config)
   end
 
   describe '#lookup_value' do

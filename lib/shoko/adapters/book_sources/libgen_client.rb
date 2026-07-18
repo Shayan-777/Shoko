@@ -367,8 +367,11 @@ module Shoko
         def read_bounded_fetch_body(response)
           buffer = +''
           response.read_body do |chunk|
+            if buffer.bytesize + chunk.bytesize > MAX_FETCH_BODY_BYTES
+              raise Error, "Response exceeded #{MAX_FETCH_BODY_BYTES} bytes"
+            end
+
             buffer << chunk
-            raise Error, "Response exceeded #{MAX_FETCH_BODY_BYTES} bytes" if buffer.bytesize > MAX_FETCH_BODY_BYTES
           end
           buffer
         end
@@ -433,16 +436,23 @@ module Shoko
           written = 0
           File.open(part_path, 'wb') do |file|
             response.read_body do |chunk|
+              assert_download_ceiling!(written, chunk)
               file.write(chunk)
               written += chunk.bytesize
-              raise Error, "Download exceeded #{MAX_DOWNLOAD_BYTES} bytes" if written > MAX_DOWNLOAD_BYTES
-
               yield(written, total) if block_given?
             end
           end
           File.rename(part_path, dest_path)
         ensure
           FileUtils.rm_f(part_path)
+        end
+
+        # Hard ceiling: checked BEFORE the write so no overshoot ever
+        # reaches the disk.
+        def assert_download_ceiling!(written, chunk)
+          return if written + chunk.bytesize <= MAX_DOWNLOAD_BYTES
+
+          raise Error, "Download exceeded #{MAX_DOWNLOAD_BYTES} bytes"
         end
 
         def translate_download_error(error, url, dest_path)

@@ -63,14 +63,15 @@ module Shoko
             TextMetrics = Shoko::Shared::Terminal::TextMetrics
             Spinner = Shoko::Adapters::Ui::Components::Ui::Spinner
 
-            def initialize(dependencies, menu_visual_profile: nil)
-              super(dependencies)
-              @dependencies = dependencies
+            def initialize(menu_state_reader: nil, catalog_service: nil, menu_hit_registry: nil,
+                           menu_visual_profile: nil)
+              super()
+              @menu_state_reader = menu_state_reader
+              @menu_hit_registry = menu_hit_registry
               @menu_visual_profile = menu_visual_profile
-              @catalog = dependencies&.catalog_service
+              @catalog = catalog_service
               @items = nil
               @row_lines = {}
-              @menu_state_reader = nil
             end
 
             def do_render(surface, bounds)
@@ -101,7 +102,7 @@ module Shoko
             end
 
             def hits
-              @dependencies&.menu_hit_registry
+              @menu_hit_registry
             end
 
             def rule_meta(items)
@@ -438,9 +439,7 @@ module Shoko
                                                                          preserve_tabs: false)
             end
 
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
+            attr_reader :menu_state_reader
           end
         end
       end

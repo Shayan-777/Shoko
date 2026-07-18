@@ -54,7 +54,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenCom
       end
       define_method(:menu_session_mutator) do
         Shoko::Adapters::Runtime::SessionState::MenuSessionMutator.new(
-          menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(@state)
+          menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(@state),
+          menu_transient_store: Shoko::Adapters::Runtime::SessionState::MenuTransientStoreAdapter.new(@state)
         )
       end
       define_method(:annotation_service) { nil }
@@ -73,7 +74,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenCom
     surface = Shoko::Adapters::Ui::Components::Surface.new(terminal)
     bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 80, height: 24)
 
-    component = described_class.new(dependencies)
+    component = described_class.new(
+      menu_state_reader: dependencies.menu_state_reader,
+      menu_session_mutator: dependencies.menu_session_mutator,
+      annotation_service: dependencies.annotation_service
+    )
     component.render(surface, bounds)
 
     output = terminal.writes.map { |write| write[:text] }.join

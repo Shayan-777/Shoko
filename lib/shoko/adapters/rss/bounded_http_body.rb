@@ -20,13 +20,15 @@ module Shoko
 
         module_function
 
-        # Streams the response body up to limit bytes; raising aborts the
-        # transfer mid-stream instead of buffering an unbounded payload.
+        # Streams the response body up to limit bytes; the check runs BEFORE
+        # each append so the ceiling is hard — an oversized chunk is never
+        # buffered, and raising aborts the transfer mid-stream.
         def read(response, limit:)
           buffer = +''
           response.read_body do |chunk|
+            raise TooLarge, "Response body exceeded #{limit} bytes" if buffer.bytesize + chunk.bytesize > limit
+
             buffer << chunk
-            raise TooLarge, "Response body exceeded #{limit} bytes" if buffer.bytesize > limit
           end
           buffer
         end
@@ -49,8 +51,9 @@ module Shoko
           begin
             output = +''
             while (chunk = reader.read(DECOMPRESS_CHUNK_BYTES))
+              raise TooLarge, "Decompressed body exceeded #{limit} bytes" if output.bytesize + chunk.bytesize > limit
+
               output << chunk
-              raise TooLarge, "Decompressed body exceeded #{limit} bytes" if output.bytesize > limit
             end
             output
           ensure
@@ -63,8 +66,9 @@ module Shoko
           begin
             output = +''
             inflater.inflate(body) do |chunk|
+              raise TooLarge, "Decompressed body exceeded #{limit} bytes" if output.bytesize + chunk.bytesize > limit
+
               output << chunk
-              raise TooLarge, "Decompressed body exceeded #{limit} bytes" if output.bytesize > limit
             end
             output
           ensure

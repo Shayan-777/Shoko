@@ -38,15 +38,14 @@ RSpec.describe Shoko::Shared::Terminal::TextMetrics::Wrapper do
       wrap_cache.clear!
     end
 
-    it 'memoizes by [width, source] and serves frozen lines from the cache' do
-      wrapper.wrap_plain_text('aaa bbb', 3)
+    it 'memoizes by [width, source] and returns the same frozen lines on miss and hit' do
+      first = wrapper.wrap_plain_text('aaa bbb', 3)
       second = wrapper.wrap_plain_text('aaa bbb', 3)
-      third = wrapper.wrap_plain_text('aaa bbb', 3)
 
-      expect(third).to equal(second)
-      expect(second).to be_frozen
-      expect(second).to all(be_frozen)
-      expect(second).to eq(%w[aaa bbb])
+      expect(second).to equal(first)
+      expect(first).to be_frozen
+      expect(first).to all(be_frozen)
+      expect(first).to eq(%w[aaa bbb])
     end
   end
 end

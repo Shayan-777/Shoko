@@ -216,10 +216,11 @@ module Shoko
         def read_bounded_catalog_body(response)
           buffer = +''
           response.read_body do |chunk|
-            buffer << chunk
-            if buffer.bytesize > MAX_CATALOG_BODY_BYTES
+            if buffer.bytesize + chunk.bytesize > MAX_CATALOG_BODY_BYTES
               raise CatalogError, "Catalog response exceeded #{MAX_CATALOG_BODY_BYTES} bytes"
             end
+
+            buffer << chunk
           end
           buffer
         end

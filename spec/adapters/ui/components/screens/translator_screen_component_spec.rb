@@ -73,7 +73,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
   end
   let(:dependencies) { dependencies_class.new(menu_state_reader) }
 
-  subject(:component) { described_class.new(dependencies: dependencies) }
+  subject(:component) { described_class.new(menu_state_reader: menu_state_reader) }
 
   before do
     terminal.reset!
@@ -152,8 +152,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
   it 'registers the open picker as a wheel target and scrolls it minimally' do
     menu_state_reader.mode = :translator_source_dropdown
     registry = Shoko::Adapters::Ui::State::MenuHitRegistry.new
-    deps = Struct.new(:menu_state_reader, :menu_hit_registry).new(menu_state_reader, registry)
-    wheel_component = described_class.new(dependencies: deps)
+    wheel_component = described_class.new(menu_state_reader: menu_state_reader, menu_hit_registry: registry)
 
     wheel_component.render(surface, bounds)
 
@@ -243,8 +242,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
       menu_state_class.new(:translator, :input, :idle, text, cursor, '', '', '', 0, 'auto', 'en', [], nil, nil)
     end
     let(:cursor_component) do
-      deps = Struct.new(:menu_state_reader, :menu_session_mutator, :menu_hit_registry).new(cursor_state, mutator)
-      described_class.new(dependencies: deps)
+      described_class.new(menu_state_reader: cursor_state, menu_session_mutator: mutator)
     end
 
     context 'within a single line' do

@@ -35,11 +35,13 @@ module Shoko
             DROPDOWN_CODE_WIDTH = 4
             DEFAULT_SOURCE_BODY_WIDTH = 40
 
-            def initialize(dependencies: nil, menu_visual_profile: nil)
+            def initialize(menu_state_reader: nil, menu_session_mutator: nil, menu_hit_registry: nil,
+                           menu_visual_profile: nil)
               super()
-              @dependencies = dependencies
+              @menu_state_reader = menu_state_reader
+              @menu_session_mutator = menu_session_mutator
+              @menu_hit_registry = menu_hit_registry
               @menu_visual_profile = menu_visual_profile
-              @menu_state_reader = nil
               initialize_cursor_blink
             end
 
@@ -340,7 +342,7 @@ module Shoko
             end
 
             def menu_hits
-              @dependencies&.menu_hit_registry
+              @menu_hit_registry
             end
 
             # The picker recesses below the pane on the darkest family tone,
@@ -687,13 +689,7 @@ module Shoko
               Shoko::Shared::HashNormalizer.symbolize_keys(value)
             end
 
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
-
-            def menu_session_mutator
-              @menu_session_mutator ||= @dependencies&.menu_session_mutator
-            end
+            attr_reader :menu_state_reader, :menu_session_mutator
 
             def source_cursor
               translator_input_cursor.clamp(0, translator_input_text.length)

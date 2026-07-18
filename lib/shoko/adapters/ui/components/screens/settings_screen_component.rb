@@ -173,13 +173,14 @@ module Shoko
               toggle_prepaginate_on_resize: :prepaginate_on_resize_value,
             }.freeze
 
-            def initialize(catalog_service = nil, dependencies: nil, menu_visual_profile: nil)
+            def initialize(catalog_service = nil, menu_state_reader: nil, config_reader: nil,
+                           menu_hit_registry: nil, menu_visual_profile: nil)
               super()
               @catalog = catalog_service
-              @dependencies = dependencies
+              @menu_state_reader = menu_state_reader
+              @config_reader = config_reader
+              @menu_hit_registry = menu_hit_registry
               @menu_visual_profile = menu_visual_profile
-              @menu_state_reader = nil
-              @config_reader = nil
             end
 
             def do_render(surface, bounds)
@@ -203,7 +204,7 @@ module Shoko
             end
 
             def hits
-              @dependencies&.menu_hit_registry
+              @menu_hit_registry
             end
 
             def well_visible?(frame)
@@ -415,13 +416,7 @@ module Shoko
               bool_value(config_reader&.prepaginate_on_resize, false, true_text: 'On', false_text: 'Off')
             end
 
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
-
-            def config_reader
-              @config_reader ||= @dependencies&.config_reader
-            end
+            attr_reader :menu_state_reader, :config_reader
           end
         end
       end

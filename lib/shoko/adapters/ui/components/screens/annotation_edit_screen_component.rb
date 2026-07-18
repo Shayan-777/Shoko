@@ -37,11 +37,14 @@ module Shoko
 
             attr_reader :edit_state
 
-            def initialize(dependencies = nil, menu_visual_profile: nil)
-              super(dependencies)
-              @dependencies = dependencies
+            def initialize(menu_state_reader: nil, menu_session_mutator: nil, annotation_service: nil,
+                           menu_visual_profile: nil)
+              super()
+              @menu_state_reader = menu_state_reader
+              @annotation_service = annotation_service
               @menu_visual_profile = menu_visual_profile
-              @edit_state = AnnotationEditState.new(dependencies)
+              @edit_state = AnnotationEditState.new(menu_state_reader: menu_state_reader,
+                                                    menu_session_mutator: menu_session_mutator)
               @editor_text_width = nil
               @editor_scroll_top = 0
               initialize_cursor_blink
@@ -296,7 +299,7 @@ module Shoko
             end
 
             def persist_annotation(payload)
-              service = @dependencies&.annotation_service
+              service = @annotation_service
               return unless service
 
               path, ann_id, text = payload.values_at(:path, :ann_id, :text)

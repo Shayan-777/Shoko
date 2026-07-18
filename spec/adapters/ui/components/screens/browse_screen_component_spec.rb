@@ -36,7 +36,10 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
       size_for: 1_048_576
     )
   end
-  let(:component) { described_class.new(catalog, observer_registry, dependencies) }
+  let(:component) do
+    described_class.new(catalog, observer_registry,
+                        menu_state_reader: menu_state_reader, menu_session_mutator: menu_session_mutator)
+  end
 
   before do
     component.filtered_epubs = [

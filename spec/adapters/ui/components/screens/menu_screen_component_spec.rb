@@ -11,11 +11,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::MenuScreenComponent do
     instance_double(Shoko::Adapters::Runtime::SessionState::MenuSnapshotProjectionAdapter, selected: selected, translator_source_lang: 'auto',
                                        translator_target_lang: 'en')
   end
-  let(:dependencies) do
-    instance_double(Shoko::Adapters::Ui::MenuUiDependencies,
-                    menu_state_reader: menu_state_reader,
-                    menu_hit_registry: nil)
-  end
+  let(:dependency_kwargs) { { menu_state_reader: menu_state_reader } }
   let(:selected) { 0 }
 
   # Real destination views are exercised by their own specs; here a stand-in
@@ -33,7 +29,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::MenuScreenComponent do
 
   let(:provider_views) { {} }
   let(:component) do
-    described_class.new(dependencies, preview_screen_provider: ->(key) { provider_views[key] })
+    described_class.new(**dependency_kwargs, preview_screen_provider: ->(key) { provider_views[key] })
   end
 
   describe 'preview canvas (rail visible)' do
@@ -58,11 +54,16 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::MenuScreenComponent do
 
     it 'renders the preview read-only — the previewed view registers no hit regions' do
       registry = Shoko::Adapters::Ui::State::MenuHitRegistry.new
-      allow(dependencies).to receive(:menu_hit_registry).and_return(registry)
+      preview_component = described_class.new(
+        menu_state_reader: menu_state_reader,
+        menu_hit_registry: registry,
+        preview_screen_provider: ->(key) { provider_views[key] }
+      )
+      preview_component.canvas_mode = true
       provider_views[:browse] = fake_view('BROWSE', registry: registry)
       registry.begin_frame!
 
-      render_component(component, width: 84, height: 30)
+      render_component(preview_component, width: 84, height: 30)
 
       expect(registry.hit(1, 4)).to be_nil
     end
@@ -94,7 +95,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::MenuScreenComponent do
 
   describe 'dependency-free rendering' do
     it 'renders with nil dependencies at any size' do
-      bare = described_class.new(nil)
+      bare = described_class.new
 
       expect { render_component(bare, width: 110, height: 30) }.not_to raise_error
       expect { render_component(bare, width: 60, height: 18) }.not_to raise_error

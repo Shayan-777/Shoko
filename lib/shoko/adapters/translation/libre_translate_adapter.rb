@@ -111,11 +111,12 @@ module Shoko
         def read_bounded_body(response)
           buffer = +''
           response.read_body do |chunk|
-            buffer << chunk
-            if buffer.bytesize > MAX_RESPONSE_BODY_BYTES
+            if buffer.bytesize + chunk.bytesize > MAX_RESPONSE_BODY_BYTES
               raise RepositoryError.new("LibreTranslate response exceeded #{MAX_RESPONSE_BODY_BYTES} bytes",
                                         code: :response_too_large)
             end
+
+            buffer << chunk
           end
           buffer
         end

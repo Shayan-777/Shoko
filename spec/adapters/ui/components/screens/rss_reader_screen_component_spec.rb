@@ -44,7 +44,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
     )
   end
   let(:dependencies) { instance_double(Shoko::Adapters::Ui::MenuUiDependencies, menu_state_reader: menu_state_reader, menu_hit_registry: nil) }
-  let(:component) { described_class.new(dependencies: dependencies) }
+  let(:component) { described_class.new(menu_state_reader: menu_state_reader) }
 
   def text_for(mode:, width:, height:)
     writes = with_color_mode(mode) { render_component(component, width: width, height: height) }

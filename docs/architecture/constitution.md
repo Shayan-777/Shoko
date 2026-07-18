@@ -4,14 +4,21 @@ Status: **active law** as of 2026-06-01. Derived from `census-2026-06-01.md`.
 
 ## How to use this document
 
-This is the **oracle**. When you are unsure whether a piece of code is "right,"
-you do not consult taste — you consult this document. Taste is infinitely
-re-litigable and is the reason past refactoring churned. Rules are decidable.
+This is the **oracle for architectural shape**. When you are unsure whether a
+piece of code is structured "right," you do not consult taste — you consult
+this document. Taste is infinitely re-litigable and is the reason past
+refactoring churned. Rules are decidable.
+
+Scope, stated plainly: conformance here means *architecturally done relative
+to the current rules*. It is not a claim of correctness, security, or
+completeness — green guardrails have coexisted with reproducible correctness
+holes, and no rule set replaces tests, code review, or adversarial audit.
 
 Two consequences:
 
-1. **If a file conforms to every rule here, it is DONE.** You do not revisit it
-   because you imagined a nicer shape. "Nicer" is not a defect.
+1. **If a file conforms to every rule here, it is architecturally DONE.** You
+   do not revisit its *shape* because you imagined a nicer one. "Nicer" is not
+   a defect. (Its *behavior* remains as reviewable as any code.)
 2. **If you think a rule is wrong, you change the *rule* — once, deliberately,
    with a dated reason in the Amendments section — and then bring code into line.**
    You never silently drift individual files away from the rule. This is what keeps
@@ -670,3 +677,43 @@ Every resilient boundary:
     `File.close_safely` rescues what close can actually raise
     (IOError/SystemCallError) instead of the impossible `Shoko::Error`.
   - The plain-require boot budget tightened from 20 to 10 files.
+
+- **2026-07-18 — Second completeness pass: a further re-audit found the first
+  one still overstated three properties; each is now closed or honestly
+  scoped.**
+  - **State admissibility is a closed contract.** `DeepStructure.admit` (the
+    store's write transform) copies Hash KEYS as well as values, rebuilds
+    `Data` values via `new(**to_h)` so the caller's instance and members stay
+    untouched (the previous in-place member freezing violated the
+    callers-keep-ownership contract), and REJECTS unfrozen opaque leaves with
+    `InadmissibleValueError` — a reader-only wrapper around a mutable array
+    can no longer ride into state. `frozen?` is the strongest lib-side check
+    without reflection; the guardrail additionally reflection-walks admitted
+    value objects verifying deep frozenness. The dictionary value objects
+    (DictionaryEntry/DictionaryResult/FuzzyMatch) are born frozen — the only
+    production classes stored as opaque leaves.
+  - **Ceilings are hard.** Every bounded reader and download loop checks
+    `current + chunk` BEFORE appending or writing, matching the
+    model-catalog downloader's ordering — no chunk of overshoot is ever
+    buffered or written.
+  - **Scanners are AST-backed where line regexes lied.** Mixin sites (R1)
+    and port includes come from the Ripper-based `MixinSiteExtractor`:
+    multi-argument (`include A, B`), parenthesized, multiline, and
+    `::`-anchored spellings are seen exactly as Ruby sees them, and
+    top-level anchoring is honored during resolution. The single-constant
+    scanner counts `CONST = Data.define/Struct.new/...` as a definition
+    regardless of casing (`URL = Data.define` is no longer invisible).
+  - **The menu locator surface is gone below the component too.** Every menu
+    screen now declares its exact collaborators as keywords
+    (`menu_state_reader:`, `menu_hit_registry:`, …); the 11-field
+    `MenuUiDependencies` bag stops at `MainMenuComponent`, and no screen
+    holds a bag or reaches through `dependencies&.`.
+  - **The aggregate ratchet states its scope**: enumerated classes with an
+    explicit nested-record map and exact pins — a curated review ratchet,
+    not universal constructor analysis. The wrap cache is a true LRU (hits
+    refresh recency) and returns the same frozen value on miss and hit;
+    RuntimeControls and both caches have isolated unit specs, making the
+    "every collaborator unit-tested" claim true. `Zip::File.close_safely`
+    has a regression spec. The constitution's own "oracle"/"DONE" language
+    is scoped to architectural shape — conformance is not correctness, and
+    green guardrails do not replace adversarial review.

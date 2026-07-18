@@ -106,10 +106,9 @@ module Shoko
           downloaded = 0
           File.open(part_path, 'wb') do |file|
             response.read_body do |chunk|
+              assert_download_ceiling!(downloaded, chunk)
               file.write(chunk)
               downloaded += chunk.bytesize
-              raise CatalogError, "Download exceeded #{MAX_DOWNLOAD_BYTES} bytes" if downloaded > MAX_DOWNLOAD_BYTES
-
               yield(downloaded, total) if block_given?
             end
           end
@@ -191,13 +190,22 @@ module Shoko
           end
         end
 
+        # Hard ceiling: checked BEFORE the write so no overshoot ever
+        # reaches the disk.
+        def assert_download_ceiling!(downloaded, chunk)
+          return if downloaded + chunk.bytesize <= MAX_DOWNLOAD_BYTES
+
+          raise CatalogError, "Download exceeded #{MAX_DOWNLOAD_BYTES} bytes"
+        end
+
         def read_bounded_index_body(response)
           buffer = +''
           response.read_body do |chunk|
-            buffer << chunk
-            if buffer.bytesize > MAX_INDEX_BODY_BYTES
+            if buffer.bytesize + chunk.bytesize > MAX_INDEX_BODY_BYTES
               raise CatalogError, "Index response exceeded #{MAX_INDEX_BODY_BYTES} bytes"
             end
+
+            buffer << chunk
           end
           buffer
         end

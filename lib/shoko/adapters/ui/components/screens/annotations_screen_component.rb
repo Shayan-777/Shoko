@@ -27,12 +27,13 @@ module Shoko
 
             ROWS_PER_NOTE = 2
 
-            def initialize(dependencies: nil, menu_visual_profile: nil)
+            def initialize(menu_state_reader: nil, reader_state_reader: nil, menu_hit_registry: nil,
+                           menu_visual_profile: nil)
               super()
-              @dependencies = dependencies
+              @menu_state_reader = menu_state_reader
+              @reader_state_reader = reader_state_reader
+              @menu_hit_registry = menu_hit_registry
               @menu_visual_profile = menu_visual_profile
-              @menu_state_reader = nil
-              @reader_state_reader = nil
               @mode = :all
               @list = []
               @selected = 0
@@ -92,7 +93,7 @@ module Shoko
             end
 
             def hits
-              @dependencies&.menu_hit_registry
+              @menu_hit_registry
             end
 
             def rule_meta(annotations)
@@ -258,13 +259,7 @@ module Shoko
                                                                          preserve_tabs: false)
             end
 
-            def reader_state_reader
-              @reader_state_reader ||= @dependencies&.reader_state_reader
-            end
-
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
+            attr_reader :reader_state_reader, :menu_state_reader
           end
         end
       end

@@ -53,18 +53,21 @@ RSpec.describe 'Ports contract' do
     # An outbound port is a contract fulfilled by an adapter. A contract
     # implemented ONLY by application-layer objects is an internal role
     # interface and lives under ports/internal — keeping "outbound" meaning
-    # what it says (constitution amendment 2026-07-18). The pattern is
-    # qualification-insensitive (`Shoko::Application::Ports::…`,
-    # `Application::Ports::…`, `Ports::…`, parenthesized, `::`-anchored)
-    # so a shorter constant path cannot slip a port past the check.
-    PORT_INCLUDE_PATTERN =
-      /^\s*include\s*\(?\s*(?:::)?(?:Shoko::)?(?:Application::)?Ports::(Outbound|Internal)::([\w:]+)/.freeze
+    # what it says (constitution amendment 2026-07-18). Include sites come
+    # from the Ripper-backed extractor, so every valid spelling — shorter
+    # qualification, parentheses, multiline, `::`-anchored — is seen exactly
+    # as Ruby sees it.
+    PORT_CONST_PATTERN = /(?:\A|::)Ports::(Outbound|Internal)::([\w:]+)\z/.freeze
 
     it 'keeps outbound ports adapter-implemented and internal ports application-implemented' do
       includers = Hash.new { |h, k| h[k] = [] }
       Dir[File.join(lib_root, '**', '*.rb')].each do |path|
-        non_comment_content(path).scan(PORT_INCLUDE_PATTERN) do |kind, name|
-          includers[[kind, name]] << path
+        _defs, sites = SpecSupport::Architecture::MixinSiteExtractor.extract(File.read(path))
+        sites.each do |site|
+          next unless site.method == 'include'
+
+          match = site.const.match(PORT_CONST_PATTERN)
+          includers[[match[1], match[2]]] << path if match
         end
       end
 

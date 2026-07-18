@@ -19,9 +19,7 @@ module Shoko
               Shoko::Shared::Terminal::TextSanitizer.sanitize(raw, preserve_newlines: false, preserve_tabs: false)
             end
 
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
+            attr_reader :menu_state_reader
           end
         end
       end

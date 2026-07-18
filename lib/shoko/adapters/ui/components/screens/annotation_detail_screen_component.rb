@@ -24,11 +24,10 @@ module Shoko
 
             Palette = StatusBar::Palette
 
-            def initialize(dependencies: nil, menu_visual_profile: nil)
+            def initialize(menu_state_reader: nil, menu_visual_profile: nil)
               super()
-              @dependencies = dependencies
+              @menu_state_reader = menu_state_reader
               @menu_visual_profile = menu_visual_profile
-              @menu_state_reader = nil
             end
 
             def do_render(surface, bounds)

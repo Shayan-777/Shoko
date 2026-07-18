@@ -38,16 +38,17 @@ module Shoko
 
             attr_reader :filtered_epubs
 
-            def initialize(catalog_service, observer_registry, dependencies = nil, menu_visual_profile: nil)
+            def initialize(catalog_service, observer_registry, menu_state_reader: nil, menu_session_mutator: nil,
+                           menu_hit_registry: nil, menu_visual_profile: nil)
               super()
               @catalog = catalog_service
               @observer_registry = observer_registry
-              @dependencies = dependencies
+              @menu_state_reader = menu_state_reader
+              @menu_session_mutator = menu_session_mutator
+              @menu_hit_registry = menu_hit_registry
               @menu_visual_profile = menu_visual_profile
               @filtered_epubs = []
               @block_lines = {}
-              @menu_state_reader = nil
-              @menu_session_mutator = nil
 
               # Re-filter the cached book list when the search query changes;
               # selection and search-mode flags are read live on render.
@@ -113,7 +114,7 @@ module Shoko
             end
 
             def hits
-              @dependencies&.menu_hit_registry
+              @menu_hit_registry
             end
 
             def rule_meta
@@ -410,13 +411,7 @@ module Shoko
               (menu_state_reader&.loading_progress || 0.0).to_f
             end
 
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
-
-            def menu_session_mutator
-              @menu_session_mutator ||= @dependencies&.menu_session_mutator
-            end
+            attr_reader :menu_state_reader, :menu_session_mutator
           end
         end
       end

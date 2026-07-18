@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'mixin_site_extractor'
+
 module SpecSupport
   module Architecture
     # Detects "include-once mixins": modules defined in lib that are `include`d,
@@ -9,26 +11,24 @@ module SpecSupport
     # of its benefits, and is the engine of the project's refactoring churn.
     # `extend` is the same mechanism through the singleton class — invisible to
     # an include-only scan, as the TextMetrics five-module split demonstrated.
-    # (`extend self` is the module-function idiom, not a mixin site; the pattern
-    # ignores it because `self` is not a constant.)
     #
-    # Detection is regex-based (matching the rest of the architecture spec suite) but
-    # works on FULLY-QUALIFIED module names, derived from an indentation-based nesting
-    # stack. Short-name keying was abandoned because common module names (Sidebar,
-    # Dictionary, Constants, ...) collide across the tree: that produced false positives
-    # and, worse, made include counts shift when an unrelated same-named module changed.
+    # Mixin sites and definitions come from the Ripper-backed
+    # MixinSiteExtractor, so multi-argument, parenthesized, multiline, and
+    # `::`-anchored spellings are all seen exactly as Ruby sees them.
+    # (`extend self` is the module-function idiom, not a mixin site; the
+    # extractor ignores it because `self` is not a constant.)
     #
-    # A file is attributed only to the module(s) it actually defines — those at its
-    # deepest nesting level — so namespaces the file merely reopens (and legitimate
-    # `Foo.build(...)` collaborators that are never `include`d) are not flagged.
+    # Counting works on FULLY-QUALIFIED module names. Short-name keying was
+    # abandoned because common module names (Sidebar, Dictionary, Constants, ...)
+    # collide across the tree: that produced false positives and, worse, made
+    # include counts shift when an unrelated same-named module changed.
+    #
+    # A file is attributed only to the module(s) it actually defines — those at
+    # its deepest nesting level — so namespaces the file merely reopens (and
+    # legitimate `Foo.build(...)` collaborators that are never `include`d) are
+    # not flagged.
     module IncludeOnceMixinScanner
       module_function
-
-      DECL_PATTERN = /^(\s*)(?:module|class)\s+([A-Z][\w:]*)/.freeze
-      # Matches every valid mixin-site spelling: bare, parenthesized, and
-      # top-level-qualified (`include Foo`, `include(Foo)`, `extend(::Foo)`).
-      # `extend self` never matches — `self` is not a constant.
-      INCLUDE_PATTERN = /^(\s*)(?:include|prepend|extend)\s*\(?\s*(?:::)?([A-Z][\w:]*)/.freeze
 
       # Defining files under these prefixes are exempt: port modules legitimately
       # declare a contract and are "included once" by design.
@@ -58,20 +58,21 @@ module SpecSupport
 
         all_definitions = {} # fqn => true (every module/class defined anywhere)
         own_definitions = Hash.new { |h, k| h[k] = [] } # fqn => [files defining it at their deepest level]
-        include_sites = [] # [arg, enclosing_nesting_fqn]
+        include_sites = [] # [Site]
 
         files.each do |path|
           rel = path.delete_prefix("#{lib_root}/")
-          defs, includes = parse(non_comment_lines(path))
-          defs.each { |_indent, fqn| all_definitions[fqn] = true }
-          deepest = defs.map(&:first).max
-          defs.select { |indent, _| indent == deepest }.each { |_i, fqn| own_definitions[fqn] << rel }
-          includes.each { |arg, nesting| include_sites << [arg, nesting] }
+          defs, sites = MixinSiteExtractor.extract(read_source(path))
+          defs.each { |definition| all_definitions[definition.segments.join('::')] = true }
+          deepest = defs.map(&:depth).max
+          defs.select { |definition| definition.depth == deepest }
+              .each { |definition| own_definitions[definition.segments.join('::')] << rel }
+          include_sites.concat(sites)
         end
 
         include_counts = Hash.new(0)
-        include_sites.each do |arg, nesting|
-          fqn = resolve(arg, nesting, all_definitions)
+        include_sites.each do |site|
+          fqn = resolve(site, all_definitions)
           include_counts[fqn] += 1 if fqn
         end
 
@@ -82,34 +83,16 @@ module SpecSupport
                       .sort
       end
 
-      # Build, from one file's lines, the list of [indent, fqn] declarations and the list
-      # of [include_arg, enclosing_fqn] include sites, using indentation to track nesting.
-      def parse(lines)
-        stack = [] # [name, indent]
-        defs = []
-        includes = []
-        lines.each do |line|
-          if (m = line.match(DECL_PATTERN))
-            indent = m[1].length
-            stack.pop while stack.any? && stack.last[1] >= indent
-            fqn = (stack.map(&:first) + [m[2]]).join('::')
-            defs << [indent, fqn]
-            stack.push([m[2], indent])
-          elsif (m = line.match(INCLUDE_PATTERN))
-            indent = m[1].length
-            enclosing = stack.reject { |_n, i| i >= indent }.map(&:first)
-            includes << [m[2], enclosing.join('::')]
-          end
-        end
-        [defs, includes]
-      end
+      # Resolve a mixin site to a defined FQN, mimicking Ruby lexical lookup:
+      # a `::`-anchored constant resolves only at the top level; otherwise try
+      # <nesting>::const, walk outward, then the const itself (an
+      # already-qualified path).
+      def resolve(site, all_definitions)
+        return (all_definitions[site.const] ? site.const : nil) if site.top_level
 
-      # Resolve an include argument to a defined FQN, mimicking Ruby lexical lookup:
-      # try <nesting>::arg, then walk outward, then arg itself (already-qualified path).
-      def resolve(arg, nesting, all_definitions)
-        segments = nesting.empty? ? [] : nesting.split('::')
+        segments = site.nesting
         (0..segments.length).to_a.reverse_each do |k|
-          candidate = (segments[0...k] + [arg]).join('::')
+          candidate = (segments[0...k] + [site.const]).join('::')
           return candidate if all_definitions[candidate]
         end
         nil
@@ -121,10 +104,10 @@ module SpecSupport
         EXEMPT_PREFIXES.any? { |prefix| rel.start_with?(prefix) }
       end
 
-      def non_comment_lines(path)
-        File.readlines(path).reject { |line| line.strip.start_with?('#') }
+      def read_source(path)
+        File.read(path)
       rescue StandardError
-        []
+        ''
       end
     end
   end

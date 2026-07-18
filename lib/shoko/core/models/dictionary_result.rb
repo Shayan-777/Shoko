@@ -14,6 +14,9 @@ module Shoko
           @target_lang = target_lang&.to_s&.freeze
           @search_mode = search_mode
           @error_message = error_message&.to_s&.freeze
+          # Born frozen: results are placed into the state tree, whose value
+          # contract admits opaque objects only when they are immutable.
+          freeze
         end
 
         def found?

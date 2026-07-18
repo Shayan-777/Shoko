@@ -70,7 +70,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
     surface = Shoko::Adapters::Ui::Components::Surface.new(terminal)
     bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 80, height: 24)
 
-    component = described_class.new(dependencies: dependencies)
+    component = described_class.new(menu_state_reader: dependencies.menu_state_reader,
+                                    reader_state_reader: dependencies.reader_state_reader)
     component.render(surface, bounds)
 
     output = terminal.writes.map { |write| write[:text] }.join
@@ -95,7 +96,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
     surface = Shoko::Adapters::Ui::Components::Surface.new(terminal)
     bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 30)
 
-    component = described_class.new(dependencies: dependencies)
+    component = described_class.new(menu_state_reader: dependencies.menu_state_reader,
+                                    reader_state_reader: dependencies.reader_state_reader)
     component.render(surface, bounds)
 
     output = terminal.writes.map { |write| write[:text] }.join
@@ -124,7 +126,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
     surface = Shoko::Adapters::Ui::Components::Surface.new(terminal)
     bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 30)
 
-    component = described_class.new(dependencies: dependencies)
+    component = described_class.new(menu_state_reader: dependencies.menu_state_reader,
+                                    reader_state_reader: dependencies.reader_state_reader)
 
     expect { component.render(surface, bounds) }.not_to raise_error
 

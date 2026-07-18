@@ -31,6 +31,9 @@ module Shoko
           @translations = Array(translations).map(&:freeze).freeze
           @score = score.to_f
           @importance = importance.to_f
+          # Born frozen: entries are placed into the state tree, whose value
+          # contract admits opaque objects only when they are immutable.
+          freeze
         end
 
         def self.from_hash(hash)

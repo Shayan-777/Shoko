@@ -10,6 +10,9 @@ module Shoko
         def initialize(word:, similarity:)
           @word = word.to_s.freeze
           @similarity = similarity.to_f
+          # Born frozen: matches are placed into the state tree, whose value
+          # contract admits opaque objects only when they are immutable.
+          freeze
         end
 
         def high_confidence?

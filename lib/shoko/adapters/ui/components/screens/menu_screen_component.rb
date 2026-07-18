@@ -35,11 +35,12 @@ module Shoko
             # component that opening it renders (nil for entries with no view,
             # e.g. Quit). The shell injects it so this screen can render the
             # true destination view as the preview.
-            def initialize(dependencies = nil, menu_visual_profile: nil, preview_screen_provider: nil)
+            def initialize(menu_state_reader: nil, menu_hit_registry: nil, menu_visual_profile: nil,
+                           preview_screen_provider: nil)
               super()
-              @dependencies = dependencies
+              @menu_state_reader = menu_state_reader
+              @menu_hit_registry = menu_hit_registry
               @menu_visual_profile = menu_visual_profile
-              @menu_state_reader = nil
               @canvas_mode = nil
               @preview_screen_provider = preview_screen_provider
             end
@@ -55,9 +56,7 @@ module Shoko
 
             private
 
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
+            attr_reader :menu_state_reader
 
             # Standalone renders (specs, tooling) fall back to the same
             # breakpoint the shell uses.
@@ -113,7 +112,7 @@ module Shoko
             end
 
             def hit_registry
-              @dependencies&.menu_hit_registry
+              @menu_hit_registry
             end
 
             # ----- compact fallback (small terminals) -----

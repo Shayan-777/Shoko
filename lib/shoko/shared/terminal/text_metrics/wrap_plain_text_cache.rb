@@ -7,11 +7,14 @@ module Shoko
     module Terminal
       module TextMetrics
         # Per-thread LRU memo of plain-text wraps keyed by [width, source].
+        # True LRU: hits reinsert the key (Ruby hashes preserve insertion
+        # order), so recently used entries outlive older untouched ones.
+        # Both hits and misses return the frozen cached value, so callers
+        # see one consistent (immutable) contract regardless of cache state.
         class WrapPlainTextCache
           LIMIT = 2_000
           CACHEABLE_BYTES = 2_048
           STORE_KEY = :shoko_wrap_plain_text_cache
-          ORDER_KEY = :shoko_wrap_plain_text_cache_order
 
           def initialize(controls:)
             @controls = controls
@@ -26,17 +29,14 @@ module Shoko
             return yield unless store
 
             key = [width, source]
-            cached = store[key]
-            return cached unless cached.nil?
+            cached = store.delete(key)
+            return store[key] = cached if cached
 
-            wrapped = yield
-            write(store, source, width, wrapped)
-            wrapped
+            write(store, source, width, yield)
           end
 
           def clear!
             Thread.current[STORE_KEY] = {}
-            Thread.current[ORDER_KEY] = []
           end
 
           private
@@ -50,18 +50,12 @@ module Shoko
 
           def write(store, source, width, wrapped)
             key_source = source.frozen? ? source : source.dup.freeze
-            key = [width, key_source]
-            order = Thread.current[ORDER_KEY] ||= []
+            key = [width, key_source].freeze
+            frozen = wrapped.map { |line| line.frozen? ? line : line.dup.freeze }.freeze
 
-            unless store.key?(key)
-              order << key
-              while order.length > LIMIT
-                oldest = order.shift
-                store.delete(oldest)
-              end
-            end
-
-            store[key] = wrapped.map { |line| line.frozen? ? line : line.dup.freeze }.freeze
+            store[key] = frozen
+            store.shift while store.length > LIMIT
+            frozen
           end
         end
       end

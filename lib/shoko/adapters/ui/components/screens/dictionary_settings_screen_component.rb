@@ -36,12 +36,17 @@ module Shoko
               refresh_value: :refresh_value,
             }.freeze
 
-            def initialize(dependencies: nil, menu_visual_profile: nil)
+            def initialize(menu_state_reader: nil, config_reader: nil, runtime_config: nil,
+                           dictionary_availability: nil, dictionary_storage: nil, menu_hit_registry: nil,
+                           menu_visual_profile: nil)
               super()
-              @dependencies = dependencies
+              @menu_state_reader = menu_state_reader
+              @config_reader = config_reader
+              @runtime_config = runtime_config
+              @dictionary_availability = dictionary_availability
+              @dictionary_storage = dictionary_storage
+              @menu_hit_registry = menu_hit_registry
               @menu_visual_profile = menu_visual_profile
-              @menu_state_reader = nil
-              @config_reader = nil
             end
 
             def do_render(surface, bounds)
@@ -67,7 +72,7 @@ module Shoko
             end
 
             def hits
-              @dependencies&.menu_hit_registry
+              @menu_hit_registry
             end
 
             def rule_meta
@@ -343,23 +348,8 @@ module Shoko
               dictionary_status == :loading ? 'Loading…' : 'Fetch latest list'
             end
 
-            def runtime_config
-              return @runtime_config if defined?(@runtime_config)
-
-              @runtime_config = @dependencies&.runtime_config
-            end
-
-            def dictionary_availability
-              return @dictionary_availability if defined?(@dictionary_availability)
-
-              @dictionary_availability = @dependencies&.dictionary_availability
-            end
-
-            def dictionary_storage
-              return @dictionary_storage if defined?(@dictionary_storage)
-
-              @dictionary_storage = @dependencies&.dictionary_storage
-            end
+            attr_reader :runtime_config, :dictionary_availability, :dictionary_storage, :menu_state_reader,
+                        :config_reader
 
             def default_storage_path
               dictionary_storage&.default_databases_path.to_s
@@ -380,14 +370,6 @@ module Shoko
               Shoko::Shared::Terminal::TextSanitizer.sanitize(
                 text.to_s, preserve_newlines: false, preserve_tabs: false
               )
-            end
-
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
-
-            def config_reader
-              @config_reader ||= @dependencies&.config_reader
             end
           end
         end

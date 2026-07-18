@@ -9,10 +9,9 @@ module Shoko
         module Screens
           # Menu-state helper for annotation edit screens.
           class AnnotationEditState
-            def initialize(dependencies = nil)
-              @dependencies = dependencies
-              @menu_state_reader = nil
-              @menu_session_mutator = nil
+            def initialize(menu_state_reader: nil, menu_session_mutator: nil)
+              @menu_state_reader = menu_state_reader
+              @menu_session_mutator = menu_session_mutator
             end
 
             def text
@@ -60,13 +59,7 @@ module Shoko
 
             private
 
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
-            end
-
-            def menu_session_mutator
-              @menu_session_mutator ||= @dependencies&.menu_session_mutator
-            end
+            attr_reader :menu_state_reader, :menu_session_mutator
           end
         end
       end

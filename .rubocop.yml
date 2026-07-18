@@ -77,6 +77,9 @@ Metrics/CyclomaticComplexity:
     - 'sanitize'
     - 'truncate_to'
     - 'wrap_cells'
+    # Type-dispatch table over the admissible state-value kinds - one branch
+    # per kind is the whole point
+    - 'deep_dup'
   Exclude:
     - 'spec/**/*'
     - 'test/**/*'

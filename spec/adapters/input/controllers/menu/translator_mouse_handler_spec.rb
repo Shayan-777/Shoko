@@ -56,9 +56,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::TranslatorMouseHandler
       nil
     )
   end
-  let(:dependencies) { Struct.new(:menu_state_reader).new(menu_state) }
   let(:translator_screen) do
-    Shoko::Adapters::Ui::Components::Screens::TranslatorScreenComponent.new(dependencies: dependencies)
+    Shoko::Adapters::Ui::Components::Screens::TranslatorScreenComponent.new(menu_state_reader: menu_state)
   end
   let(:menu_session_mutator) { menu_mutator_class.new(menu_state) }
   let(:input_controller) { instance_double(Shoko::Adapters::Input::Controllers::Menu::InputController, activate: nil) }
