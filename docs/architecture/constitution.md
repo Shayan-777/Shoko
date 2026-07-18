@@ -43,8 +43,10 @@ hardening" work to do.** Do not start any.
 ## II. Decomposition (the rules that stop the churn)
 
 ### R1 — Hard zero include-once mixins.
-A module that is `include`d or `prepend`ed into **exactly one** class is **forbidden.**
-Private behavior belongs as **private methods on its host class**, full stop.
+A module that is `include`d, `prepend`ed, or `extend`ed into **exactly one** host
+is **forbidden.** `extend` is the same fragmentation through the singleton class,
+not a loophole. Private behavior belongs as **private methods on its host**, full
+stop. (`extend self` — the module-function idiom — is not a mixin site.)
 
 The only way a unit of behavior earns its own file is by becoming a **collaborator
 object** — a class you instantiate/inject and *call*, never a module you mix in.
@@ -59,7 +61,12 @@ If a chunk of a class meets none of these, it stays as private methods. A long,
 flat, cohesive class is **correct**, not debt.
 
 **Exempt from R1:** `Application::Ports::*` interface modules (they document a
-contract), and genuine shared mixins included by **two or more** classes.
+contract); genuine shared mixins included by **two or more** classes; the
+composition-root wiring modules and interface-contract modules enumerated —
+each with its rationale — in the scanner `ALLOWLIST`
+(`spec/support/architecture/include_once_mixin_scanner.rb`). The rule and its
+executable enforcement name the same exemptions; an ALLOWLIST addition is a
+constitutional amendment.
 
 ### R2 — Length is never a reason to split.
 File/class length does not trigger extraction. Census shows sizes are healthy.
@@ -533,3 +540,16 @@ Every resilient boundary:
   node frozen after build and update, out-of-band mutation raises, inserted
   values are dup'd, no mutable structure shared between stores, fragment
   defaults deep-frozen.
+
+- **2026-07-18 — R1 closes the `extend` hole; TextMetrics reunified.** R1's
+  text and scanner covered only `include`/`prepend`, so `TextMetrics` had been
+  split into five modules (`RuntimeControls`, `Caching`, `Measurement`,
+  `Truncation`, `Wrapping`) each `extend`ed into exactly one host — singleton-
+  class mixin fragmentation, functionally identical to what R1 forbids and
+  invisible to its enforcement. R1 now names `extend` explicitly, the scanner
+  matches it (`extend self` stays exempt as the module-function idiom, and the
+  widened scan found no other offenders), and the five fragments are inlined
+  back into `shared/terminal/text_metrics.rb` as one flat module with private
+  internals (R2: its ~570 lines are not a reason to split). The rule text now
+  also names the scanner ALLOWLIST as its own exemption list, so the law and
+  its executable enforcement can no longer drift apart silently.

@@ -2,11 +2,15 @@
 
 module SpecSupport
   module Architecture
-    # Detects "include-once mixins": modules defined in lib that are `include`d or
-    # `prepend`ed in exactly one place across the codebase. These are forbidden by
-    # the architecture constitution (R1, "hard zero"): a module mixed into a single
-    # host gives the indirection of decomposition with none of its benefits, and is
-    # the engine of the project's refactoring churn.
+    # Detects "include-once mixins": modules defined in lib that are `include`d,
+    # `prepend`ed, or `extend`ed in exactly one place across the codebase. These
+    # are forbidden by the architecture constitution (R1, "hard zero"): a module
+    # mixed into a single host gives the indirection of decomposition with none
+    # of its benefits, and is the engine of the project's refactoring churn.
+    # `extend` is the same mechanism through the singleton class — invisible to
+    # an include-only scan, as the TextMetrics five-module split demonstrated.
+    # (`extend self` is the module-function idiom, not a mixin site; the pattern
+    # ignores it because `self` is not a constant.)
     #
     # Detection is regex-based (matching the rest of the architecture spec suite) but
     # works on FULLY-QUALIFIED module names, derived from an indentation-based nesting
@@ -21,7 +25,7 @@ module SpecSupport
       module_function
 
       DECL_PATTERN = /^(\s*)(?:module|class)\s+([A-Z][\w:]*)/.freeze
-      INCLUDE_PATTERN = /^(\s*)(?:include|prepend)\s+([A-Z][\w:]*)/.freeze
+      INCLUDE_PATTERN = /^(\s*)(?:include|prepend|extend)\s+([A-Z][\w:]*)/.freeze
 
       # Defining files under these prefixes are exempt: port modules legitimately
       # declare a contract and are "included once" by design.
