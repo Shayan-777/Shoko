@@ -52,4 +52,22 @@ RSpec.describe Shoko::Adapters::Rss::ArticleContentFetcher do
     expect { fetcher.fetch('ftp://example.com/post') }
       .to raise_error(Shoko::Adapters::Rss::ArticleContentFetcher::FetchError, /http or https/)
   end
+
+  it 'aborts oversized article transfers at the byte ceiling' do
+    bounded = described_class.new(extractor: extractor, max_body_bytes: 64)
+    stub_request(:get, 'https://example.com/huge')
+      .to_return(status: 200, body: 'a' * 200)
+
+    expect { bounded.fetch('https://example.com/huge') }
+      .to raise_error(Shoko::Adapters::Rss::ArticleContentFetcher::FetchError, /Response body exceeded 64 bytes/)
+  end
+
+  it 'translates a decompression-bomb article into a fetch error' do
+    bounded = described_class.new(extractor: extractor, max_decompressed_bytes: 4096)
+    stub_request(:get, 'https://example.com/bomb')
+      .to_return(status: 200, body: gzip_payload('a' * 1_000_000), headers: { 'Content-Encoding' => 'gzip' })
+
+    expect { bounded.fetch('https://example.com/bomb') }
+      .to raise_error(Shoko::Adapters::Rss::ArticleContentFetcher::FetchError, /Decompressed body exceeded/)
+  end
 end

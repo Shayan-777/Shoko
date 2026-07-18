@@ -21,6 +21,10 @@ module Shoko
         RECORDS_URL =
           'https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models/records'
         ATTACHMENT_BASE_URL = 'https://firefox-settings-attachments.cdn.mozilla.net/'
+        MAX_CATALOG_BODY_BYTES = 16 * 1024 * 1024
+        # Fallback ceiling for the rare record that omits its byte size; the
+        # catalog-declared size is the trust anchor whenever it is present.
+        MAX_UNDECLARED_FILE_BYTES = 512 * 1024 * 1024
 
         class CatalogError < Shoko::Error; end
 
@@ -138,7 +142,7 @@ module Shoko
 
           part_path = "#{dest_path}.part"
           digest = Digest::SHA256.new
-          stream_to_file(file.url, part_path, digest, &)
+          stream_to_file(file.url, part_path, digest, max_bytes: max_bytes_for(file), &)
           unless file.sha256.empty? || digest.hexdigest == file.sha256
             raise CatalogError, "Checksum mismatch for #{file.name}"
           end
@@ -148,34 +152,44 @@ module Shoko
           FileUtils.rm_f(part_path) if part_path
         end
 
+        # The catalog-declared byte count is enforced during the stream, not
+        # just implied by the post-download checksum: a lying CDN must not be
+        # able to fill the disk before the sha256 check would ever run.
+        def max_bytes_for(file)
+          file.size.positive? ? file.size : MAX_UNDECLARED_FILE_BYTES
+        end
+
         def digest_matches?(path, sha256)
           return false if sha256.empty?
 
           Digest::SHA256.file(path).hexdigest == sha256
         end
 
-        def stream_to_file(url, part_path, digest, redirects_left = 2, &)
+        def stream_to_file(url, part_path, digest, max_bytes:, redirects_left: 2, &)
           uri = parse_http_uri(url)
-          received = 0
           with_http(uri) do |http|
             http.request(Net::HTTP::Get.new(uri)) do |response|
               if response.is_a?(Net::HTTPRedirection) && redirects_left.positive?
                 redirect = URI.join(uri.to_s, response['location']).to_s
-                next stream_to_file(redirect, part_path, digest, redirects_left - 1, &)
+                next stream_to_file(redirect, part_path, digest, max_bytes: max_bytes,
+                                                                 redirects_left: redirects_left - 1, &)
               end
               raise CatalogError, "Download failed (#{response.code})" unless response.is_a?(Net::HTTPSuccess)
 
-              write_body(response, part_path, digest, received, &)
+              write_body(response, part_path, digest, max_bytes: max_bytes, &)
             end
           end
         end
 
-        def write_body(response, part_path, digest, received)
+        def write_body(response, part_path, digest, max_bytes:)
+          received = 0
           File.open(part_path, 'wb') do |io|
             response.read_body do |chunk|
+              received += chunk.bytesize
+              raise CatalogError, "Download exceeded declared size (#{max_bytes} bytes)" if received > max_bytes
+
               io.write(chunk)
               digest.update(chunk)
-              received += chunk.bytesize
               yield(received) if block_given?
             end
           end
@@ -183,12 +197,27 @@ module Shoko
 
         def http_get_body(url)
           uri = parse_http_uri(url)
-          response = with_http(uri) { |http| http.get(uri.request_uri) }
+          response = with_http(uri) do |http|
+            http.request(Net::HTTP::Get.new(uri.request_uri)) do |partial|
+              partial.body = read_bounded_catalog_body(partial) if partial.is_a?(Net::HTTPSuccess)
+            end
+          end
           raise CatalogError, "Catalog request failed (#{response.code})" unless response.is_a?(Net::HTTPSuccess)
 
           response.body
         rescue IOError, SystemCallError, SocketError, Timeout::Error => e
           raise CatalogError, "Catalog request failed: #{e.message}"
+        end
+
+        def read_bounded_catalog_body(response)
+          buffer = +''
+          response.read_body do |chunk|
+            buffer << chunk
+            if buffer.bytesize > MAX_CATALOG_BODY_BYTES
+              raise CatalogError, "Catalog response exceeded #{MAX_CATALOG_BODY_BYTES} bytes"
+            end
+          end
+          buffer
         end
 
         def parse_http_uri(url)

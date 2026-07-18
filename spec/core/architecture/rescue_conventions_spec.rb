@@ -192,6 +192,15 @@ RSpec.describe 'Rescue and fallback conventions' do
     # the parent menu cancels the batch and closes the pipe, progress has
     # nowhere to go and the pagination work itself must keep its value.
     'adapters/runtime/prepagination_progress_stream_adapter.rb',
+
+    # `decompress`: a body whose compressed encoding does not parse is
+    # semantically "not actually compressed" (servers mislabel
+    # Content-Encoding); the raw body is the correct domain answer. The
+    # fetchers historically implemented the identical fallback, laundered
+    # through an `undecoded_body(body)` wrapper the analyzer couldn't see —
+    # this exemption states the same judgment honestly. Over-limit
+    # expansion is NOT rescued: TooLarge always propagates.
+    'adapters/rss/bounded_http_body.rb',
   ].freeze
 
   it 'forbids fallback literal defaults directly after rescue branches' do

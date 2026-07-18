@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'webmock/rspec'
 require 'zlib'
 require 'stringio'
 
@@ -78,5 +79,27 @@ RSpec.describe Shoko::Adapters::Rss::FeedFetcher do
   it 'raises a fetch error for unsupported URL schemes' do
     expect { fetcher.fetch('ftp://example.com/feed.xml') }
       .to raise_error(Shoko::Adapters::Rss::FeedFetcher::FetchError, /http or https/)
+  end
+
+  it 'aborts oversized feed transfers at the byte ceiling' do
+    WebMock.disable_net_connect!
+    bounded = described_class.new(parser: parser, max_body_bytes: 64)
+    stub_request(:get, 'https://example.com/huge.xml').to_return(status: 200, body: 'a' * 200)
+
+    expect { bounded.fetch('https://example.com/huge.xml') }
+      .to raise_error(Shoko::Adapters::Rss::FeedFetcher::FetchError, /Response body exceeded 64 bytes/)
+  ensure
+    WebMock.allow_net_connect!
+  end
+
+  it 'translates a decompression-bomb feed into a fetch error' do
+    bounded = described_class.new(parser: parser, max_decompressed_bytes: 4096)
+    bomb = gzip_payload('a' * 1_000_000)
+    allow(bounded).to receive(:request).and_return(
+      http_response(Net::HTTPOK, body: bomb, headers: { 'content-encoding' => 'gzip' })
+    )
+
+    expect { bounded.fetch('https://example.com/feed.xml') }
+      .to raise_error(Shoko::Adapters::Rss::FeedFetcher::FetchError, /Decompressed body exceeded/)
   end
 end

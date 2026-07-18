@@ -53,6 +53,15 @@ RSpec.describe Shoko::Adapters::BookSources::GutendexClient do
       expect { client.search(query: 'broken') }
         .to raise_error(described_class::Error, /Invalid JSON response/)
     end
+
+    it 'aborts oversized API responses instead of buffering them' do
+      bounded_client = described_class.new(max_json_body_bytes: 64)
+      stub_request(:get, 'https://gutendex.com/books?search=huge')
+        .to_return(status: 200, body: '{"results":"' + ('a' * 128) + '"}')
+
+      expect { bounded_client.search(query: 'huge') }
+        .to raise_error(described_class::Error, /exceeded 64 bytes/)
+    end
   end
 
   describe '#download' do
@@ -71,6 +80,22 @@ RSpec.describe Shoko::Adapters::BookSources::GutendexClient do
         expect(File.binread(dest_path)).to eq('abcdef')
         expect(progress).not_to be_empty
         expect(progress.last).to eq([6, 6])
+      end
+    end
+
+    it 'aborts downloads that exceed the byte ceiling and leaves no file behind' do
+      bounded_client = described_class.new(max_download_bytes: 4)
+      stub_request(:get, 'https://gutendex.com/media/book.epub')
+        .to_return(status: 200, body: 'abcdefgh', headers: { 'Content-Length' => '8' })
+
+      Dir.mktmpdir do |dir|
+        dest_path = File.join(dir, 'book.epub')
+
+        expect { bounded_client.download('/media/book.epub', dest_path) }
+          .to raise_error(described_class::Error, /exceeded 4 bytes/)
+
+        expect(File.exist?(dest_path)).to be(false)
+        expect(File.exist?("#{dest_path}.part")).to be(false)
       end
     end
   end

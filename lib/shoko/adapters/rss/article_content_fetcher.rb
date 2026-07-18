@@ -1,14 +1,13 @@
 # frozen_string_literal: true
 
 require 'net/http'
-require 'stringio'
 require 'uri'
-require 'zlib'
 
 require_relative '../../shared/errors'
 require_relative '../../shared/version'
 require_relative '../base_adapter'
 require_relative 'article_content_extractor'
+require_relative 'bounded_http_body'
 
 module Shoko
   module Adapters
@@ -18,14 +17,18 @@ module Shoko
         class FetchError < Shoko::Error; end
 
         USER_AGENT = "Shoko RSS Reader/#{Shoko::VERSION}".freeze
+        MAX_BODY_BYTES = 8 * 1024 * 1024
+        MAX_DECOMPRESSED_BYTES = 32 * 1024 * 1024
 
         def initialize(extractor: ArticleContentExtractor.new, open_timeout: 5, read_timeout: 10, redirect_limit: 3,
-                       logger: nil)
+                       logger: nil, max_body_bytes: MAX_BODY_BYTES, max_decompressed_bytes: MAX_DECOMPRESSED_BYTES)
           super(logger: logger)
           @extractor = extractor
           @open_timeout = open_timeout
           @read_timeout = read_timeout
           @redirect_limit = redirect_limit
+          @max_body_bytes = max_body_bytes
+          @max_decompressed_bytes = max_decompressed_bytes
         end
 
         def fetch(url)
@@ -36,7 +39,8 @@ module Shoko
           end
 
           @extractor.extract(decoded_body(response))
-        rescue SocketError, SystemCallError, IOError, Timeout::Error, URI::InvalidURIError => e
+        rescue BoundedHttpBody::TooLarge, SocketError, SystemCallError, IOError, Timeout::Error,
+               URI::InvalidURIError => e
           raise FetchError, e.message
         end
 
@@ -56,6 +60,9 @@ module Shoko
           [response, uri]
         end
 
+        # Block-form request so the body is read in bounded chunks; without
+        # it Net::HTTP buffers the entire (possibly unbounded) body before
+        # any size check could run.
         def request(uri)
           http = Net::HTTP.new(uri.host, uri.port)
           http.use_ssl = uri.scheme == 'https'
@@ -67,7 +74,11 @@ module Shoko
           request['Accept'] = 'text/html, application/xhtml+xml, application/xml;q=0.9, */*;q=0.8'
           request['Accept-Encoding'] = 'gzip,deflate'
 
-          http.start { |session| session.request(request) }
+          http.start do |session|
+            session.request(request) do |response|
+              response.body = BoundedHttpBody.read(response, limit: @max_body_bytes) if response.is_a?(Net::HTTPSuccess)
+            end
+          end
         end
 
         def normalize_uri(value)
@@ -93,17 +104,7 @@ module Shoko
         def decoded_body(response)
           body = response.body.to_s
           encoding = response['content-encoding'].to_s.downcase
-          return body if encoding.empty?
-          return Zlib::GzipReader.new(StringIO.new(body)).read if encoding.include?('gzip')
-          return Zlib::Inflate.inflate(body) if encoding.include?('deflate')
-
-          body
-        rescue Zlib::Error
-          undecoded_body(body)
-        end
-
-        def undecoded_body(body)
-          body
+          BoundedHttpBody.decompress(body, encoding, limit: @max_decompressed_bytes)
         end
       end
     end

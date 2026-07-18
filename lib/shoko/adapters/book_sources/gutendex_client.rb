@@ -12,11 +12,16 @@ module Shoko
         class Error < Shoko::Error; end
 
         API_ROOT = 'https://gutendex.com/books'
+        MAX_JSON_BODY_BYTES = 4 * 1024 * 1024
+        MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024
 
-        def initialize(logger: nil, open_timeout: 5, read_timeout: 15)
+        def initialize(logger: nil, open_timeout: 5, read_timeout: 15,
+                       max_json_body_bytes: MAX_JSON_BODY_BYTES, max_download_bytes: MAX_DOWNLOAD_BYTES)
           @logger = logger
           @open_timeout = open_timeout
           @read_timeout = read_timeout
+          @max_json_body_bytes = max_json_body_bytes
+          @max_download_bytes = max_download_bytes
         end
 
         def search(query:, page_url: nil)
@@ -96,6 +101,8 @@ module Shoko
             response.read_body do |chunk|
               file.write(chunk)
               downloaded += chunk.bytesize
+              raise Error, "Download exceeded #{@max_download_bytes} bytes" if downloaded > @max_download_bytes
+
               yield(downloaded, total) if block_given?
             end
           end
@@ -175,6 +182,8 @@ module Shoko
           raise Error, "Invalid URL: #{uri}"
         end
 
+        # The non-block branch serves the JSON API paths; reading in bounded
+        # chunks caps what a broken or malicious server can make us buffer.
         def perform_request(uri, &)
           http = Net::HTTP.new(uri.host, uri.port)
           http.use_ssl = uri.scheme == 'https'
@@ -182,7 +191,20 @@ module Shoko
           http.read_timeout = @read_timeout
           return http.start(&) if block_given?
 
-          http.get(uri.request_uri)
+          http.start do |session|
+            session.request(Net::HTTP::Get.new(uri.request_uri)) do |response|
+              response.body = read_bounded_json_body(response) if response.is_a?(Net::HTTPSuccess)
+            end
+          end
+        end
+
+        def read_bounded_json_body(response)
+          buffer = +''
+          response.read_body do |chunk|
+            buffer << chunk
+            raise Error, "Response exceeded #{@max_json_body_bytes} bytes" if buffer.bytesize > @max_json_body_bytes
+          end
+          buffer
         end
 
         def ensure_http_dependencies!

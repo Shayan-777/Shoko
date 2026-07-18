@@ -73,6 +73,14 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
       stub_request(:get, records_url).to_return(status: 503, body: '')
       expect { service.list_remote }.to raise_error(described_class::CatalogError, /503/)
     end
+
+    it 'aborts an oversized catalog response instead of buffering it' do
+      oversized = 'x' * (described_class::MAX_CATALOG_BODY_BYTES + 1)
+      stub_request(:get, records_url).to_return(status: 200, body: oversized)
+
+      expect { service.list_remote }
+        .to raise_error(described_class::CatalogError, /Catalog response exceeded/)
+    end
   end
 
   describe '#download' do
@@ -129,6 +137,17 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
 
       service.download(build_pack('model-bytes', 'vocab-bytes'), @store)
       expect(@store.installed?('et', 'en')).to be(true)
+    end
+
+    it 'aborts a download that exceeds its declared size before the checksum would run' do
+      pack = build_pack('model-bytes', 'vocab-bytes')
+      stub_request(:get, "#{cdn}m.bin").to_return(status: 200, body: 'model-bytes-plus-cdn-lies')
+      stub_request(:get, "#{cdn}v.spm").to_return(status: 200, body: 'vocab-bytes')
+
+      expect { service.download(pack, @store) }
+        .to raise_error(described_class::CatalogError, /exceeded declared size/)
+      expect(@store.find('et', 'en')).to be_nil
+      expect(Dir.glob(File.join(@store.pack_dir('et', 'en'), '*.part'))).to eq([])
     end
   end
 end

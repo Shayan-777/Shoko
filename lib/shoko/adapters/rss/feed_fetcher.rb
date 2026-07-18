@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
 require 'net/http'
-require 'stringio'
 require 'uri'
-require 'zlib'
 
 require_relative '../../shared/errors'
 require_relative '../../shared/version'
 require_relative '../base_adapter'
+require_relative 'bounded_http_body'
 require_relative 'feed_parser'
 
 module Shoko
@@ -18,13 +17,18 @@ module Shoko
         class FetchError < Shoko::Error; end
 
         USER_AGENT = "Shoko RSS Reader/#{Shoko::VERSION}".freeze
+        MAX_BODY_BYTES = 8 * 1024 * 1024
+        MAX_DECOMPRESSED_BYTES = 32 * 1024 * 1024
 
-        def initialize(parser: FeedParser.new, open_timeout: 5, read_timeout: 10, redirect_limit: 3, logger: nil)
+        def initialize(parser: FeedParser.new, open_timeout: 5, read_timeout: 10, redirect_limit: 3, logger: nil,
+                       max_body_bytes: MAX_BODY_BYTES, max_decompressed_bytes: MAX_DECOMPRESSED_BYTES)
           super(logger: logger)
           @parser = parser
           @open_timeout = open_timeout
           @read_timeout = read_timeout
           @redirect_limit = redirect_limit
+          @max_body_bytes = max_body_bytes
+          @max_decompressed_bytes = max_decompressed_bytes
         end
 
         def fetch(url, etag: nil, last_modified: nil)
@@ -33,7 +37,8 @@ module Shoko
           raise FetchError, request_error_message(response) unless success_response?(response)
 
           build_fetch_payload(response, final_uri)
-        rescue SocketError, SystemCallError, IOError, Timeout::Error, URI::InvalidURIError => e
+        rescue BoundedHttpBody::TooLarge, SocketError, SystemCallError, IOError, Timeout::Error,
+               URI::InvalidURIError => e
           raise FetchError, e.message
         end
 
@@ -63,9 +68,16 @@ module Shoko
           [response, uri]
         end
 
+        # Block-form request so the body is read in bounded chunks; without
+        # it Net::HTTP buffers the entire (possibly unbounded) body before
+        # any size check could run.
         def request(uri, etag:, last_modified:)
           request = build_request(uri, etag: etag, last_modified: last_modified)
-          http_client(uri).start { |session| session.request(request) }
+          http_client(uri).start do |session|
+            session.request(request) do |response|
+              response.body = BoundedHttpBody.read(response, limit: @max_body_bytes) if response.is_a?(Net::HTTPSuccess)
+            end
+          end
         end
 
         def http_client(uri)
@@ -119,18 +131,7 @@ module Shoko
         def decoded_body(response)
           body = response.body.to_s
           encoding = response['content-encoding'].to_s.downcase
-          return body if encoding.empty?
-
-          return Zlib::GzipReader.new(StringIO.new(body)).read if encoding.include?('gzip')
-          return Zlib::Inflate.inflate(body) if encoding.include?('deflate')
-
-          body
-        rescue Zlib::Error
-          undecoded_body(body)
-        end
-
-        def undecoded_body(body)
-          body
+          BoundedHttpBody.decompress(body, encoding, limit: @max_decompressed_bytes)
         end
 
         def not_modified_payload(response, uri, etag, last_modified)
