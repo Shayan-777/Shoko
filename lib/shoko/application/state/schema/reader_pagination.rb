@@ -29,15 +29,15 @@ module Shoko
           ].freeze
 
           DEFAULTS = {
-            page_map: [],
+            page_map: [].freeze,
             total_pages: 0,
-            pages_per_chapter: [],
+            pages_per_chapter: [].freeze,
             page_offset: 0,
             last_width: 0,
             last_height: 0,
             dynamic_page_map: nil,
             dynamic_total_pages: 0,
-            dynamic_chapter_starts: [],
+            dynamic_chapter_starts: [].freeze,
             last_dynamic_width: 0,
             last_dynamic_height: 0,
           }.freeze

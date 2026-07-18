@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../shared/deep_structure'
+
 module Shoko
   module Application
     module State
@@ -57,7 +59,7 @@ module Shoko
         # @return [Class] a Data subclass with the snapshot surface installed
         def define_snapshot(fields:, defaults:, partition:)
           frozen_fields = fields.dup.freeze
-          frozen_defaults = defaults.dup.freeze
+          frozen_defaults = Shoko::Shared::DeepStructure.deep_dup_frozen(defaults)
           klass = Data.define(*frozen_fields)
           klass.const_set(:FIELDS, frozen_fields)
           klass.const_set(:DEFAULTS, frozen_defaults)

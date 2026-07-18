@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../core/services/null_logger'
+require_relative '../../shared/deep_structure'
 require_relative '../../shared/download_source_policy'
 require_relative '../../shared/theme_policy'
 require_relative 'schema_registry'
@@ -18,6 +19,15 @@ module Shoko
       # populated `SchemaRegistry` whose fragments collectively define every
       # field of the initial state hash. The store has no external
       # counterparty — it is application infrastructure, not an adapter.
+      #
+      # Frozen-tree invariant: the state tree (every Hash, Array, and String
+      # in it) is deep-frozen at all times, so `peek`/`peek_at`/`get` can
+      # return internals without defensive copies and out-of-band mutation
+      # raises instead of silently bypassing validation, locking, change
+      # sets, and observers. Writes copy the update path, deep-dup inserted
+      # values (callers keep ownership of their arguments), and freeze the
+      # new structure before commit. Non-data leaf objects stored in state
+      # are treated as opaque and never frozen here.
       class StateStore
         # Error raised when a state transition is invalid
         class StateUpdateError < StandardError
@@ -127,7 +137,9 @@ module Shoko
         private
 
         def build_initial_state
-          @schema_registry.initial_state(terminal_capabilities: @terminal_capabilities)
+          Shoko::Shared::DeepStructure.deep_freeze(
+            @schema_registry.initial_state(terminal_capabilities: @terminal_capabilities)
+          )
         end
 
         def commit_update(updates)
@@ -148,15 +160,21 @@ module Shoko
 
         def validation_allowed?(validation_result) = validation_result == true || validation_result.nil?
 
+        # Path-copy with freeze-on-commit: only nodes along update paths are
+        # duplicated (collected in `created`); untouched branches stay the
+        # already-frozen originals, so freezing just the created nodes at the
+        # end keeps the whole-tree frozen invariant at O(path + value) cost.
         def apply_updates(state, updates)
           clones = {}.compare_by_identity
-          new_root = duplicate_node(state, clones)
+          created = []
+          new_root = duplicate_node(state, clones: clones, created: created)
 
           updates.each do |path, value|
             validate_update(path, value)
-            assign_update(new_root, Array(path), value, clones)
+            assign_update(new_root, Array(path), value, clones: clones, created: created)
           end
 
+          created.each(&:freeze)
           new_root
         end
 
@@ -164,23 +182,31 @@ module Shoko
           validate_state_update(path, value)
         end
 
-        def assign_update(root, keys, value, clones)
-          target = root
-          keys[0...-1].each do |key|
-            existing = target[key]
-            duplicated = duplicate_node(existing, clones) || {}
-            target[key] = duplicated
-            target = duplicated
+        def assign_update(root, keys, value, clones:, created:)
+          parent = keys[0...-1].reduce(root) do |node, key|
+            branch_for_update(node, key, clones: clones, created: created)
           end
-          target[keys.last] = value
+          parent[keys.last] = Shoko::Shared::DeepStructure.deep_dup_frozen(value)
+          nil
         end
 
-        def duplicate_node(node, clones)
+        def branch_for_update(node, key, clones:, created:)
+          duplicated = duplicate_node(node[key], clones: clones, created: created)
+          if duplicated.nil?
+            duplicated = {}
+            created << duplicated
+          end
+          node[key] = duplicated
+          duplicated
+        end
+
+        def duplicate_node(node, clones:, created:)
           return node unless node.is_a?(Hash)
           return clones[node] if clones.key?(node)
 
           duped = node.dup
           clones[node] = duped
+          created << duped
           duped
         end
 

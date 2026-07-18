@@ -512,3 +512,24 @@ Every resilient boundary:
   The ratchet now sits at **0 active violations**; these are tracked, justified, and either
   await deliberate redesigns (selection, dictionary setup) or are accepted §IV/port-style
   organization (composition wiring, contracts).
+
+- **2026-07-18 — The state store's "immutable" claim becomes an enforced
+  frozen-tree invariant.** The store called itself an "immutable-snapshot state
+  store" while returning its live internal tree unfrozen from
+  `peek`/`peek_at`/`get`: any caller could mutate state in place, bypassing
+  validation, locking, change sets, and observers — and identity-cached
+  snapshot adapters would then serve stale data. Copy-on-write also duplicated
+  only Hash nodes, structurally sharing arrays, and schema fragments
+  contributed shallow-dup'd `DEFAULTS`, so independently built containers
+  shared the same mutable default arrays. Now: the composed initial tree is
+  deep-frozen; `apply_updates` deep-dups and freezes inserted values (callers
+  keep ownership of their arguments) and freezes every path-copied node before
+  commit, keeping the whole tree frozen at O(path + value) cost; schema
+  fragments freeze their mutable literal defaults; snapshot defaults are
+  deep-frozen in `SnapshotFactory.define_snapshot`. Non-data leaf objects
+  (anything that is not Hash/Array/String) are opaque: the store never freezes
+  domain objects. The shared primitive is `Shoko::Shared::DeepStructure`. The
+  `state_conventions` guardrail enforces the invariant end-to-end: every data
+  node frozen after build and update, out-of-band mutation raises, inserted
+  values are dup'd, no mutable structure shared between stores, fragment
+  defaults deep-frozen.

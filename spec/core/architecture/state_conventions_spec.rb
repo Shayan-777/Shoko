@@ -232,4 +232,110 @@ RSpec.describe 'State conventions' do
                                             "Reader UI component registry must exist for live UI objects: #{registry_path}"
     end
   end
+
+  describe 'frozen-tree state invariant' do
+    def build_store(dir)
+      storage = Object.new
+      file = File.join(dir, 'config.json')
+      storage.define_singleton_method(:config_dir) { dir }
+      storage.define_singleton_method(:config_file) { file }
+      storage.define_singleton_method(:ensure_config_dir) { FileUtils.mkdir_p(dir) }
+      storage.define_singleton_method(:atomic_write) { |path, data| File.write(path, data) }
+      storage.define_singleton_method(:read_file) { |path| File.exist?(path) ? File.read(path) : nil }
+      storage.define_singleton_method(:file_exist?) { |path| File.exist?(path) }
+
+      registry = Shoko::Application::State::SchemaRegistry.new
+                                                          .register(Shoko::Core::Reading::Schema)
+                                                          .register(Shoko::Application::State::Schema::ReaderProcess)
+                                                          .register(Shoko::Application::State::Schema::ReaderPagination)
+                                                          .register(Shoko::Application::State::Schema::ReaderView)
+                                                          .register(Shoko::Application::State::Schema::MenuProcess)
+                                                          .register(Shoko::Application::State::Schema::MenuTransient)
+                                                          .register(Shoko::Application::State::Schema::Config)
+                                                          .register(Shoko::Application::State::Schema::UiGlobals)
+
+      Shoko::Application::State::StateStore.new(
+        config_storage: storage,
+        terminal_capabilities: Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new,
+        schema_registry: registry
+      )
+    end
+
+    def each_data_node(node, &)
+      return unless node.is_a?(Hash) || node.is_a?(Array)
+
+      yield node
+      children = node.is_a?(Hash) ? node.values : node
+      children.each { |child| each_data_node(child, &) }
+    end
+
+    it 'keeps every data node of the tree frozen after build and after update' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        each_data_node(store.peek) { |node| expect(node).to be_frozen }
+
+        store.update(%i[reader bookmarks] => [{ chapter: 1 }], %i[ui terminal_width] => 120)
+        each_data_node(store.peek) { |node| expect(node).to be_frozen }
+      end
+    end
+
+    it 'raises on out-of-band mutation instead of bypassing the write path' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+
+        expect { store.peek[:reader][:bookmarks] << :sneak }.to raise_error(FrozenError)
+        expect { store.peek[:reader][:current_chapter] = 9 }.to raise_error(FrozenError)
+      end
+    end
+
+    it 'deep-dups inserted values so callers keep ownership of their arguments' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        mine = [{ chapter: 2 }]
+
+        store.update(%i[reader bookmarks] => mine)
+
+        expect(mine).not_to be_frozen
+        stored = store.peek_at(:reader, :bookmarks)
+        expect(stored).to be_frozen
+        expect(stored).not_to equal(mine)
+      end
+    end
+
+    it 'shares no mutable structure between independently built stores' do
+      Dir.mktmpdir do |dir_a|
+        Dir.mktmpdir do |dir_b|
+          store_a = build_store(dir_a)
+          store_b = build_store(dir_b)
+
+          shared_mutable = []
+          seen = {}.compare_by_identity
+          each_data_node(store_a.peek) { |node| seen[node] = true }
+          each_data_node(store_b.peek) do |node|
+            shared_mutable << node if seen.key?(node) && !node.frozen?
+          end
+
+          expect(shared_mutable).to eq([])
+        end
+      end
+    end
+
+    it 'keeps schema fragment defaults deep-frozen' do
+      fragments = [
+        Shoko::Core::Reading::Schema,
+        Shoko::Application::State::Schema::ReaderProcess,
+        Shoko::Application::State::Schema::ReaderPagination,
+        Shoko::Application::State::Schema::ReaderView,
+        Shoko::Application::State::Schema::MenuProcess,
+        Shoko::Application::State::Schema::MenuTransient,
+        Shoko::Application::State::Schema::UiGlobals,
+      ]
+
+      fragments.each do |fragment|
+        each_data_node(fragment::DEFAULTS) do |node|
+          expect(node).to be_frozen, "#{fragment}::DEFAULTS holds an unfrozen #{node.class}"
+        end
+      end
+    end
+  end
 end

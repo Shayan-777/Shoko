@@ -37,8 +37,8 @@ module Shoko
           left_page: 0,
           right_page: 0,
           selection: nil,
-          bookmarks: [],
-          annotations: [],
+          bookmarks: [].freeze,
+          annotations: [].freeze,
         }.freeze
 
         module_function
