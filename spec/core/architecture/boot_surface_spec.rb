@@ -99,7 +99,7 @@ RSpec.describe 'Plain require boot surface guardrails' do
     expect(status.success?).to be(true), stderr
 
     features = JSON.parse(stdout)
-    budget = 20
+    budget = 10
 
     expect(features.length).to be <= budget, <<~MSG
       Plain `require 'shoko'` loaded #{features.length} lib/shoko files (budget: #{budget}):

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'file'
-
 module Shoko
   module Zip
     # Extracts variable-length fields from Local File Header

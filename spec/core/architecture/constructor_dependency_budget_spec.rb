@@ -212,61 +212,84 @@ RSpec.describe 'Constructor dependency budget' do
 
   # Per-record budgets alone let aggregate coupling hide: a controller can
   # satisfy every record cap while receiving dozens of capabilities across
-  # records. This ratchet counts the TRANSITIVE leaf dependencies each
-  # coordinating class receives (record fields summed, plus direct extras)
-  # and is frozen at post-refactor actuals — it may only shrink.
-  it 'caps the aggregate leaf dependencies of the coordinating controllers (shrink-only ratchet)' do
+  # records — or re-bag them into nested records that count as one field.
+  # This ratchet counts TRANSITIVE leaf dependencies: record fields are
+  # flattened recursively (a field whose name maps to another dependency
+  # record contributes that record's own leaf count), plus direct
+  # constructor extras. The pins are EXACT actuals, not upper bounds: any
+  # change — up or down — fails until the pin is consciously edited, and
+  # edits may only ever lower a pin (constitution amendment 2026-07-18).
+  # rubocop:disable RSpec/ExampleLength
+  it 'pins the aggregate transitive leaf dependencies of the coordinating classes' do
+    deps = Shoko::Adapters::Input::Controllers::Dependencies
+
+    # Fields that are themselves dependency records, by record and field name.
+    nested_records = {
+      deps::ReaderRuntimeBootDependencies => { warmup_services: deps::ReaderWarmupServices },
+    }
+
+    flatten_leaves = lambda do |record|
+      record.members.sum do |member|
+        nested = nested_records.dig(record, member)
+        nested ? flatten_leaves.call(nested) : 1
+      end
+    end
+
     menu_controller = Shoko::Adapters::Input::Controllers::Menu::Controller
     aggregates = {
       # runtime + builder + support records
       'Menu::Controller' => {
-        actual: menu_controller::RuntimeDependencies.members.size +
-                menu_controller::BuilderDependencies.members.size +
-                menu_controller::SupportDependencies.members.size,
-        budget: 17,
+        actual: [menu_controller::RuntimeDependencies, menu_controller::BuilderDependencies,
+                 menu_controller::SupportDependencies].sum(&flatten_leaves),
+        pinned: 17,
       },
-      # six records + epub_path-independent direct extras
-      # (render_state_writer, mouse_handler, runtime_components_factory)
+      # six records (warmup_services flattened to its 3 leaves) + direct
+      # extras (render_state_writer, mouse_handler, runtime_components_factory)
       'MouseableReader' => {
         actual: [
-          Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerCoreDependencies,
-          Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerStateDependencies,
-          Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerServiceDependencies,
-          Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeBootDependencies,
-          Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeStartupDependencies,
-          Shoko::Adapters::Input::Controllers::Dependencies::MouseableReaderDependencies,
-        ].sum { |record| record.members.size } + 3,
-        budget: 44,
+          deps::ReaderControllerCoreDependencies,
+          deps::ReaderControllerStateDependencies,
+          deps::ReaderControllerServiceDependencies,
+          deps::ReaderRuntimeBootDependencies,
+          deps::ReaderRuntimeStartupDependencies,
+          deps::MouseableReaderDependencies,
+        ].sum(&flatten_leaves) + 3,
+        pinned: 46,
       },
       # state + controllers + services bundle
       'UIController' => {
         actual: %i[StateDependencies ControllerDependencies ServiceDependencies].sum do |name|
-          Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies.const_get(name).members.size
+          flatten_leaves.call(deps::UiControllerDependencies.const_get(name))
         end,
-        budget: 19,
+        pinned: 19,
       },
       # menu-facing UI component bag
       'MenuUiDependencies' => {
-        actual: Shoko::Adapters::Ui::MenuUiDependencies.members.size,
-        budget: 14,
+        actual: flatten_leaves.call(Shoko::Adapters::Ui::MenuUiDependencies),
+        pinned: 11,
       },
       # render dependencies built at the composition root
       'Reading::RenderDependencies' => {
-        actual: Shoko::Adapters::Ui::Components::Reading::RenderDependencies.members.size,
-        budget: 16,
+        actual: flatten_leaves.call(Shoko::Adapters::Ui::Components::Reading::RenderDependencies),
+        pinned: 16,
       },
     }
 
     offenders = aggregates.filter_map do |name, entry|
-      "#{name}: aggregate #{entry[:actual]} exceeds budget #{entry[:budget]}" if entry[:actual] > entry[:budget]
+      next if entry[:actual] == entry[:pinned]
+
+      "#{name}: aggregate #{entry[:actual]} != pinned #{entry[:pinned]}"
     end
 
     expect(offenders).to eq([]), <<~MSG
-      Aggregate dependency budgets exceeded (constitution: aggregate coupling is
-      measured across all dependency records a class receives, not per record):
+      Aggregate transitive dependency counts drifted from their pins. Pins may
+      only be edited DOWNWARD (after a genuine decoupling); an increase is a
+      constitutional violation, and a decrease must be claimed by lowering the
+      pin so the ratchet keeps tightening:
       #{offenders.join("\n")}
     MSG
   end
+  # rubocop:enable RSpec/ExampleLength
 
   it 'forbids initialize(**deps) constructors in controllers and workflows' do
     files = Dir[File.join(lib_root, 'adapters', 'input', 'controllers', '**', '*.rb')] +

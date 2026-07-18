@@ -40,6 +40,14 @@ RSpec.describe Shoko::Adapters::Storage::DictionaryCatalogService do
 
       expect { service.list_remote }.to raise_error(described_class::CatalogError)
     end
+
+    it 'aborts an oversized index response at the byte ceiling' do
+      stub_const("#{described_class}::MAX_INDEX_BODY_BYTES", 64)
+      stub_request(:get, base_url).to_return(status: 200, body: 'x' * 128)
+
+      expect { service.list_remote }
+        .to raise_error(described_class::CatalogError, /Index response exceeded 64 bytes/)
+    end
   end
 
   describe '#download' do
@@ -62,6 +70,23 @@ RSpec.describe Shoko::Adapters::Storage::DictionaryCatalogService do
         expect(File.binread(dest_path)).to eq('sqlite')
         expect(progress).not_to be_empty
         expect(progress.last).to eq([6, 6])
+      end
+    end
+
+    it 'aborts downloads that exceed the byte ceiling and leaves no file behind' do
+      stub_const("#{described_class}::MAX_DOWNLOAD_BYTES", 4)
+      source_url = "#{base_url}en-de.sqlite3"
+      stub_request(:get, source_url).to_return(status: 200, body: 'sqlite-too-big')
+
+      Dir.mktmpdir do |dir|
+        entry = { name: 'en-de.sqlite3', url: source_url }
+
+        expect { service.download(entry, dir) }
+          .to raise_error(described_class::CatalogError, /exceeded 4 bytes/)
+
+        dest_path = File.join(dir, 'en-de.sqlite3')
+        expect(File.exist?(dest_path)).to be(false)
+        expect(File.exist?("#{dest_path}.part")).to be(false)
       end
     end
 

@@ -27,9 +27,12 @@ module Shoko
         end
       end
 
+      # Closing an IO raises IOError/SystemCallError, never a Shoko error;
+      # the old `rescue Shoko::Error` could not catch what close actually
+      # raises, so its "ignore close errors" promise was false.
       def self.close_safely(zip_file)
         zip_file.close
-      rescue Shoko::Error
+      rescue IOError, SystemCallError
         # ignore close errors
       end
 

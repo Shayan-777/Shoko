@@ -64,4 +64,32 @@ RSpec.describe 'Naming banlist' do
       #{offenders.join("\n")}
     MSG
   end
+
+  describe 'single-constant scanner parsing' do
+    def offense(rel, source)
+      SpecSupport::Architecture::SingleConstantFileScanner.file_offense(rel, source.lines)
+    end
+
+    it 'flags a misnamed constant assignment even without method definitions' do
+      expect(offense('foo.rb', "Bar = Data.define(:x)\n")).to match(/defines Bar/)
+    end
+
+    it 'rejects arbitrary suffix matches — bar.rb may not define FooBar' do
+      expect(offense('bar.rb', "module FooBar\n  def x; end\nend\n")).to match(/defines FooBar/)
+    end
+
+    it 'allows exact and parent-directory-prefixed names' do
+      expect(offense('cli.rb', "module CLI\n  def x; end\nend\n")).to be_nil
+      expect(offense('opf/navigation_selector.rb', "class OPFNavigationSelector\n  def x; end\nend\n")).to be_nil
+    end
+
+    it 'flags sibling constants and constants outside the root' do
+      expect(offense('foo.rb', "class Foo\nend\nclass Bar\nend\n")).to match(/sibling constants/)
+      expect(offense('foo.rb', "class Foo\n  def x; end\nend\nBaz = Struct.new(:y)\n")).to match(/outside Foo|sibling/)
+    end
+
+    it 'passes namespace-only and values-only files' do
+      expect(offense('version.rb', "module Shoko\n  VERSION = '1.0'\nend\n")).to be_nil
+    end
+  end
 end

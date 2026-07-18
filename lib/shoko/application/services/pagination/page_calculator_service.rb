@@ -19,7 +19,6 @@ require 'shoko/application/ports/outbound/display_capabilities'
 require 'shoko/application/ports/outbound/instrumentation'
 require 'shoko/application/ports/outbound/line_wrapper'
 require 'shoko/application/ports/outbound/chapter_formatter'
-require 'shoko/application/ports/outbound/dynamic_page_source'
 
 module Shoko
   module Application
@@ -27,8 +26,6 @@ module Shoko
       module Pagination
         # Application pagination service that owns layout variants, cache orchestration, and hydration.
         class PageCalculatorService
-          include Application::Ports::Outbound::DynamicPageSource
-
           DYNAMIC_LAYOUT_CACHE_LIMIT = 8
 
           def initialize(text_metrics:, display_capabilities:, instrumentation:, config_reader:,

@@ -18,6 +18,7 @@ module Shoko
         DEFAULT_BASE_URL = 'http://127.0.0.1:5000'
         OPEN_TIMEOUT = 3
         READ_TIMEOUT = 10
+        MAX_RESPONSE_BODY_BYTES = 8 * 1024 * 1024
 
         def initialize(base_url: DEFAULT_BASE_URL, logger: nil)
           super(logger: logger)
@@ -94,13 +95,29 @@ module Shoko
           request_json(request)
         end
 
+        # Block-form request so bodies (success AND error — both are
+        # consumed) are read in bounded chunks instead of buffered whole.
         def request_json(request)
-          response = with_http(request.uri) { |http| http.request(request) }
+          response = with_http(request.uri) do |http|
+            http.request(request) { |partial| partial.body = read_bounded_body(partial) }
+          end
           raise_for_http_error(response) unless response.is_a?(Net::HTTPSuccess)
 
           JSON.parse(response.body, symbolize_names: true)
         rescue IOError, SystemCallError, SocketError, Timeout::Error => e
           raise RepositoryError.new("LibreTranslate request failed: #{e.message}", code: :connection_failed)
+        end
+
+        def read_bounded_body(response)
+          buffer = +''
+          response.read_body do |chunk|
+            buffer << chunk
+            if buffer.bytesize > MAX_RESPONSE_BODY_BYTES
+              raise RepositoryError.new("LibreTranslate response exceeded #{MAX_RESPONSE_BODY_BYTES} bytes",
+                                        code: :response_too_large)
+            end
+          end
+          buffer
         end
 
         def raise_for_http_error(response)

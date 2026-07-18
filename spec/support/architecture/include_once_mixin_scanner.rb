@@ -25,7 +25,10 @@ module SpecSupport
       module_function
 
       DECL_PATTERN = /^(\s*)(?:module|class)\s+([A-Z][\w:]*)/.freeze
-      INCLUDE_PATTERN = /^(\s*)(?:include|prepend|extend)\s+([A-Z][\w:]*)/.freeze
+      # Matches every valid mixin-site spelling: bare, parenthesized, and
+      # top-level-qualified (`include Foo`, `include(Foo)`, `extend(::Foo)`).
+      # `extend self` never matches — `self` is not a constant.
+      INCLUDE_PATTERN = /^(\s*)(?:include|prepend|extend)\s*\(?\s*(?:::)?([A-Z][\w:]*)/.freeze
 
       # Defining files under these prefixes are exempt: port modules legitimately
       # declare a contract and are "included once" by design.

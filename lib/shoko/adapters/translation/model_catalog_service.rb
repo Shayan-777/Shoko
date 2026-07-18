@@ -22,9 +22,11 @@ module Shoko
           'https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models/records'
         ATTACHMENT_BASE_URL = 'https://firefox-settings-attachments.cdn.mozilla.net/'
         MAX_CATALOG_BODY_BYTES = 16 * 1024 * 1024
-        # Fallback ceiling for the rare record that omits its byte size; the
-        # catalog-declared size is the trust anchor whenever it is present.
-        MAX_UNDECLARED_FILE_BYTES = 512 * 1024 * 1024
+        # Absolute per-file ceiling. The catalog-declared size is enforced
+        # during the stream, but it is remote input too — a compromised
+        # catalog declaring an absurd size must not raise the limit, so the
+        # effective cap is min(declared, absolute).
+        MAX_FILE_BYTES = 512 * 1024 * 1024
 
         class CatalogError < Shoko::Error; end
 
@@ -154,9 +156,11 @@ module Shoko
 
         # The catalog-declared byte count is enforced during the stream, not
         # just implied by the post-download checksum: a lying CDN must not be
-        # able to fill the disk before the sha256 check would ever run.
+        # able to fill the disk before the sha256 check would ever run. The
+        # declaration itself is clamped by the absolute ceiling — the catalog
+        # is remote input and cannot grant itself a bigger budget.
         def max_bytes_for(file)
-          file.size.positive? ? file.size : MAX_UNDECLARED_FILE_BYTES
+          file.size.positive? ? [file.size, MAX_FILE_BYTES].min : MAX_FILE_BYTES
         end
 
         def digest_matches?(path, sha256)

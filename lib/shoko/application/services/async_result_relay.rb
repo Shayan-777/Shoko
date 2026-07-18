@@ -81,20 +81,23 @@ module Shoko
         # A failed submit must never break the UI path that requested it; the
         # caller sees false and its "started" status simply stays put. Job
         # errors are handled inside the submitted block, so the rescue below
-        # fires only when the executor rejected the block before running it —
-        # which is also the only case where the block's ensure never ran and
-        # the pending count must be repaired here.
+        # fires only when the executor itself raised. Each submission carries
+        # its own once-only finisher: an executor that runs the block inline
+        # (ensure fires) and THEN raises from #submit must not decrement the
+        # pending count twice — that would consume another in-flight job's
+        # count and flip busy? to false while work is still queued.
         def submit_to_executor(executor, job)
+          finish_once = build_job_finisher
           begin_job
           executor.submit do
             run_job(job)
           ensure
-            finish_job
+            finish_once.call
           end
           true
         # resilient-boundary
         rescue StandardError => e
-          finish_job
+          finish_once.call
           swallow_submit_error(e)
           false
         end
@@ -131,8 +134,16 @@ module Shoko
           @mutex.synchronize { @pending_jobs += 1 }
         end
 
-        def finish_job
-          @mutex.synchronize { @pending_jobs -= 1 if @pending_jobs.positive? }
+        def build_job_finisher
+          finished = false
+          lambda do
+            @mutex.synchronize do
+              next if finished
+
+              finished = true
+              @pending_jobs -= 1 if @pending_jobs.positive?
+            end
+          end
         end
 
         def swallow_submit_error(error)

@@ -340,5 +340,30 @@ RSpec.describe Shoko::Adapters::BookSources::LibgenClient do
           .to raise_error(described_class::Error, /HTTP 404/)
       end
     end
+
+    it 'aborts downloads that exceed the byte ceiling and leaves no file behind' do
+      stub_const("#{described_class}::MAX_DOWNLOAD_BYTES", 4)
+      stub_request(:get, url).to_return(status: 200, body: 'abcdefgh')
+
+      Dir.mktmpdir do |dir|
+        dest_path = File.join(dir, 'book.epub')
+
+        expect { client.download(url, dest_path) }
+          .to raise_error(described_class::Error, /exceeded 4 bytes/)
+
+        expect(File.exist?(dest_path)).to be(false)
+        expect(File.exist?("#{dest_path}.part")).to be(false)
+      end
+    end
+  end
+
+  describe 'fetch body ceiling' do
+    it 'aborts oversized mirror pages instead of buffering them' do
+      stub_const("#{described_class}::MAX_FETCH_BODY_BYTES", 64)
+      stub_index(page: 1, body: 'x' * 128)
+
+      expect { client.search(query: 'pride and prejudice') }
+        .to raise_error(described_class::Error, /exceeded 64 bytes/)
+    end
   end
 end

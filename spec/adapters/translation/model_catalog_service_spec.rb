@@ -149,5 +149,20 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
       expect(@store.find('et', 'en')).to be_nil
       expect(Dir.glob(File.join(@store.pack_dir('et', 'en'), '*.part'))).to eq([])
     end
+
+    it 'clamps a huge catalog-declared size to the absolute ceiling' do
+      stub_const("#{described_class}::MAX_FILE_BYTES", 4)
+      # The catalog declares 1000 bytes; the absolute ceiling must win.
+      pack = described_class::RemotePack.new(
+        from: 'et', to: 'en', version: '1.0',
+        model: described_class::RemoteFile.new(name: 'model.eten.bin', url: "#{cdn}m.bin", size: 1000, sha256: ''),
+        vocab: described_class::RemoteFile.new(name: 'vocab.eten.spm', url: "#{cdn}v.spm", size: 1000, sha256: '')
+      )
+      stub_request(:get, "#{cdn}m.bin").to_return(status: 200, body: 'eight-by')
+      stub_request(:get, "#{cdn}v.spm").to_return(status: 200, body: 'eight-by')
+
+      expect { service.download(pack, @store) }
+        .to raise_error(described_class::CatalogError, /exceeded declared size \(4 bytes\)/)
+    end
   end
 end

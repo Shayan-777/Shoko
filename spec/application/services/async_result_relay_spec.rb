@@ -86,6 +86,30 @@ RSpec.describe Shoko::Application::Services::AsyncResultRelay do
       expect(relay.busy?).to be(false)
     end
 
+    it 'never double-decrements when an executor runs the block inline and then raises from submit' do
+      # Job 1 stays queued on the deferred executor: pending count is 1.
+      relay = described_class.new(async_executor: deferred_executor)
+      relay.submit { relay.enqueue { nil } }
+      expect(relay.busy?).to be(true)
+
+      # Job 2 goes to an executor that RUNS the block (its ensure fires) and
+      # then raises out of #submit. Without a once-only finisher the rescue
+      # path would decrement again, consuming job 1's pending count.
+      treacherous_executor = Object.new
+      treacherous_executor.define_singleton_method(:submit) do |&job|
+        job.call
+        raise StandardError, 'submit exploded after running the job'
+      end
+      allow(relay).to receive(:resolve_executor).and_return(treacherous_executor)
+
+      expect(relay.submit { :ran_inline }).to be(false)
+
+      expect(relay.busy?).to be(true), 'job 1 is still queued; its pending count must survive'
+      deferred_executor.run_all
+      relay.drain!
+      expect(relay.busy?).to be(false)
+    end
+
     it 'treats a synchronous executor job error identically: submitted, logged, not a submit failure' do
       synchronous_executor = Object.new
       synchronous_executor.define_singleton_method(:submit) { |&job| job.call }

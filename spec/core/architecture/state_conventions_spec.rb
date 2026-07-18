@@ -261,12 +261,31 @@ RSpec.describe 'State conventions' do
       )
     end
 
-    def each_data_node(node, &)
-      return unless node.is_a?(Hash) || node.is_a?(Array)
+    # Walks every node of a state tree: containers, Struct/Data members,
+    # and opaque leaves alike, yielding [node, kind].
+    def each_state_node(node, &block)
+      case node
+      when Hash
+        yield node, :container
+        node.each_value { |child| each_state_node(child, &block) }
+      when Array
+        yield node, :container
+        node.each { |child| each_state_node(child, &block) }
+      when String, Struct
+        yield node, :container
+        node.each { |child| each_state_node(child, &block) } if node.is_a?(Struct)
+      when Data
+        yield node, :container
+        node.to_h.each_value { |child| each_state_node(child, &block) }
+      when nil, true, false, Symbol, Numeric
+        nil
+      else
+        yield node, :opaque_leaf
+      end
+    end
 
-      yield node
-      children = node.is_a?(Hash) ? node.values : node
-      children.each { |child| each_data_node(child, &) }
+    def each_data_node(node, &block)
+      each_state_node(node) { |n, kind| block.call(n) if kind == :container }
     end
 
     it 'keeps every data node of the tree frozen after build and after update' do
@@ -276,6 +295,51 @@ RSpec.describe 'State conventions' do
 
         store.update(%i[reader bookmarks] => [{ chapter: 1 }], %i[ui terminal_width] => 120)
         each_data_node(store.peek) { |node| expect(node).to be_frozen }
+      end
+    end
+
+    it 'deep-freezes Struct and Data leaves so mutable value objects cannot bypass the write path' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        match = Shoko::Core::Services::InBookSearchService::SearchMatch.new(0, 'Title', 1, 'before', 'match', 'after')
+
+        store.update(%i[ui search_results] => [match])
+
+        stored = store.peek_at(:ui, :search_results).first
+        expect(stored).not_to equal(match), 'inserted Structs must be copied, not shared'
+        expect(stored).to be_frozen
+        expect(stored.before).to be_frozen
+        expect { stored.match = 'sneak' }.to raise_error(FrozenError)
+        expect(match).not_to be_frozen, 'callers keep ownership of their Struct arguments'
+
+        # Mutating the caller-side original must not reach stored state.
+        match.match = 'mutated outside store'
+        expect(store.peek_at(:ui, :search_results).first.match).to eq('match')
+      end
+    end
+
+    it 'admits only effectively immutable opaque leaves (no public writers) into the tree' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        store.update(
+          %i[ui search_results] =>
+            [Shoko::Core::Services::InBookSearchService::SearchMatch.new(0, 'T', 1, 'b', 'm', 'a')],
+          %i[menu dictionary_results] => [Shoko::Core::Models::DictionaryResult.new(query: 'q')]
+        )
+
+        offenders = []
+        each_state_node(store.peek) do |node, kind|
+          next unless kind == :opaque_leaf
+          next if node.frozen?
+
+          writers = node.public_methods(false).grep(/[a-z_]=\z/)
+          offenders << "#{node.class}: #{writers.join(', ')}" if writers.any?
+        end
+
+        expect(offenders).to eq([]), <<~MSG
+          Opaque state leaves must be frozen or expose no public writers:
+          #{offenders.uniq.join("\n")}
+        MSG
       end
     end
 

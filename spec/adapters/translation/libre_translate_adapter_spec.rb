@@ -86,4 +86,24 @@ RSpec.describe Shoko::Adapters::Translation::LibreTranslateAdapter do
       /LibreTranslate request failed/
     )
   end
+
+  it 'aborts oversized responses at the byte ceiling instead of buffering them' do
+    stub_const("#{described_class}::MAX_RESPONSE_BODY_BYTES", 64)
+    streaming = Net::HTTPOK.new('1.1', '200', 'OK')
+    streaming.define_singleton_method(:read_body) do |&block|
+      2.times { block.call('x' * 48) }
+    end
+    streaming.define_singleton_method(:body=) { |value| @body = value }
+    allow(http).to receive(:request) do |_req, &block|
+      block&.call(streaming)
+      streaming
+    end
+
+    expect do
+      adapter.available_languages
+    end.to raise_error(
+      Shoko::Application::Ports::Outbound::TranslationRepository::RepositoryError,
+      /response exceeded 64 bytes/
+    )
+  end
 end

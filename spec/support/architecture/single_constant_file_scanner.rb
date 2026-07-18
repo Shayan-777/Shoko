@@ -57,14 +57,19 @@ module SpecSupport
 
         # Walk down through pure namespace declarations: a namespace level is
         # a single module declaration that directly contains everything else.
-        while roots.length == 1 && !named_after?(roots.first[:short], expected)
+        while roots.length == 1 && !named_after?(roots.first, rel)
           inner = decls.select { |d| d[:indent] > roots.first[:indent] }
           if inner.empty?
-            # Bottom of the walk with a name mismatch. A body with method
-            # definitions is a real (misnamed) definition; a body of bare
-            # value constants or nothing is a namespace/values file
-            # (version.rb, route tables), which §III does not govern.
-            return roots.first[:has_defs] ? "defines #{roots.first[:short]}, file is #{expected}.rb" : nil
+            # Bottom of the walk with a name mismatch. A CamelCase constant
+            # assignment or a body with method definitions is a real
+            # (misnamed) definition; an empty module/class body or bare
+            # value constants is a namespace/values file (version.rb, route
+            # tables), which §III does not govern.
+            if roots.first[:has_defs] || roots.first[:kind] == :assign
+              return "defines #{roots.first[:short]}, file is #{expected}.rb"
+            end
+
+            return nil
           end
 
           inner_min = inner.map { |d| d[:indent] }.min
@@ -85,15 +90,19 @@ module SpecSupport
         "constants outside #{root[:short]}: #{stray.map { |d| d[:short] }.join(', ')}"
       end
 
-      # "Named after": the flattened file basename must be the constant's
-      # short name or a trailing suffix of it, case-insensitively — so
-      # `cli.rb`/`CLI`, `eocd_parser.rb`/`EOCDParser`, and directory-scoped
-      # names like `opf/navigation_selector.rb`/`OPFNavigationSelector`
-      # (prefix carried by the directory) all match without a bespoke
-      # acronym table.
-      def named_after?(short, expected_basename)
-        flat = expected_basename.delete('_').downcase
-        short.downcase == flat || short.downcase.end_with?(flat)
+      # "Named after": the constant's flattened short name must equal the
+      # flattened basename, or the flattened parent-directory + basename —
+      # so `cli.rb`/`CLI` and `eocd_parser.rb`/`EOCDParser` match without a
+      # bespoke acronym table, and directory-scoped names like
+      # `opf/navigation_selector.rb`/`OPFNavigationSelector` carry their
+      # prefix in the directory. Arbitrary suffix matches (`bar.rb` defining
+      # `FooBar`) do NOT pass.
+      def named_after?(decl, rel)
+        base_flat = File.basename(rel, '.rb').delete('_').downcase
+        parent_flat = File.basename(File.dirname(rel)).delete('_').downcase
+        const_flat = decl[:short].downcase
+
+        const_flat == base_flat || const_flat == parent_flat + base_flat
       end
 
       # A declaration nests inside the root when it appears after the root
@@ -111,9 +120,9 @@ module SpecSupport
         decls = []
         lines.each_with_index do |line, index|
           if (m = line.match(DECL_PATTERN))
-            decls << { indent: m[1].length, short: m[2].split('::').last, line: index, has_defs: false }
+            decls << { indent: m[1].length, short: m[2].split('::').last, line: index, has_defs: false, kind: :decl }
           elsif (m = line.match(ASSIGN_PATTERN))
-            decls << { indent: m[1].length, short: m[2], line: index, has_defs: false }
+            decls << { indent: m[1].length, short: m[2], line: index, has_defs: false, kind: :assign }
           elsif line.match?(DEF_PATTERN) && (owner = decls.reverse.find { |d| d[:indent] < line[/\A */].length })
             owner[:has_defs] = true
           end

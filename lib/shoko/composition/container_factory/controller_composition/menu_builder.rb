@@ -143,10 +143,7 @@ module Shoko
                 dictionary_storage: dictionary_storage,
                 annotation_service: annotation_service,
                 catalog_service: catalog_service,
-                rss_reader_service: rss_reader_service,
-                menu_hit_registry: menu_hit_registry,
-                reader_launch_state: reader_launch_state,
-                document: document
+                menu_hit_registry: menu_hit_registry
               )
             end
 

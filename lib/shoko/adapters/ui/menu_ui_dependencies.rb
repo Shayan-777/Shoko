@@ -15,10 +15,7 @@ module Shoko
         :dictionary_storage,
         :annotation_service,
         :catalog_service,
-        :rss_reader_service,
-        :menu_hit_registry,
-        :reader_launch_state,
-        :document
+        :menu_hit_registry
       )
     end
   end

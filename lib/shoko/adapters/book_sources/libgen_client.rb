@@ -54,6 +54,8 @@ module Shoko
         MIN_QUERY_LENGTH = 3
         MAX_FETCH_REDIRECTS = 3
         MAX_DOWNLOAD_REDIRECTS = 6
+        MAX_FETCH_BODY_BYTES = 8 * 1024 * 1024
+        MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024
         USER_AGENT = "Shoko/#{Shoko::VERSION}".freeze
 
         # Reader-friendliness order for picking one file per edition.
@@ -345,15 +347,30 @@ module Shoko
           log_error('libgen_mirror_failed', mirror: base, error: error.message)
         end
 
+        # Block-form request so success bodies are read in bounded chunks;
+        # a mirror cannot make us buffer an unbounded page.
         def http_get(uri, redirects)
           raise Error, 'Too many redirects' if redirects.negative?
 
-          response = build_http(uri).request(request_for(uri))
+          response = build_http(uri).start do |http|
+            http.request(request_for(uri)) do |partial|
+              partial.body = read_bounded_fetch_body(partial) if partial.is_a?(Net::HTTPSuccess)
+            end
+          end
           case response
           when Net::HTTPSuccess then (response.body || '').dup.force_encoding('UTF-8')
           when Net::HTTPRedirection then http_get(redirect_uri(uri, response), redirects - 1)
           else raise Error, "HTTP #{response.code}"
           end
+        end
+
+        def read_bounded_fetch_body(response)
+          buffer = +''
+          response.read_body do |chunk|
+            buffer << chunk
+            raise Error, "Response exceeded #{MAX_FETCH_BODY_BYTES} bytes" if buffer.bytesize > MAX_FETCH_BODY_BYTES
+          end
+          buffer
         end
 
         def build_http(uri)
@@ -418,6 +435,8 @@ module Shoko
             response.read_body do |chunk|
               file.write(chunk)
               written += chunk.bytesize
+              raise Error, "Download exceeded #{MAX_DOWNLOAD_BYTES} bytes" if written > MAX_DOWNLOAD_BYTES
+
               yield(written, total) if block_given?
             end
           end

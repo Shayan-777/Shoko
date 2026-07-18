@@ -11,6 +11,8 @@ module Shoko
       # Fetches and downloads dictionary files from the Wikdict SQLite index.
       class DictionaryCatalogService < Shoko::Adapters::BaseAdapter
         BASE_URL = 'https://download.wikdict.com/dictionaries/sqlite/2_2025-11/'
+        MAX_INDEX_BODY_BYTES = 4 * 1024 * 1024
+        MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
 
         class CatalogError < Shoko::Error; end
 
@@ -106,6 +108,8 @@ module Shoko
             response.read_body do |chunk|
               file.write(chunk)
               downloaded += chunk.bytesize
+              raise CatalogError, "Download exceeded #{MAX_DOWNLOAD_BYTES} bytes" if downloaded > MAX_DOWNLOAD_BYTES
+
               yield(downloaded, total) if block_given?
             end
           end
@@ -171,6 +175,8 @@ module Shoko
           raise CatalogError, "Invalid URL: #{uri}"
         end
 
+        # The non-block branch serves the index listing; reading in bounded
+        # chunks caps what a broken or malicious server can make us buffer.
         def perform_request(uri, &)
           http = Net::HTTP.new(uri.host, uri.port)
           http.use_ssl = uri.scheme == 'https'
@@ -178,7 +184,22 @@ module Shoko
           http.read_timeout = 15
           return http.start(&) if block_given?
 
-          http.get(uri.request_uri)
+          http.start do |session|
+            session.request(Net::HTTP::Get.new(uri.request_uri)) do |response|
+              response.body = read_bounded_index_body(response) if response.is_a?(Net::HTTPSuccess)
+            end
+          end
+        end
+
+        def read_bounded_index_body(response)
+          buffer = +''
+          response.read_body do |chunk|
+            buffer << chunk
+            if buffer.bytesize > MAX_INDEX_BODY_BYTES
+              raise CatalogError, "Index response exceeded #{MAX_INDEX_BODY_BYTES} bytes"
+            end
+          end
+          buffer
         end
       end
     end

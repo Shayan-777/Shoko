@@ -628,3 +628,45 @@ Every resilient boundary:
     ports-contract guardrail enforces both directions: an outbound port
     without an adapter implementer and an internal port with one are each
     violations.
+
+- **2026-07-18 — Completeness pass: the 2026-07-18 remediation's claims are
+  made true where they were only mostly true.** An external re-audit found
+  gaps between declared and enforced properties; each is now closed:
+  - **State admissibility.** `DeepStructure` recursively copies/freezes
+    `Struct` (member-copied, no initializer re-run) and freezes `Data`
+    instances and their members in place; mutable Structs such as
+    `SearchMatch` can no longer ride into state unfrozen. Opaque leaves must
+    be frozen or expose no public writers — the state-conventions guardrail
+    walks Struct/Data members and enforces the writer ban.
+  - **Network ceilings at every boundary.** The dictionary catalog (index +
+    downloads), Libgen (mirror pages + downloads), and LibreTranslate
+    (success and error bodies) gained byte ceilings; the translation-model
+    limit is now `min(catalog-declared, absolute)` so a compromised catalog
+    cannot grant itself a bigger budget. Every `Net::HTTP` user in lib is
+    bounded.
+  - **Relay bookkeeping.** Each `AsyncResultRelay` submission carries a
+    once-only finisher; an executor that runs the block inline and then
+    raises from `#submit` can no longer consume another job's pending count.
+  - **Scanner soundness.** The R1 scanner matches parenthesized and
+    `::`-qualified mixin sites; the single-constant scanner treats CamelCase
+    assignments as definitions (a misnamed `Data.define` is an offense) and
+    only accepts exact or parent-directory-prefixed names. Both have parsing
+    unit tests inside their rule specs. The ports guardrail matches every
+    qualification spelling of a port include; the unconsumed
+    `DynamicPageSource` marker interface (one app-layer includer, zero
+    consumers) is deleted.
+  - **Aggregate ratchet.** Counts are transitive (nested dependency records
+    flatten to their leaves — MouseableReader is honestly 46, not 44) and
+    pins are exact: any drift fails, and pins may only ever be edited
+    downward. `MenuUiDependencies` dropped its three consumerless fields
+    (rss_reader_service, reader_launch_state, document): 14 → 11.
+  - **TextMetrics.** Re-decomposed per R3 into collaborator objects —
+    `RuntimeControls`, two cache classes, `Measurer`, `Truncator`,
+    `Wrapper`, each with isolated unit specs — behind the stable
+    `TextMetrics` facade. Distinct state and roles, no single-host mixins,
+    no 570-line module.
+  - **Zip hygiene.** The two spurious `require_relative 'file'` edges (an
+    artifact of the mechanical split matching `::File`) are gone, and
+    `File.close_safely` rescues what close can actually raise
+    (IOError/SystemCallError) instead of the impossible `Shoko::Error`.
+  - The plain-require boot budget tightened from 20 to 10 files.

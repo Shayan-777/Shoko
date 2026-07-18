@@ -53,11 +53,17 @@ RSpec.describe 'Ports contract' do
     # An outbound port is a contract fulfilled by an adapter. A contract
     # implemented ONLY by application-layer objects is an internal role
     # interface and lives under ports/internal — keeping "outbound" meaning
-    # what it says (constitution amendment 2026-07-18).
+    # what it says (constitution amendment 2026-07-18). The pattern is
+    # qualification-insensitive (`Shoko::Application::Ports::…`,
+    # `Application::Ports::…`, `Ports::…`, parenthesized, `::`-anchored)
+    # so a shorter constant path cannot slip a port past the check.
+    PORT_INCLUDE_PATTERN =
+      /^\s*include\s*\(?\s*(?:::)?(?:Shoko::)?(?:Application::)?Ports::(Outbound|Internal)::([\w:]+)/.freeze
+
     it 'keeps outbound ports adapter-implemented and internal ports application-implemented' do
       includers = Hash.new { |h, k| h[k] = [] }
       Dir[File.join(lib_root, '**', '*.rb')].each do |path|
-        non_comment_content(path).scan(/\binclude Shoko::Application::Ports::(Outbound|Internal)::([\w:]+)/) do |kind, name|
+        non_comment_content(path).scan(PORT_INCLUDE_PATTERN) do |kind, name|
           includers[[kind, name]] << path
         end
       end

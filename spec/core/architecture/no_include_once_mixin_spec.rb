@@ -58,6 +58,38 @@ RSpec.describe 'No include-once mixins (constitution R1)' do
     MSG
   end
 
+  describe 'scanner parsing' do
+    def parse(source)
+      SpecSupport::Architecture::IncludeOnceMixinScanner.parse(source.lines)
+    end
+
+    it 'detects bare, parenthesized, and top-level-qualified mixin sites' do
+      source = <<~RUBY
+        module Host
+          include Alpha
+          prepend(Beta)
+          extend(::Gamma)
+          extend Delta::Epsilon
+        end
+      RUBY
+
+      _defs, includes = parse(source)
+      expect(includes.map(&:first)).to eq(%w[Alpha Beta Gamma Delta::Epsilon])
+    end
+
+    it 'ignores extend self (the module-function idiom) and non-constant arguments' do
+      source = <<~RUBY
+        module Host
+          extend self
+          include forwardable_thing
+        end
+      RUBY
+
+      _defs, includes = parse(source)
+      expect(includes).to eq([])
+    end
+  end
+
   # R1 through the other door: reopening a class (or module) in a second file
   # to inject method definitions is an include-once mixin without the
   # `include` — the same fragment indirection, invisible to the include
