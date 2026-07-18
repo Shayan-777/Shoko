@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'ripper'
+
 module SpecSupport
   module Architecture
     # Enforces constitution §III: "a file is named after the single
@@ -12,24 +14,21 @@ module SpecSupport
     # require-only aggregator files (no definitions) are fine. Sibling
     # top-level constants sharing a file are the violation.
     #
-    # Detection is regex/indentation-based, matching the other architecture
-    # scanners: `module`/`class` declarations plus CONST = Struct.new /
-    # Data.define / Class.new / Module.new assignments, tracked on a nesting
-    # stack. The root is the shallowest definition; everything else must
-    # nest strictly inside it.
+    # Module/class ownership is indentation-based; constant assignments are
+    # extracted from Ripper so qualification and line breaks cannot evade the
+    # rule. The root is the shallowest definition; everything else must nest
+    # strictly inside it.
     module SingleConstantFileScanner
       module_function
 
       DECL_PATTERN = /^(\s*)(?:module|class)\s+([A-Z][\w:]*)/.freeze
-      # CamelCase constant assignment (contains a lowercase letter): defines
-      # a type or alias (`Foo = Struct.new`, `Snapshot = factory(...)`,
-      # `TextMetrics = Shared::TextMetrics`). SCREAMING_SNAKE value constants
-      # are not definitions and are ignored — EXCEPT when the right-hand side
-      # is a type constructor: `URL = Data.define(:value)` defines a class no
-      # matter how the constant is cased.
-      ASSIGN_PATTERN = /^(\s*)([A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*)\s*=\s*\S/.freeze
-      TYPE_ASSIGN_PATTERN = /^(\s*)([A-Z][A-Za-z0-9_]*)\s*=\s*(?:Struct\.new|Data\.define|Class\.new|Module\.new)/.freeze
       DEF_PATTERN = /^\s*def\s/.freeze
+      TYPE_CONSTRUCTORS = {
+        'Struct' => 'new',
+        'Data' => 'define',
+        'Class' => 'new',
+        'Module' => 'new',
+      }.freeze
 
       # Codified §III exemptions — each addition is a constitutional
       # amendment (rationale in the constitution's §III/Amendments):
@@ -120,18 +119,98 @@ module SpecSupport
       end
 
       def declarations(lines)
-        decls = []
+        decls = constant_assignment_declarations(lines.join)
         lines.each_with_index do |line, index|
           if (m = line.match(DECL_PATTERN))
             decls << { indent: m[1].length, short: m[2].split('::').last, line: index, has_defs: false, kind: :decl }
-          elsif (m = line.match(TYPE_ASSIGN_PATTERN) || line.match(ASSIGN_PATTERN))
-            decls << { indent: m[1].length, short: m[2], line: index, has_defs: false, kind: :assign }
-          elsif line.match?(DEF_PATTERN) && (owner = decls.reverse.find { |d| d[:indent] < line[/\A */].length })
-            owner[:has_defs] = true
           end
+        end
+        decls.sort_by! { |declaration| [declaration[:line], declaration[:indent]] }
+        lines.each_with_index do |line, index|
+          next unless line.match?(DEF_PATTERN)
+
+          method_indent = line[/\A */].length
+          owner = decls.reverse.find do |declaration|
+            declaration[:line] < index && declaration[:indent] < method_indent
+          end
+          owner[:has_defs] = true if owner
         end
         decls
       end
+
+      def constant_assignment_declarations(source)
+        sexp = Ripper.sexp(source)
+        return [] unless sexp
+
+        assignments = []
+        walk_assignments(sexp) do |left, right|
+          token = constant_leaf(left)
+          next unless token
+
+          short = token[1]
+          next unless short.match?(/[a-z]/) || type_constructor?(right)
+
+          line, column = token[2]
+          assignments << {
+            indent: column, short: short, line: line - 1,
+            has_defs: false, kind: :assign,
+          }
+        end
+        assignments
+      end
+      private_class_method :constant_assignment_declarations
+
+      def walk_assignments(node, &block)
+        return unless node.is_a?(Array)
+
+        yield(node[1], node[2]) if node.first == :assign
+        node.each { |child| walk_assignments(child, &block) if child.is_a?(Array) }
+      end
+      private_class_method :walk_assignments
+
+      def constant_leaf(node)
+        return unless node.is_a?(Array)
+        return node if node.first == :@const
+
+        case node.first
+        when :var_field, :const_path_field, :top_const_field
+          constant_leaf(node[-1])
+        end
+      end
+      private_class_method :constant_leaf
+
+      def type_constructor?(node)
+        call = unwrap_constructor_call(node)
+        return false unless call&.first == :call
+
+        receiver = constant_reference(call[1])
+        method = call.dig(3, 1)
+        receiver && TYPE_CONSTRUCTORS[receiver] == method
+      end
+      private_class_method :type_constructor?
+
+      def unwrap_constructor_call(node)
+        return unless node.is_a?(Array)
+
+        case node.first
+        when :method_add_arg, :method_add_block then unwrap_constructor_call(node[1])
+        when :call then node
+        end
+      end
+      private_class_method :unwrap_constructor_call
+
+      # Only Ruby's built-in top-level constructors count. A same-named
+      # qualified application constant is not assumed to construct a type.
+      def constant_reference(node)
+        return unless node.is_a?(Array)
+
+        case node.first
+        when :var_ref, :top_const_ref
+          token = node[1]
+          token[1] if token&.first == :@const
+        end
+      end
+      private_class_method :constant_reference
 
       def camelize(basename)
         basename.split('_').map(&:capitalize).join

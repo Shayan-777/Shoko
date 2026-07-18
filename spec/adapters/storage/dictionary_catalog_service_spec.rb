@@ -16,6 +16,14 @@ RSpec.describe Shoko::Adapters::Storage::DictionaryCatalogService do
     WebMock.allow_net_connect!
   end
 
+
+  def non_appendable_chunk(bytesize)
+    Object.new.tap do |chunk|
+      chunk.define_singleton_method(:bytesize) { bytesize }
+      chunk.define_singleton_method(:to_str) { raise 'oversized chunk was appended' }
+    end
+  end
+
   describe '#list_remote' do
     it 'parses dictionary index rows into catalog entries' do
       body = <<~HTML
@@ -46,6 +54,17 @@ RSpec.describe Shoko::Adapters::Storage::DictionaryCatalogService do
       stub_request(:get, base_url).to_return(status: 200, body: 'x' * 128)
 
       expect { service.list_remote }
+        .to raise_error(described_class::CatalogError, /Index response exceeded 64 bytes/)
+    end
+
+
+    it 'checks an index chunk before appending it' do
+      stub_const("#{described_class}::MAX_INDEX_BODY_BYTES", 64)
+      chunk = non_appendable_chunk(65)
+      response = Object.new
+      response.define_singleton_method(:read_body) { |&block| block.call(chunk) }
+
+      expect { service.send(:read_bounded_index_body, response) }
         .to raise_error(described_class::CatalogError, /Index response exceeded 64 bytes/)
     end
   end
@@ -88,6 +107,20 @@ RSpec.describe Shoko::Adapters::Storage::DictionaryCatalogService do
         expect(File.exist?(dest_path)).to be(false)
         expect(File.exist?("#{dest_path}.part")).to be(false)
       end
+    end
+
+
+    it 'checks a download chunk before writing it' do
+      stub_const("#{described_class}::MAX_DOWNLOAD_BYTES", 4)
+      response = Net::HTTPOK.new('1.1', '200', 'OK')
+      response['Content-Length'] = '5'
+      response.define_singleton_method(:read_body) { |&block| block.call('abcde') }
+      writer = instance_double(File, write: nil)
+      allow(File).to receive(:open).and_yield(writer)
+
+      expect(writer).not_to receive(:write)
+      expect { service.send(:stream_response, response, '/tmp/unwritten') }
+        .to raise_error(described_class::CatalogError, /exceeded 4 bytes/)
     end
 
     it 'returns existing when file already exists and skips network download' do

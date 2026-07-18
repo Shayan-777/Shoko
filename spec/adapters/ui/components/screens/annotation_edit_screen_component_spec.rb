@@ -88,4 +88,48 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenCom
     expect(output).to include('line 1, col 5')
     expect(output).to include(Shoko::Adapters::Ui::Components::StatusBar::Palette::NOTES_FIELD_BG)
   end
+
+
+  it 'owns the complete edit-state mutation behavior after the one-use helper is removed' do
+    state_store.update(
+      [:menu, :annotation_edit_text] => 'Note',
+      [:menu, :annotation_edit_cursor] => 4
+    )
+    reader = dependencies.menu_state_reader
+    component = described_class.new(
+      menu_state_reader: reader,
+      menu_session_mutator: dependencies.menu_session_mutator
+    )
+
+    component.handle_character('!')
+    component.handle_move_left
+    component.handle_backspace
+    component.handle_enter
+
+    expect(reader.annotation_edit_text).to eq("Not\n!")
+    expect(reader.annotation_edit_cursor).to eq(4)
+  end
+
+
+  it 'persists the selected annotation, refreshes the list, and returns to list mode' do
+    state_store.update(
+      [:menu, :selected_annotation] => { 'id' => 'ann-1', 'text' => 'Quote' },
+      [:menu, :selected_annotation_book] => '/tmp/book.epub',
+      [:menu, :annotation_edit_text] => 'Revised note'
+    )
+    annotations = [{ id: 'ann-1', text: 'Quote', note: 'Revised note' }]
+    service = instance_double(Shoko::Core::Services::AnnotationService, list_all: annotations)
+    reader = dependencies.menu_state_reader
+    component = described_class.new(
+      menu_state_reader: reader,
+      menu_session_mutator: dependencies.menu_session_mutator,
+      annotation_service: service
+    )
+
+    expect(service).to receive(:update).with('/tmp/book.epub', 'ann-1', 'Revised note')
+    component.save_annotation
+
+    expect(state_store.peek_at(:menu, :annotations_all)).to eq(annotations)
+    expect(reader.mode).to eq(:annotations)
+  end
 end

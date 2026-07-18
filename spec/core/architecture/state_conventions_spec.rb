@@ -234,7 +234,7 @@ RSpec.describe 'State conventions' do
   end
 
   describe 'frozen-tree state invariant' do
-    def build_store(dir)
+    def build_store(dir, registry: nil)
       storage = Object.new
       file = File.join(dir, 'config.json')
       storage.define_singleton_method(:config_dir) { dir }
@@ -244,15 +244,15 @@ RSpec.describe 'State conventions' do
       storage.define_singleton_method(:read_file) { |path| File.exist?(path) ? File.read(path) : nil }
       storage.define_singleton_method(:file_exist?) { |path| File.exist?(path) }
 
-      registry = Shoko::Application::State::SchemaRegistry.new
-                                                          .register(Shoko::Core::Reading::Schema)
-                                                          .register(Shoko::Application::State::Schema::ReaderProcess)
-                                                          .register(Shoko::Application::State::Schema::ReaderPagination)
-                                                          .register(Shoko::Application::State::Schema::ReaderView)
-                                                          .register(Shoko::Application::State::Schema::MenuProcess)
-                                                          .register(Shoko::Application::State::Schema::MenuTransient)
-                                                          .register(Shoko::Application::State::Schema::Config)
-                                                          .register(Shoko::Application::State::Schema::UiGlobals)
+      registry ||= Shoko::Application::State::SchemaRegistry.new
+                                                            .register(Shoko::Core::Reading::Schema)
+                                                            .register(Shoko::Application::State::Schema::ReaderProcess)
+                                                            .register(Shoko::Application::State::Schema::ReaderPagination)
+                                                            .register(Shoko::Application::State::Schema::ReaderView)
+                                                            .register(Shoko::Application::State::Schema::MenuProcess)
+                                                            .register(Shoko::Application::State::Schema::MenuTransient)
+                                                            .register(Shoko::Application::State::Schema::Config)
+                                                            .register(Shoko::Application::State::Schema::UiGlobals)
 
       Shoko::Application::State::StateStore.new(
         config_storage: storage,
@@ -267,7 +267,10 @@ RSpec.describe 'State conventions' do
       case node
       when Hash
         yield node, :container
-        node.each_value { |child| each_state_node(child, &block) }
+        node.each do |key, child|
+          each_state_node(key, &block)
+          each_state_node(child, &block)
+        end
       when Array
         yield node, :container
         node.each { |child| each_state_node(child, &block) }
@@ -276,11 +279,13 @@ RSpec.describe 'State conventions' do
         node.each { |child| each_state_node(child, &block) } if node.is_a?(Struct)
       when Data
         yield node, :container
-        node.to_h.each_value { |child| each_state_node(child, &block) }
-      when nil, true, false, Symbol, Numeric
-        nil
+        Data.instance_method(:to_h).bind_call(node).each_value { |child| each_state_node(child, &block) }
       else
-        yield node, :opaque_leaf
+        if Shoko::Shared::DeepStructure::IMMUTABLE_PRIMITIVE_CLASSES.include?(node.class)
+          nil
+        else
+          yield node, :opaque_leaf
+        end
       end
     end
 
@@ -288,28 +293,13 @@ RSpec.describe 'State conventions' do
       each_state_node(node) { |n, kind| block.call(n) if kind == :container }
     end
 
-    # Reflection is fine in a guardrail: walks the object graph through
-    # instance variables and containers, collecting anything unfrozen
-    # (immutable primitives excepted).
-    def deeply_unfrozen_objects(root, seen = {}.compare_by_identity, acc = [])
-      return acc if root.nil? || root.is_a?(Symbol) || root.is_a?(Numeric) ||
-                    root == true || root == false || seen.key?(root)
-
-      seen[root] = true
-      acc << root unless root.frozen?
-      children = case root
-                 when Hash then root.keys + root.values
-                 when Array, Struct then root.to_a
-                 else root.instance_variables.map { |ivar| root.instance_variable_get(ivar) }
-                 end
-      children.each { |child| deeply_unfrozen_objects(child, seen, acc) }
-      acc
-    end
-
-    it 'keeps every data node of the tree frozen after build and after update' do
+    it 'keeps every container frozen and every leaf inside the closed value contract' do
       Dir.mktmpdir do |dir|
         store = build_store(dir)
         each_data_node(store.peek) { |node| expect(node).to be_frozen }
+        opaque = []
+        each_state_node(store.peek) { |node, kind| opaque << node if kind == :opaque_leaf }
+        expect(opaque).to eq([])
 
         store.update(%i[reader bookmarks] => [{ chapter: 1 }], %i[ui terminal_width] => 120)
         each_data_node(store.peek) { |node| expect(node).to be_frozen }
@@ -336,39 +326,111 @@ RSpec.describe 'State conventions' do
       end
     end
 
-    it 'rejects unfrozen opaque leaves at the write path (closed value contract)' do
+    it 'rejects all opaque leaves even when the outer object is frozen' do
       Dir.mktmpdir do |dir|
         store = build_store(dir)
-        # No public writers, but its readable innards are mutable — exactly
-        # the shape a writer-method check would wrongly admit.
         reader_only_wrapper = Class.new do
           attr_reader :items
 
           def initialize = @items = []
-        end.new
+        end.new.freeze
 
         expect { store.update(%i[ui search_results] => [reader_only_wrapper]) }
           .to raise_error(Shoko::Shared::DeepStructure::InadmissibleValueError, /not admissible/)
       end
     end
 
-    it 'admits born-frozen value objects and verifies their deep immutability' do
+    it 'admits dictionary Data values without sharing their constructor arguments' do
       Dir.mktmpdir do |dir|
         store = build_store(dir)
+        caller_entries = [Shoko::Core::Models::DictionaryEntry.new(word: 'w', senses: ['s'])]
         result = Shoko::Core::Models::DictionaryResult.new(
           query: 'q',
-          entries: [Shoko::Core::Models::DictionaryEntry.new(word: 'w', senses: ['s'])]
+          entries: caller_entries
         )
 
         store.update(%i[menu dictionary_results] => [result])
 
         stored = store.peek_at(:menu, :dictionary_results).first
-        unfrozen = deeply_unfrozen_objects(stored)
-        expect(unfrozen).to eq([]), <<~MSG
-          Admitted opaque value objects must be deeply frozen (object, ivars, and
-          everything reachable through them):
-          #{unfrozen.map(&:class).uniq.join("\n")}
-        MSG
+        expect(stored).to be_a(Shoko::Core::Models::DictionaryResult)
+        expect(stored).not_to equal(result)
+        expect(stored.entries).to be_frozen
+        expect(stored.entries.first.senses.first).to be_frozen
+        expect(caller_entries).not_to be_frozen
+      end
+    end
+
+    it 'rejects mutable Numeric subclasses instead of treating Numeric as intrinsically immutable' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        mutable_numeric = Class.new(Numeric) do
+          attr_reader :items
+
+          def initialize = @items = []
+        end.new
+
+        expect { store.update(%i[ui search_results] => [mutable_numeric]) }
+          .to raise_error(Shoko::Shared::DeepStructure::InadmissibleValueError, /opaque objects/)
+      end
+    end
+
+    it 'uses declared Data members rather than an overridden serialization to_h' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        timestamp = +'2026-07-18T00:00:00Z'
+        progress = Shoko::Core::Models::ReadingProgress.new(
+          chapter_index: 3, line_offset: 9, timestamp: timestamp
+        )
+
+        store.update(%i[ui search_results] => [progress])
+
+        stored = store.peek_at(:ui, :search_results).first
+        expect(stored.chapter_index).to eq(3)
+        expect(stored.timestamp).to eq(timestamp)
+        expect(stored.timestamp).to be_frozen
+        expect(timestamp).not_to be_frozen
+      end
+    end
+
+    it 'rejects cycles and Hashes whose lookup semantics cannot be preserved as plain state data' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        cyclic = []
+        cyclic << cyclic
+        defaulted = Hash.new { |_hash, key| key }
+
+        expect { store.update(%i[ui search_results] => cyclic) }
+          .to raise_error(Shoko::Shared::DeepStructure::InadmissibleValueError, /cyclic/)
+        expect { store.update(%i[ui search_results] => defaulted) }
+          .to raise_error(Shoko::Shared::DeepStructure::InadmissibleValueError, /nil defaults/)
+      end
+    end
+
+    it 'rejects hidden instance state and singleton behavior on otherwise plain containers' do
+      Dir.mktmpdir do |dir|
+        store = build_store(dir)
+        adorned_array = []
+        adorned_array.instance_variable_set(:@hidden, [])
+        adorned_string = +'visible'
+        adorned_string.define_singleton_method(:hidden) { [] }
+
+        expect { store.update(%i[ui search_results] => adorned_array) }
+          .to raise_error(Shoko::Shared::DeepStructure::InadmissibleValueError, /declared elements/)
+        expect { store.update(%i[ui search_results] => adorned_string) }
+          .to raise_error(Shoko::Shared::DeepStructure::InadmissibleValueError, /declared elements/)
+      end
+    end
+
+    it 'applies the same admission contract to schema-provided initial state' do
+      Dir.mktmpdir do |dir|
+        mutable = Object.new
+        fragment = Module.new do
+          define_singleton_method(:contribute) { |_context| { ui: { injected: mutable } } }
+        end
+        registry = Shoko::Application::State::SchemaRegistry.new.register(fragment)
+
+        expect { build_store(dir, registry: registry) }
+          .to raise_error(Shoko::Shared::DeepStructure::InadmissibleValueError, /Object/)
       end
     end
 

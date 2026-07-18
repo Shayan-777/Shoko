@@ -39,6 +39,14 @@ RSpec.describe Shoko::Adapters::BookSources::LibgenClient do
       .to_return(status: 200, body: JSON.generate(body))
   end
 
+
+  def non_appendable_chunk(bytesize)
+    Object.new.tap do |chunk|
+      chunk.define_singleton_method(:bytesize) { bytesize }
+      chunk.define_singleton_method(:to_str) { raise 'oversized chunk was appended' }
+    end
+  end
+
   def edition(title:, author: 'Jane Austen', files: {})
     {
       'title' => title, 'author' => author, 'year' => '1813',
@@ -355,6 +363,19 @@ RSpec.describe Shoko::Adapters::BookSources::LibgenClient do
         expect(File.exist?("#{dest_path}.part")).to be(false)
       end
     end
+
+
+    it 'checks a download chunk before writing it' do
+      stub_const("#{described_class}::MAX_DOWNLOAD_BYTES", 4)
+      response = { 'content-length' => '5' }
+      response.define_singleton_method(:read_body) { |&block| block.call('abcde') }
+      writer = instance_double(File, write: nil)
+      allow(File).to receive(:open).and_yield(writer)
+
+      expect(writer).not_to receive(:write)
+      expect { client.send(:write_body, response, '/tmp/unwritten') }
+        .to raise_error(described_class::Error, /exceeded 4 bytes/)
+    end
   end
 
   describe 'fetch body ceiling' do
@@ -363,6 +384,17 @@ RSpec.describe Shoko::Adapters::BookSources::LibgenClient do
       stub_index(page: 1, body: 'x' * 128)
 
       expect { client.search(query: 'pride and prejudice') }
+        .to raise_error(described_class::Error, /exceeded 64 bytes/)
+    end
+
+
+    it 'checks a mirror-page chunk before appending it' do
+      stub_const("#{described_class}::MAX_FETCH_BODY_BYTES", 64)
+      chunk = non_appendable_chunk(65)
+      response = Object.new
+      response.define_singleton_method(:read_body) { |&block| block.call(chunk) }
+
+      expect { client.send(:read_bounded_fetch_body, response) }
         .to raise_error(described_class::Error, /exceeded 64 bytes/)
     end
   end

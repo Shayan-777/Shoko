@@ -63,6 +63,10 @@ RSpec.describe 'No include-once mixins (constitution R1)' do
       SpecSupport::Architecture::MixinSiteExtractor.extract(source)[1]
     end
 
+    def extraction(source)
+      SpecSupport::Architecture::MixinSiteExtractor.extract(source)
+    end
+
     it 'detects bare, parenthesized, multiline, multi-argument, and ::-anchored mixin sites' do
       source = <<~RUBY
         module Host
@@ -81,15 +85,76 @@ RSpec.describe 'No include-once mixins (constitution R1)' do
       expect(extracted.map(&:nesting).uniq).to eq([['Host']])
     end
 
-    it 'ignores extend self (the module-function idiom) and non-constant arguments' do
+    it 'ignores extend self and exposes dynamic targets instead of silently losing them' do
       source = <<~RUBY
         module Host
           extend self
           include forwardable_thing
+          prepend(*runtime_mixins)
         end
       RUBY
 
-      expect(sites(source)).to eq([])
+      _definitions, extracted, _aliases, dynamic = extraction(source)
+      expect(extracted).to eq([])
+      expect(dynamic.map(&:method)).to eq(%w[include prepend])
+    end
+
+    it 'expands literal splats and explicit send forms' do
+      source = <<~RUBY
+        module Host
+          include(*[Alpha, Beta])
+          send(:prepend, Gamma)
+          public_send(:extend, Delta)
+        end
+      RUBY
+
+      expect(sites(source).map { |site| [site.method, site.const] }).to eq(
+        [['include', 'Alpha'], ['include', 'Beta'], ['prepend', 'Gamma'], ['extend', 'Delta']]
+      )
+    end
+
+    it 'keeps arguments on both sides of dynamic and literal splats' do
+      source = <<~RUBY
+        module Host
+          include(Alpha, *runtime_mixins, Beta)
+          prepend(*[Gamma, Delta], Epsilon)
+        end
+      RUBY
+
+      _definitions, extracted, _aliases, dynamic = extraction(source)
+      expect(extracted.map(&:const)).to eq(%w[Alpha Beta Gamma Delta Epsilon])
+      expect(dynamic.map(&:method)).to eq(['include'])
+    end
+
+    it 'sees mixin calls made through an explicit receiver' do
+      source = <<~RUBY
+        module Host
+          self.include(Alpha)
+          Host.prepend Beta
+        end
+      RUBY
+
+      expect(sites(source).map { |site| [site.method, site.const] }).to eq(
+        [['include', 'Alpha'], ['prepend', 'Beta']]
+      )
+    end
+
+    it 'resolves constant aliases to their canonical definition' do
+      source = <<~RUBY
+        module Host
+          Mixin = ::Shared::Mixin
+          include Mixin
+        end
+      RUBY
+      definitions, extracted, aliases, = extraction(source)
+      definitions << SpecSupport::Architecture::MixinSiteExtractor::Definition.new(
+        segments: %w[Shared Mixin], depth: 1
+      )
+      known = definitions.to_h { |definition| [definition.segments.join('::'), true] }
+
+      expect(
+        SpecSupport::Architecture::IncludeOnceMixinScanner.resolve(extracted.first, known, aliases)
+      ).to eq('Shared::Mixin')
     end
 
     it 'resolves ::-anchored constants only at the top level' do

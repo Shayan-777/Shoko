@@ -189,9 +189,10 @@ module Shoko
           received = 0
           File.open(part_path, 'wb') do |io|
             response.read_body do |chunk|
-              received += chunk.bytesize
-              raise CatalogError, "Download exceeded declared size (#{max_bytes} bytes)" if received > max_bytes
+              next_received = received + chunk.bytesize
+              raise CatalogError, "Download exceeded declared size (#{max_bytes} bytes)" if next_received > max_bytes
 
+              received = next_received
               io.write(chunk)
               digest.update(chunk)
               yield(received) if block_given?

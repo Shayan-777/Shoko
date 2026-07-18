@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
+require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/text_sanitizer'
 require_relative '../ui/cursor_blink'
 require 'shoko/shared/annotation_list_input'
@@ -12,7 +13,6 @@ require_relative '../status_bar/palette'
 require 'shoko/shared/terminal/ansi'
 require_relative 'annotation_screen_rendering'
 require_relative 'annotation_view'
-require_relative 'annotation_edit_state'
 
 module Shoko
   module Adapters
@@ -35,16 +35,13 @@ module Shoko
             QUOTE_ROWS = 3
             WELL_PAD = 1
 
-            attr_reader :edit_state
-
             def initialize(menu_state_reader: nil, menu_session_mutator: nil, annotation_service: nil,
                            menu_visual_profile: nil)
               super()
               @menu_state_reader = menu_state_reader
+              @menu_session_mutator = menu_session_mutator
               @annotation_service = annotation_service
               @menu_visual_profile = menu_visual_profile
-              @edit_state = AnnotationEditState.new(menu_state_reader: menu_state_reader,
-                                                    menu_session_mutator: menu_session_mutator)
               @editor_text_width = nil
               @editor_scroll_top = 0
               initialize_cursor_blink
@@ -53,7 +50,7 @@ module Shoko
             def do_render(surface, bounds)
               frame = MenuDesign::CanvasFrame.new(surface, bounds)
               frame.paint
-              annotation = edit_state.selected_annotation
+              annotation = selected_annotation
               view = AnnotationView.new(annotation || {})
               frame.render_rule(title: 'Edit Annotation', accent: accent, meta: rule_meta(view, annotation))
               return render_empty(frame) unless annotation
@@ -70,19 +67,19 @@ module Shoko
 
             # --- Unified editor API ---
             def save_annotation
-              payload = edit_state.annotation_update_payload
+              payload = annotation_update_payload
               return unless payload
 
               persist_annotation(payload)
-              edit_state.return_to_annotations_list
+              return_to_annotations_list
             end
 
             def cancel_annotation
-              edit_state.return_to_annotations_list
+              return_to_annotations_list
             end
 
             def handle_backspace
-              edit_state.update_from do |text, cursor|
+              update_annotation_edit_from do |text, cursor|
                 next nil if cursor <= 0
 
                 prev_cursor = cursor - 1
@@ -92,7 +89,7 @@ module Shoko
             end
 
             def handle_enter
-              edit_state.update_from do |text, cursor|
+              update_annotation_edit_from do |text, cursor|
                 Shoko::Shared::AnnotationListInput.insert_newline(text, cursor)
               end
               record_cursor_activity
@@ -101,7 +98,7 @@ module Shoko
             def handle_character(char)
               return unless Shoko::Shared::Terminal::TextSanitizer.printable_char?(char.to_s)
 
-              edit_state.update_from do |text, cursor|
+              update_annotation_edit_from do |text, cursor|
                 Shoko::Shared::AnnotationListInput.insert_character(text, cursor, char)
               end
               record_cursor_activity
@@ -136,7 +133,7 @@ module Shoko
 
               parts = [compact_book_label]
               parts << "Ch #{view.chapter_index}" if view.chapter_index
-              parts << "#{edit_state.text.length} chars"
+              parts << "#{annotation_edit_text.length} chars"
               parts.join(' · ')
             end
 
@@ -154,8 +151,8 @@ module Shoko
             end
 
             def hint_text(layout)
-              text = edit_state.text.to_s
-              cursor = edit_state.cursor(text)
+              text = annotation_edit_text
+              cursor = annotation_edit_cursor(text)
               width = @editor_text_width || [layout[:well_width] - GUTTER_WIDTH - 2, 8].max
               line, col = Ui::AnnotationMarkup::Styler.new(text).cursor_position(cursor, width)
               "CTRL-S save · ESC cancel · line #{line + 1}, col #{col + 1}"
@@ -213,7 +210,7 @@ module Shoko
 
             def prepared_editor_text(layout)
               @editor_text_width = editor_text_width(layout)
-              edit_state.text.to_s
+              annotation_edit_text
             end
 
             def prepared_editor_lines(layout)
@@ -228,7 +225,7 @@ module Shoko
             end
 
             def editor_cursor_state(styler, text, layout)
-              cursor_index = edit_state.cursor(text)
+              cursor_index = annotation_edit_cursor(text)
               cursor_line, cursor_col = styler.cursor_position(cursor_index, @editor_text_width)
               @editor_scroll_top = compute_scroll_top(cursor_line, layout[:well_height])
               {
@@ -289,7 +286,7 @@ module Shoko
             end
 
             def move_cursor
-              edit_state.update_from do |text, cursor|
+              update_annotation_edit_from do |text, cursor|
                 width = @editor_text_width || 40
                 styler = Ui::AnnotationMarkup::Styler.new(text)
                 new_cursor = yield(styler, cursor, width)
@@ -304,8 +301,56 @@ module Shoko
 
               path, ann_id, text = payload.values_at(:path, :ann_id, :text)
               service.update(path, ann_id, text)
-              edit_state.refresh_annotations(service)
+              refresh_annotations(service)
             end
+
+            # Annotation edit state is a thin projection over the menu session,
+            # so it stays as private behavior on its sole host (constitution
+            # R1/R3) rather than living in a one-use helper object.
+            def annotation_edit_text
+              (menu_state_reader&.annotation_edit_text || '').to_s
+            end
+
+            def annotation_edit_cursor(text = annotation_edit_text)
+              (menu_state_reader&.annotation_edit_cursor || text.length).to_i
+            end
+
+            def update_annotation_edit_from
+              text = annotation_edit_text
+              cursor = annotation_edit_cursor(text)
+              updated = yield(text, cursor)
+              update_annotation_edit(text: updated[0], cursor: updated[1]) if updated
+            end
+
+            def update_annotation_edit(text:, cursor:)
+              menu_session_mutator&.update_menu(annotation_edit_text: text, annotation_edit_cursor: cursor)
+            end
+
+            def selected_annotation
+              annotation = menu_state_reader&.selected_annotation
+              return unless annotation.is_a?(Hash)
+
+              Shoko::Shared::HashNormalizer.symbolize_keys(annotation)
+            end
+
+            def annotation_update_payload
+              annotation = selected_annotation || {}
+              path = menu_state_reader&.selected_annotation_book
+              annotation_id = annotation[:id]
+              return nil unless path && annotation_id
+
+              { path: path, ann_id: annotation_id, text: annotation_edit_text }
+            end
+
+            def refresh_annotations(service)
+              menu_session_mutator&.update_menu(annotations_all: service.list_all)
+            end
+
+            def return_to_annotations_list
+              menu_session_mutator&.update_menu(mode: :annotations)
+            end
+
+            attr_reader :menu_state_reader, :menu_session_mutator
 
             def safe_text(text)
               Shoko::Shared::Terminal::TextSanitizer.sanitize(text, preserve_newlines: false, preserve_tabs: false)

@@ -16,6 +16,13 @@ RSpec.describe Shoko::Adapters::BookSources::GutendexClient do
     WebMock.allow_net_connect!
   end
 
+  def non_appendable_chunk(bytesize)
+    Object.new.tap do |chunk|
+      chunk.define_singleton_method(:bytesize) { bytesize }
+      chunk.define_singleton_method(:to_str) { raise 'oversized chunk was appended' }
+    end
+  end
+
   describe '#search' do
     it 'requests the search endpoint with encoded query and parses json' do
       payload = {
@@ -62,6 +69,16 @@ RSpec.describe Shoko::Adapters::BookSources::GutendexClient do
       expect { bounded_client.search(query: 'huge') }
         .to raise_error(described_class::Error, /exceeded 64 bytes/)
     end
+
+    it 'checks an API chunk before appending it' do
+      bounded_client = described_class.new(max_json_body_bytes: 64)
+      chunk = non_appendable_chunk(65)
+      response = Object.new
+      response.define_singleton_method(:read_body) { |&block| block.call(chunk) }
+
+      expect { bounded_client.send(:read_bounded_json_body, response) }
+        .to raise_error(described_class::Error, /exceeded 64 bytes/)
+    end
   end
 
   describe '#download' do
@@ -97,6 +114,19 @@ RSpec.describe Shoko::Adapters::BookSources::GutendexClient do
         expect(File.exist?(dest_path)).to be(false)
         expect(File.exist?("#{dest_path}.part")).to be(false)
       end
+    end
+
+
+    it 'checks a download chunk before writing it' do
+      bounded_client = described_class.new(max_download_bytes: 4)
+      response = { 'Content-Length' => '5' }
+      response.define_singleton_method(:read_body) { |&block| block.call('abcde') }
+      writer = instance_double(File, write: nil)
+      allow(File).to receive(:open).and_yield(writer)
+
+      expect(writer).not_to receive(:write)
+      expect { bounded_client.send(:stream_body_to, response, '/tmp/unwritten') }
+        .to raise_error(described_class::Error, /exceeded 4 bytes/)
     end
   end
 end

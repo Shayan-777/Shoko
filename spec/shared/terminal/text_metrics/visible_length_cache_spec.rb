@@ -11,6 +11,7 @@ RSpec.describe Shoko::Shared::Terminal::TextMetrics::VisibleLengthCache do
 
   subject(:cache) { described_class.new(controls: controls) }
 
+  before { cache.clear! }
   after { cache.clear! }
 
   it 'computes on miss and serves the memo on hit' do

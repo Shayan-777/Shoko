@@ -74,6 +74,20 @@ RSpec.describe 'Naming banlist' do
       expect(offense('foo.rb', "Bar = Data.define(:x)\n")).to match(/defines Bar/)
     end
 
+    it 'recognizes top-level-qualified and multiline type constructors' do
+      expect(offense('foo.rb', "URL = ::Data.define(:x)\n")).to match(/defines URL/)
+      expect(offense('foo.rb', "URL =\n  Struct.new(:x)\n")).to match(/defines URL/)
+    end
+
+    it 'recognizes qualified and multiline CamelCase assignments' do
+      source = <<~RUBY
+        Namespace::Bar =
+          build_value
+      RUBY
+
+      expect(offense('foo.rb', source)).to match(/defines Bar/)
+    end
+
     it 'rejects arbitrary suffix matches — bar.rb may not define FooBar' do
       expect(offense('bar.rb', "module FooBar\n  def x; end\nend\n")).to match(/defines FooBar/)
     end

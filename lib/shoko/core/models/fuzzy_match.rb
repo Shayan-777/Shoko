@@ -3,29 +3,17 @@
 module Shoko
   module Core
     module Models
-      # Fuzzy search result with similarity score
-      class FuzzyMatch
-        attr_reader :word, :similarity
-
+      # Immutable fuzzy-search result with similarity score.
+      FuzzyMatch = Data.define(:word, :similarity) do
         def initialize(word:, similarity:)
-          @word = word.to_s.freeze
-          @similarity = similarity.to_f
-          # Born frozen: matches are placed into the state tree, whose value
-          # contract admits opaque objects only when they are immutable.
-          freeze
+          super(word: word.to_s.dup.freeze, similarity: similarity.to_f)
         end
 
-        def high_confidence?
-          similarity >= 0.8
-        end
+        def high_confidence? = similarity >= 0.8
 
-        def medium_confidence?
-          similarity >= 0.6 && similarity < 0.8
-        end
+        def medium_confidence? = similarity >= 0.6 && similarity < 0.8
 
-        def low_confidence?
-          similarity < 0.6
-        end
+        def low_confidence? = similarity < 0.6
       end
     end
   end

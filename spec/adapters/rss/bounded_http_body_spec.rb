@@ -19,6 +19,13 @@ RSpec.describe Shoko::Adapters::Rss::BoundedHttpBody do
     io.string
   end
 
+  def non_appendable_chunk(bytesize)
+    Object.new.tap do |chunk|
+      chunk.define_singleton_method(:bytesize) { bytesize }
+      chunk.define_singleton_method(:to_str) { raise 'oversized chunk was appended' }
+    end
+  end
+
   describe '.read' do
     it 'accumulates chunks under the limit' do
       response = streaming_response('abc', 'def')
@@ -39,6 +46,13 @@ RSpec.describe Shoko::Adapters::Rss::BoundedHttpBody do
       expect { described_class.read(response, limit: 6) }
         .to raise_error(described_class::TooLarge, /exceeded 6 bytes/)
       expect(yielded).to eq(%w[aaaa bbbb])
+    end
+
+    it 'checks the incoming chunk before appending it' do
+      response = streaming_response(non_appendable_chunk(7))
+
+      expect { described_class.read(response, limit: 6) }
+        .to raise_error(described_class::TooLarge, /exceeded 6 bytes/)
     end
   end
 
@@ -68,6 +82,24 @@ RSpec.describe Shoko::Adapters::Rss::BoundedHttpBody do
 
       expect { described_class.decompress(bomb, 'deflate', limit: 4096) }
         .to raise_error(described_class::TooLarge, /Decompressed body exceeded 4096 bytes/)
+    end
+
+    it 'checks gzip output chunks before appending them' do
+      reader = instance_double(Zlib::GzipReader, close: nil, closed?: false)
+      allow(reader).to receive(:read).and_return(non_appendable_chunk(7), nil)
+      allow(Zlib::GzipReader).to receive(:new).and_return(reader)
+
+      expect { described_class.decompress('compressed', 'gzip', limit: 6) }
+        .to raise_error(described_class::TooLarge, /Decompressed body exceeded 6 bytes/)
+    end
+
+    it 'checks deflate output chunks before appending them' do
+      inflater = instance_double(Zlib::Inflate, close: nil, closed?: false)
+      allow(inflater).to receive(:inflate).and_yield(non_appendable_chunk(7))
+      allow(Zlib::Inflate).to receive(:new).and_return(inflater)
+
+      expect { described_class.decompress('compressed', 'deflate', limit: 6) }
+        .to raise_error(described_class::TooLarge, /Decompressed body exceeded 6 bytes/)
     end
 
     it 'falls back to the raw body on corrupt compressed data' do

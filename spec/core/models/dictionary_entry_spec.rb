@@ -67,6 +67,24 @@ RSpec.describe Shoko::Core::Models::DictionaryEntry do
       expect(grouped['Adjective']).to include('adjective ready')
     end
   end
+
+  it 'copies and freezes text inputs without freezing caller-owned objects' do
+    word = +'Haus'
+    sense = +'house'
+    senses = [sense]
+
+    entry = described_class.new(word: word, senses: senses)
+
+    expect(entry).to be_frozen
+    expect(entry.word).to be_frozen
+    expect(entry.senses).to be_frozen
+    expect(entry.senses.first).to be_frozen
+    expect(entry.word).not_to equal(word)
+    expect(entry.senses.first).not_to equal(sense)
+    expect(word).not_to be_frozen
+    expect(sense).not_to be_frozen
+    expect(senses).not_to be_frozen
+  end
 end
 
 RSpec.describe Shoko::Core::Models::DictionaryResult do
@@ -83,6 +101,17 @@ RSpec.describe Shoko::Core::Models::DictionaryResult do
     result = described_class.new(query: 'x', entries: [empty_entry])
     expect(result).to be_empty
   end
+
+  it 'copies its entries array and rejects non-entry contents' do
+    entries = [entry]
+    result = described_class.new(query: 'Haus', entries: entries)
+
+    expect(result.entries).not_to equal(entries)
+    expect(result.entries).to be_frozen
+    expect(entries).not_to be_frozen
+    expect { described_class.new(query: 'Haus', entries: [Object.new]) }
+      .to raise_error(ArgumentError, /DictionaryEntry/)
+  end
 end
 
 RSpec.describe Shoko::Core::Models::FuzzyMatch do
@@ -94,5 +123,16 @@ RSpec.describe Shoko::Core::Models::FuzzyMatch do
     expect(high).to be_high_confidence
     expect(medium).to be_medium_confidence
     expect(low).to be_low_confidence
+  end
+
+
+  it 'copies its word without freezing the caller string' do
+    word = +'Haus'
+    match = described_class.new(word: word, similarity: 0.9)
+
+    expect(match).to be_frozen
+    expect(match.word).to be_frozen
+    expect(match.word).not_to equal(word)
+    expect(word).not_to be_frozen
   end
 end

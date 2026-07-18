@@ -23,6 +23,14 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
     stub_request(:get, records_url).to_return(status: 200, body: JSON.generate(data: records))
   end
 
+
+  def non_appendable_chunk(bytesize)
+    Object.new.tap do |chunk|
+      chunk.define_singleton_method(:bytesize) { bytesize }
+      chunk.define_singleton_method(:to_str) { raise 'oversized chunk was appended' }
+    end
+  end
+
   subject(:service) { described_class.new }
 
   describe '#list_remote' do
@@ -80,6 +88,17 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
 
       expect { service.list_remote }
         .to raise_error(described_class::CatalogError, /Catalog response exceeded/)
+    end
+
+
+    it 'checks a catalog chunk before appending it' do
+      stub_const("#{described_class}::MAX_CATALOG_BODY_BYTES", 64)
+      chunk = non_appendable_chunk(65)
+      response = Object.new
+      response.define_singleton_method(:read_body) { |&block| block.call(chunk) }
+
+      expect { service.send(:read_bounded_catalog_body, response) }
+        .to raise_error(described_class::CatalogError, /Catalog response exceeded 64 bytes/)
     end
   end
 
@@ -162,6 +181,20 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
       stub_request(:get, "#{cdn}v.spm").to_return(status: 200, body: 'eight-by')
 
       expect { service.download(pack, @store) }
+        .to raise_error(described_class::CatalogError, /exceeded declared size \(4 bytes\)/)
+    end
+
+
+    it 'checks a payload chunk before writing or hashing it' do
+      response = Object.new
+      response.define_singleton_method(:read_body) { |&block| block.call('abcde') }
+      writer = instance_double(File, write: nil)
+      digest = instance_double(Digest::SHA256, update: nil)
+      allow(File).to receive(:open).and_yield(writer)
+
+      expect(writer).not_to receive(:write)
+      expect(digest).not_to receive(:update)
+      expect { service.send(:write_body, response, '/tmp/unwritten', digest, max_bytes: 4) }
         .to raise_error(described_class::CatalogError, /exceeded declared size \(4 bytes\)/)
     end
   end

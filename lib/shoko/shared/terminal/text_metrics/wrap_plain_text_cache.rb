@@ -26,13 +26,16 @@ module Shoko
           # drops the second argument.
           def lookup(source, width)
             store = store_for(source)
-            return yield unless store
+            return immutable_lines(yield) unless store
 
-            key = [width, source]
-            cached = store.delete(key)
-            return store[key] = cached if cached
+            key = immutable_key(source, width)
+            if store.key?(key)
+              cached = store.delete(key)
+              store[key] = cached
+              return cached
+            end
 
-            write(store, source, width, yield)
+            write(store, key, yield)
           end
 
           def clear!
@@ -48,14 +51,23 @@ module Shoko
             Thread.current[STORE_KEY] ||= {}
           end
 
-          def write(store, source, width, wrapped)
-            key_source = source.frozen? ? source : source.dup.freeze
-            key = [width, key_source].freeze
-            frozen = wrapped.map { |line| line.frozen? ? line : line.dup.freeze }.freeze
-
-            store[key] = frozen
+          def write(store, key, wrapped)
+            lines = immutable_lines(wrapped)
+            store[key] = lines
             store.shift while store.length > LIMIT
-            frozen
+            lines
+          end
+
+          # Build the immutable copied key BEFORE lookup. Re-inserting a hit
+          # with the caller's temporary [width, source] key would make a
+          # mutable caller String part of the Hash and corrupt the memo if the
+          # caller later changed it.
+          def immutable_key(source, width)
+            [width, source.to_s.dup.freeze].freeze
+          end
+
+          def immutable_lines(wrapped)
+            wrapped.map { |line| line.to_s.dup.freeze }.freeze
           end
         end
       end

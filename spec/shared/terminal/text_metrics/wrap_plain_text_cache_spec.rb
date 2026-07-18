@@ -3,9 +3,10 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Shared::Terminal::TextMetrics::WrapPlainTextCache do
+  let(:enabled) { true }
   let(:controls) do
     instance_double(Shoko::Shared::Terminal::TextMetrics::RuntimeControls,
-                    wrap_plain_text_cache_enabled?: true)
+                    wrap_plain_text_cache_enabled?: enabled)
   end
 
   subject(:cache) { described_class.new(controls: controls) }
@@ -38,5 +39,34 @@ RSpec.describe Shoko::Shared::Terminal::TextMetrics::WrapPlainTextCache do
     computes = 0
     cache.lookup('used', 1) { computes += 1; ['used'] }
     expect(computes).to eq(1)
+  end
+
+  it 'keeps a copied frozen key after a hit when the caller source is mutable' do
+    source = +'alpha'
+    cache.lookup(source, 5) { ['alpha'] }
+    cache.lookup(source, 5) { raise 'must hit' }
+
+    stored_key = Thread.current[described_class::STORE_KEY].keys.first
+    expect(stored_key).to be_frozen
+    expect(stored_key.last).to be_frozen
+    expect(stored_key.last).not_to equal(source)
+
+    source.replace('omega')
+    expect(cache.lookup('alpha', 5) { raise 'caller mutation corrupted the key' }).to eq(['alpha'])
+    expect(Thread.current[described_class::STORE_KEY].length).to eq(1)
+  end
+
+  it 'returns immutable lines when caching is disabled or the source is too large' do
+    allow(controls).to receive(:wrap_plain_text_cache_enabled?).and_return(false)
+    disabled = cache.lookup('a b', 3) { [+'a', +'b'] }
+
+    allow(controls).to receive(:wrap_plain_text_cache_enabled?).and_return(true)
+    oversized_source = 'x' * (described_class::CACHEABLE_BYTES + 1)
+    oversized = cache.lookup(oversized_source, 3) { [+'x'] }
+
+    expect(disabled).to be_frozen
+    expect(disabled).to all(be_frozen)
+    expect(oversized).to be_frozen
+    expect(oversized).to all(be_frozen)
   end
 end

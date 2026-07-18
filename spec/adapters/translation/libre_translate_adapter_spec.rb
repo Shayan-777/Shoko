@@ -22,6 +22,14 @@ RSpec.describe Shoko::Adapters::Translation::LibreTranslateAdapter do
     response
   end
 
+
+  def non_appendable_chunk(bytesize)
+    Object.new.tap do |chunk|
+      chunk.define_singleton_method(:bytesize) { bytesize }
+      chunk.define_singleton_method(:to_str) { raise 'oversized chunk was appended' }
+    end
+  end
+
   it 'loads and normalizes available languages' do
     allow(http).to receive(:request).and_return(
       http_response(
@@ -102,6 +110,19 @@ RSpec.describe Shoko::Adapters::Translation::LibreTranslateAdapter do
     expect do
       adapter.available_languages
     end.to raise_error(
+      Shoko::Application::Ports::Outbound::TranslationRepository::RepositoryError,
+      /response exceeded 64 bytes/
+    )
+  end
+
+
+  it 'checks a response chunk before appending it' do
+    stub_const("#{described_class}::MAX_RESPONSE_BODY_BYTES", 64)
+    chunk = non_appendable_chunk(65)
+    response = Object.new
+    response.define_singleton_method(:read_body) { |&block| block.call(chunk) }
+
+    expect { adapter.send(:read_bounded_body, response) }.to raise_error(
       Shoko::Application::Ports::Outbound::TranslationRepository::RepositoryError,
       /response exceeded 64 bytes/
     )

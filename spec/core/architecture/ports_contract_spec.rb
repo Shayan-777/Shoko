@@ -31,6 +31,28 @@ RSpec.describe 'Ports contract' do
     path.delete_prefix("#{lib_root}/")
   end
 
+  def mixin_inventory
+    @mixin_inventory ||= SpecSupport::Architecture::IncludeOnceMixinScanner.inventory(lib_root)
+  end
+
+  def canonical_mixin_sites
+    @canonical_mixin_sites ||= mixin_inventory[:sites].filter_map do |record|
+      canonical = SpecSupport::Architecture::IncludeOnceMixinScanner.resolve(
+        record[:site], mixin_inventory[:definitions], mixin_inventory[:aliases]
+      )
+      canonical && record.merge(canonical: canonical)
+    end
+  end
+
+  def port_implementers
+    @port_implementers ||= canonical_mixin_sites.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |record, found|
+      next unless %w[include prepend].include?(record[:site].method)
+      next unless record[:canonical].start_with?('Shoko::Application::Ports::')
+
+      found[record[:canonical]] << record[:path]
+    end
+  end
+
   describe 'port layout' do
     it 'keeps ports application-owned under inbound/outbound/internal only' do
       core_ports_root = File.join(lib_root, 'core', 'ports')
@@ -57,18 +79,13 @@ RSpec.describe 'Ports contract' do
     # from the Ripper-backed extractor, so every valid spelling — shorter
     # qualification, parentheses, multiline, `::`-anchored — is seen exactly
     # as Ruby sees it.
-    PORT_CONST_PATTERN = /(?:\A|::)Ports::(Outbound|Internal)::([\w:]+)\z/.freeze
+    PORT_CONST_PATTERN = /\AShoko::Application::Ports::(Outbound|Internal)::([\w:]+)\z/.freeze
 
     it 'keeps outbound ports adapter-implemented and internal ports application-implemented' do
-      includers = Hash.new { |h, k| h[k] = [] }
-      Dir[File.join(lib_root, '**', '*.rb')].each do |path|
-        _defs, sites = SpecSupport::Architecture::MixinSiteExtractor.extract(File.read(path))
-        sites.each do |site|
-          next unless site.method == 'include'
-
-          match = site.const.match(PORT_CONST_PATTERN)
-          includers[[match[1], match[2]]] << path if match
-        end
+      includers = Hash.new { |hash, key| hash[key] = [] }
+      port_implementers.each do |canonical, paths|
+        match = canonical.match(PORT_CONST_PATTERN)
+        includers[[match[1], match[2]]].concat(paths) if match
       end
 
       misfiled_outbound = includers.filter_map do |(kind, name), paths|
@@ -104,18 +121,16 @@ RSpec.describe 'Ports contract' do
       end
       expect(interface_ports).not_to be_empty, 'No interface ports found — glob or layout changed.'
 
-      production_contents = Dir[File.join(lib_root, '**', '*.rb')]
-                            .reject { |path| path.start_with?("#{ports_root}/") }
-                            .map { |path| non_comment_content(path) }
-
       offenders = interface_ports.filter_map do |path|
         name = interface_port_module_name(non_comment_content(path))
         next "#{rel(path)} (could not determine port module name)" if name.nil?
 
-        include_pattern = /\binclude\b[^\n]*(?<![A-Za-z0-9_])#{Regexp.escape(name)}(?![A-Za-z0-9_])/
-        next if production_contents.any? { |content| content.match?(include_pattern) }
+        kind = File.basename(File.dirname(path)).capitalize
+        canonical = "Shoko::Application::Ports::#{kind}::#{name}"
+        implementers = port_implementers[canonical].reject { |implementer| implementer.start_with?("#{ports_root}/") }
+        next unless implementers.empty?
 
-        "#{rel(path)} (port #{name} has no production `include`r)"
+        "#{rel(path)} (port #{name} has no production `include`/`prepend` implementer)"
       end
 
       expect(offenders).to be_empty,
@@ -123,13 +138,17 @@ RSpec.describe 'Ports contract' do
     end
 
     it 'forbids controller includes of inbound ports' do
-      controller_files = Dir[File.join(lib_root, 'adapters', 'input', 'controllers', '**', '*.rb')]
-      offenders = controller_files.select do |path|
-        non_comment_content(path).include?('include Shoko::Application::Ports::Inbound::')
+      controller_root = File.join(lib_root, 'adapters', 'input', 'controllers')
+      offenders = canonical_mixin_sites.filter_map do |record|
+        next unless %w[include prepend].include?(record[:site].method)
+        next unless record[:path].start_with?("#{controller_root}/")
+        next unless record[:canonical].start_with?('Shoko::Application::Ports::Inbound::')
+
+        rel(record[:path])
       end
 
-      expect(offenders).to eq([]),
-                           "Controllers still include inbound ports:\n#{offenders.join("\n")}"
+      expect(offenders.uniq.sort).to eq([]),
+                                     "Controllers still include inbound ports:\n#{offenders.uniq.sort.join("\n")}"
     end
   end
 

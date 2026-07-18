@@ -717,3 +717,41 @@ Every resilient boundary:
     has a regression spec. The constitution's own "oracle"/"DONE" language
     is scoped to architectural shape — conformance is not correctness, and
     green guardrails do not replace adversarial review.
+
+- **2026-07-18 — Third completeness pass: enforcement now matches the closed
+  contracts rather than their earlier approximations.**
+  - **State values are structurally closed at both entrances.** Initial schema
+    output and every update now go through the same `DeepStructure.admit`
+    transform. It accepts only exact intrinsic primitives, unadorned plain
+    String/Array/Hash containers, and Struct/Data values whose complete
+    instance state is in declared members; all keys, elements, and members are
+    copied recursively and the result is independently verified frozen.
+    Opaque objects (frozen or not), mutable Numeric subclasses, hidden ivars or
+    singleton behavior, special-semantics Hashes, and cycles are rejected.
+    Data reconstruction reads `Data#to_h` directly rather than a domain
+    serialization override. DictionaryEntry, DictionaryResult, and FuzzyMatch
+    are Data value objects, so no opaque-leaf exception remains.
+  - **Mixin enforcement resolves what it counts.** The Ripper inventory covers
+    direct and explicit-receiver include/prepend/extend calls, multiple
+    arguments, parentheses, multiline calls, literal-array splats, the common
+    `send` forms, constant aliases, and top-level anchoring. A statically
+    unresolved target is a violation rather than a silently omitted site.
+    Widening that inventory exposed the dynamic one-use AliasReaders mixin;
+    `Reader::ControllerInterface` was removed and its sole-host delegation
+    contract now lives directly on ReaderController under R1/R2/R3. The ports
+    guardrail consumes the same canonical inventory instead of applying a
+    second regex interpretation. Constant assignments in the one-constant
+    scanner are also Ripper-derived, including qualified and multiline aliases
+    and top-level-qualified/multiline type constructors.
+  - **One-use UI state is not disguised as a collaborator.** The sole-host
+    AnnotationEditState projection was folded into
+    AnnotationEditScreenComponent as private behavior, with edit, save,
+    refresh, and return-mode regression coverage.
+  - **Ceiling ordering is executable behavior, not just source ordering.**
+    Focused tests feed non-appendable oversized chunks to every bounded buffer
+    and both decompression paths, and writer/hash spies to every download
+    stream. They prove the failing chunk reaches neither memory buffers, disk,
+    nor the model digest before the error.
+  - **The wrap memo owns every object it retains and returns.** Its LRU key is
+    copied/frozen before both lookup and reinsertion; disabled and oversized
+    bypasses return the same deep-frozen line shape as hits and misses.

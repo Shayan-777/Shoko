@@ -20,14 +20,12 @@ module Shoko
       # field of the initial state hash. The store has no external
       # counterparty — it is application infrastructure, not an adapter.
       #
-      # Frozen-tree invariant: the state tree (every Hash, Array, and String
-      # in it) is deep-frozen at all times, so `peek`/`peek_at`/`get` can
-      # return internals without defensive copies and out-of-band mutation
-      # raises instead of silently bypassing validation, locking, change
-      # sets, and observers. Writes copy the update path, deep-dup inserted
-      # values (callers keep ownership of their arguments), and freeze the
-      # new structure before commit. Non-data leaf objects stored in state
-      # are treated as opaque and never frozen here.
+      # Closed-value invariant: the initial tree and every inserted value pass
+      # through DeepStructure.admit. The complete graph is copied and frozen,
+      # callers keep ownership of their arguments, and arbitrary opaque values
+      # are rejected. Reads can therefore return internals without defensive
+      # copies; out-of-band mutation raises instead of bypassing validation,
+      # locking, change sets, and observers.
       class StateStore
         # Error raised when a state transition is invalid
         class StateUpdateError < StandardError
@@ -137,7 +135,7 @@ module Shoko
         private
 
         def build_initial_state
-          Shoko::Shared::DeepStructure.deep_freeze(
+          Shoko::Shared::DeepStructure.admit(
             @schema_registry.initial_state(terminal_capabilities: @terminal_capabilities)
           )
         end
