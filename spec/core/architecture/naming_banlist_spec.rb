@@ -47,4 +47,21 @@ RSpec.describe 'Naming banlist' do
     expect(offenders).to be_empty,
                          "Shorthand module declarations must not be used:\n#{offenders.sort.join("\n")}"
   end
+
+  # §III: "a file is named after the single class/module it defines."
+  # Enforced by SingleConstantFileScanner: one root constant per file whose
+  # short name matches the basename (case-insensitively, directory-scoped
+  # prefixes allowed), all other definitions nested inside it. Namespace
+  # reopenings, require-only aggregators, and values-only files pass. The
+  # single codified exemption (shared/errors.rb, the sealed error taxonomy)
+  # lives in the scanner ALLOWLIST; adding to it is a constitutional
+  # amendment.
+  it 'enforces one constant per file, named after the file' do
+    offenders = SpecSupport::Architecture::SingleConstantFileScanner.violations(lib_root)
+
+    expect(offenders).to eq([]), <<~MSG
+      Files must define a single root constant named after the file (constitution §III):
+      #{offenders.join("\n")}
+    MSG
+  end
 end

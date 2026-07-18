@@ -22,25 +22,20 @@ module Shoko
           # (`ReaderSessionSnapshot`, `ReaderPaginationSnapshot`,
           # `ReaderViewSnapshot`) when a consumer only touches a single slice.
           # The two levels coexist by design; this is not a legacy shim.
-          module ReaderSnapshotInternal
-            CORE_FIELDS = Shoko::Core::Reading::Schema::FIELDS
-            PROCESS_FIELDS = Shoko::Application::State::Schema::ReaderProcess::FIELDS
-            PAGINATION_FIELDS = Shoko::Application::State::Schema::ReaderPagination::FIELDS
-            VIEW_FIELDS = Shoko::Application::State::Schema::ReaderView::FIELDS
-
-            FIELDS = (CORE_FIELDS + PROCESS_FIELDS + PAGINATION_FIELDS + VIEW_FIELDS).freeze
-            DEFAULTS = [
-              Shoko::Core::Reading::Schema::DEFAULTS,
-              Shoko::Application::State::Schema::ReaderProcess::DEFAULTS,
-              Shoko::Application::State::Schema::ReaderPagination::DEFAULTS,
-              Shoko::Application::State::Schema::ReaderView::DEFAULTS,
-            ].reduce({}, :merge).freeze
-          end
-          private_constant :ReaderSnapshotInternal
+          reader_fields = (Shoko::Core::Reading::Schema::FIELDS +
+                           Shoko::Application::State::Schema::ReaderProcess::FIELDS +
+                           Shoko::Application::State::Schema::ReaderPagination::FIELDS +
+                           Shoko::Application::State::Schema::ReaderView::FIELDS).freeze
+          reader_defaults = [
+            Shoko::Core::Reading::Schema::DEFAULTS,
+            Shoko::Application::State::Schema::ReaderProcess::DEFAULTS,
+            Shoko::Application::State::Schema::ReaderPagination::DEFAULTS,
+            Shoko::Application::State::Schema::ReaderView::DEFAULTS,
+          ].reduce({}, :merge).freeze
 
           ReaderSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
-            fields: ReaderSnapshotInternal::FIELDS,
-            defaults: ReaderSnapshotInternal::DEFAULTS,
+            fields: reader_fields,
+            defaults: reader_defaults,
             partition: :reader
           )
 

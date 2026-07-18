@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../constants/ui_constants'
+require_relative '../../constants/ui'
 require_relative '../ui/box_drawer'
 require_relative '../ui/cursor_blink'
 require 'shoko/shared/annotation_list_input'

@@ -2,7 +2,7 @@
 
 require 'shoko/core/models/block_type'
 require_relative '../constants/themes'
-require_relative '../constants/ui_constants'
+require_relative '../constants/ui'
 
 module Shoko
   module Adapters

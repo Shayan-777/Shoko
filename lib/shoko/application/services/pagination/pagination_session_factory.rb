@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require_relative 'layout_resolver'
+require_relative 'pagination_layout_resolver'
+require_relative 'pagination_layout_spec'
 require_relative 'pagination_session'
 require_relative 'restore_manager'
 require_relative 'session_state_sync'

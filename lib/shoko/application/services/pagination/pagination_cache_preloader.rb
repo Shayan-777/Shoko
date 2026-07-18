@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require_relative 'layout_resolver'
+require_relative 'pagination_layout_resolver'
+require_relative 'pagination_layout_spec'
 require_relative 'pagination_cache_layout_lookup'
 require_relative 'pagination_cache_state_hydrator'
 require 'shoko/application/ports/outbound/app_config_store'

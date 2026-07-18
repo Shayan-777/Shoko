@@ -4,6 +4,7 @@ require 'json'
 require 'net/http'
 require 'uri'
 require_relative '../base_adapter'
+require_relative '../../core/models/translation_language'
 require_relative '../../core/models/translation_result'
 require_relative '../../application/ports/outbound/translation_repository'
 

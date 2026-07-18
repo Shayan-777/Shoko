@@ -3,6 +3,7 @@
 require_relative 'base_component'
 require_relative 'ui/box_drawer'
 require_relative 'ui/overlay_layout'
+require_relative 'ui/overlay_sizing'
 require_relative 'annotations_overlay/list_renderer'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/key_definitions'

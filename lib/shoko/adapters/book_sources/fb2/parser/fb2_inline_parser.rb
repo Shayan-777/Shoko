@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/core/models/content_block'
+require 'shoko/core/models/text_segment'
 
 module Shoko
   module Adapters

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/terminal/ansi'
-require_relative 'ui_constants'
+require_relative 'ui'
 
 module Shoko
   module Adapters

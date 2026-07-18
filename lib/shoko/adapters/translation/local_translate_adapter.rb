@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../base_adapter'
+require_relative '../../core/models/translation_language'
 require_relative '../../core/models/translation_result'
 require_relative '../../application/ports/outbound/translation_repository'
 require_relative '../../shared/language_directory'

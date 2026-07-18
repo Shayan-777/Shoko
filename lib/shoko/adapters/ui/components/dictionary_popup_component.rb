@@ -3,9 +3,10 @@
 require 'shoko/shared/hash_normalizer'
 require_relative 'base_component'
 require_relative 'ui/overlay_layout'
+require_relative 'ui/overlay_sizing'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/shared/key_definitions'
-require_relative '../constants/ui_constants'
+require_relative '../constants/ui'
 
 module Shoko
   module Adapters

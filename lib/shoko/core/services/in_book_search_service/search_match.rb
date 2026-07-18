@@ -16,10 +16,6 @@ module Shoko
           :match,
           :after
         )
-
-        # Search output payload.
-        SearchResult = Struct.new(:query, :matches, :total_matches)
-        SearchableLine = Struct.new(:chapter_index, :chapter_title, :line_index, :text)
       end
     end
   end

@@ -2,6 +2,8 @@
 
 require_relative 'base_service'
 require_relative '../models/dictionary_entry'
+require_relative '../models/dictionary_result'
+require_relative '../models/fuzzy_match'
 require_relative '../errors/dictionary_failure'
 require_relative '../../shared/hash_normalizer'
 

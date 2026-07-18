@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../shared/text_sanitizer'
-require_relative 'in_book_search_service/result_types'
+require_relative 'in_book_search_service/search_match'
+require_relative 'in_book_search_service/search_result'
+require_relative 'in_book_search_service/searchable_line'
 
 module Shoko
   module Core

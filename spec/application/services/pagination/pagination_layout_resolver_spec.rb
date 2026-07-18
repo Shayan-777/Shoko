@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
-require 'shoko/application/services/pagination/layout_resolver'
+require 'shoko/application/services/pagination/pagination_layout_resolver'
 require 'shoko/adapters/storage/pagination_cache'
 
 RSpec.describe Shoko::Application::Services::Pagination::PaginationLayoutResolver do

@@ -3,6 +3,7 @@
 require 'json'
 
 require 'shoko/core/models/content_block'
+require 'shoko/core/models/text_segment'
 require_relative 'pdf_layout_line_normalizer'
 require_relative 'pdf_layout_payload_parser'
 require_relative 'pdf_layout_classifier'

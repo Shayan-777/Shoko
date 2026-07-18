@@ -5,13 +5,6 @@ module Shoko
     module Ui
       module Rendering
         module Models
-          # Represents a single rendered cell (grapheme cluster) within a line box.
-          LineCell = Struct.new(:cluster, :char_start, :char_end, :display_width, :screen_x) do
-            def visible?
-              display_width.positive?
-            end
-          end
-
           # Represents the geometry for a rendered line on screen. Holds the plain
           # text, ANSI-styled text, and per-cell breakdown so selections/tooltips can
           # share the same layout information as the renderer.

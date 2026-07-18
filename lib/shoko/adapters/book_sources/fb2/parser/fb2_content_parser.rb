@@ -2,6 +2,7 @@
 
 require 'rexml/document'
 require 'shoko/core/models/content_block'
+require 'shoko/core/models/text_segment'
 require_relative 'fb2_inline_parser'
 
 module Shoko

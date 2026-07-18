@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/terminal/text_metrics'
+require_relative '../models/line_cell'
 require_relative '../models/line_geometry'
 require 'shoko/application/ports/outbound/runtime_config'
 

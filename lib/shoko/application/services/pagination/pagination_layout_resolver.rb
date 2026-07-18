@@ -1,22 +1,12 @@
 # frozen_string_literal: true
 
 require 'shoko/core/models/reader_settings'
+require_relative 'pagination_layout_spec'
 
 module Shoko
   module Application
     module Services
       module Pagination
-        PaginationLayoutSpec = Data.define(
-          :width,
-          :height,
-          :view_mode,
-          :line_spacing,
-          :kitty_images,
-          :layout_variant,
-          :runtime_key,
-          :cache_key
-        )
-
         # Builds normalized pagination layout metadata for runtime and cache operations.
         class PaginationLayoutResolver
           def initialize(display_capabilities:, pagination_cache: nil)

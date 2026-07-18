@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'constants/themes'
-require_relative 'constants/ui_constants'
+require_relative 'constants/ui'
 require_relative 'components/render_style'
 require_relative '../../shared/theme_policy'
 

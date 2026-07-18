@@ -7,7 +7,7 @@ require 'shoko/adapters/input/controllers/menu/reader_launch_ports_adapter'
 require 'shoko/adapters/input/controllers/menu/workflow_ports_adapter'
 require 'shoko/adapters/input/controllers/menu/intent_runtime_bridge'
 require 'shoko/adapters/ui/rendering/noop_terminal_state_writer'
-require 'shoko/adapters/ui/dependency_sets'
+require 'shoko/adapters/ui/menu_ui_dependencies'
 require 'shoko/adapters/ui/state/menu_hit_registry'
 require_relative 'menu_state_controller_composer'
 

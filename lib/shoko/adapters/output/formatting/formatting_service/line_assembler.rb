@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/core/models/content_block'
+require 'shoko/core/models/text_segment'
 require 'shoko/core/models/block_type'
 require 'shoko/application/ports/outbound/formatting/display_line'
 require_relative '../../terminal/text_metrics'

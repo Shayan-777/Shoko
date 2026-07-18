@@ -2,7 +2,7 @@
 
 require_relative '../ui/text_utils'
 require_relative '../ui/list_windowing'
-require_relative '../../constants/ui_constants'
+require_relative '../../constants/ui'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/terminal/ansi'
 

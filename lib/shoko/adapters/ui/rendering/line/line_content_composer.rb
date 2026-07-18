@@ -7,6 +7,7 @@ require 'shoko/core/models/block_type'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/application/ports/outbound/runtime_config'
+require 'shoko/core/models/text_segment'
 require_relative 'inline_segment_highlighter'
 require_relative 'config_resolution'
 

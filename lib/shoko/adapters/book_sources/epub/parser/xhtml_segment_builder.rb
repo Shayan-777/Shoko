@@ -2,7 +2,7 @@
 
 require 'rexml/document'
 
-require 'shoko/core/models/content_block'
+require 'shoko/core/models/text_segment'
 require 'shoko/shared/text_sanitizer'
 require_relative 'html_processor'
 require_relative 'markup_visibility'

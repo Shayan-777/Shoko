@@ -2,7 +2,7 @@
 
 require_relative 'base_component'
 require_relative 'surface'
-require_relative '../constants/ui_constants'
+require_relative '../constants/ui'
 require 'shoko/shared/terminal/text_metrics'
 
 module Shoko

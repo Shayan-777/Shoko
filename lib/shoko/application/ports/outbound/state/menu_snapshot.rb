@@ -19,20 +19,15 @@ module Shoko
           # adapter). Use the focused snapshots (`MenuSessionSnapshot`,
           # `MenuTransientSnapshot`) when a consumer only touches a single slice.
           # The two levels coexist by design; this is not a legacy shim.
-          module MenuSnapshotInternal
-            PROCESS_FIELDS = Shoko::Application::State::Schema::MenuProcess::FIELDS
-            TRANSIENT_FIELDS = Shoko::Application::State::Schema::MenuTransient::FIELDS
-
-            FIELDS = (PROCESS_FIELDS + TRANSIENT_FIELDS).freeze
-            DEFAULTS = Shoko::Application::State::Schema::MenuProcess::DEFAULTS
-                       .merge(Shoko::Application::State::Schema::MenuTransient::DEFAULTS)
-                       .freeze
-          end
-          private_constant :MenuSnapshotInternal
+          menu_fields = (Shoko::Application::State::Schema::MenuProcess::FIELDS +
+                         Shoko::Application::State::Schema::MenuTransient::FIELDS).freeze
+          menu_defaults = Shoko::Application::State::Schema::MenuProcess::DEFAULTS
+                          .merge(Shoko::Application::State::Schema::MenuTransient::DEFAULTS)
+                          .freeze
 
           MenuSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
-            fields: MenuSnapshotInternal::FIELDS,
-            defaults: MenuSnapshotInternal::DEFAULTS,
+            fields: menu_fields,
+            defaults: menu_defaults,
             partition: :menu
           )
 

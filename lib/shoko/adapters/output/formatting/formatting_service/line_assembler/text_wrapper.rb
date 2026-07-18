@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/adapters/output/terminal/text_metrics'
-require 'shoko/core/models/content_block'
+require 'shoko/core/models/text_segment'
 require 'shoko/application/ports/outbound/formatting/display_line'
 
 module Shoko

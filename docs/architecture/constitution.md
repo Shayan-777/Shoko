@@ -553,3 +553,24 @@ Every resilient boundary:
   internals (R2: its ~570 lines are not a reason to split). The rule text now
   also names the scanner ALLOWLIST as its own exemption list, so the law and
   its executable enforcement can no longer drift apart silently.
+
+- **2026-07-18 — §III's one-constant-per-file rule gets its missing
+  enforcement.** The rule ("a file is named after the single class/module it
+  defines") had no guardrail; the naming spec checked only banned suffixes and
+  shorthand declarations. Fifteen files had accumulated sibling constants —
+  worst, `archive/zip_reader.rb` held the entire 22-constant `Shoko::Zip`
+  subsystem while the actual `ZipReader` facade hid in a file named
+  `facade.rb`. Now `SingleConstantFileScanner` (naming_banlist spec) enforces:
+  one root constant per file, short name matching the basename
+  (case-insensitive, so `CLI`/`EOCDParser` need no acronym table;
+  directory-scoped prefixes like `opf/navigation_selector.rb` →
+  `OPFNavigationSelector` allowed), everything else nested inside it.
+  Namespace reopenings, require-only aggregators, and values-only files
+  (version.rb, route tables) are out of scope. **Codified exemption:**
+  `shared/errors.rb` — the sealed error taxonomy is one domain concept;
+  eighteen three-line files would be noise, not decomposition. The offenders
+  were split file-per-constant (`Shoko::Zip` → `archive/zip/`, the reader
+  dependency records, the terminal input decoder collaborators, the core
+  model siblings, overlay/pagination/search types), private `*SnapshotInternal`
+  scaffolding modules became local variables, and `ui_constants.rb`/`facade.rb`
+  were renamed to match what they define.
