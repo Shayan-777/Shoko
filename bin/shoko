@@ -24,6 +24,5 @@ Shoko::Adapters::Input::CLI.run(
   end,
   prepaginate_factory: lambda do |log_config:|
     Shoko::Composition::ContainerFactory.build_prepagination_batch_context(log_config: log_config)
-  end,
-  process_control: Shoko::Composition::ContainerFactory.build_process_control
+  end
 )

@@ -86,6 +86,7 @@ require_relative '../adapters/output/formatting/wrapped_lines_provider_adapter'
 require_relative '../adapters/ui/rendering/noop_terminal_state_writer'
 require_relative '../adapters/ui/view_models/reader_view_model_builder'
 require_relative 'dependency_container'
+require_relative 'format_registry_composition'
 require_relative 'container_factory/infrastructure_registration'
 require_relative 'container_factory/port_and_repository_registration'
 require_relative 'container_factory/domain_application_registration'
@@ -110,6 +111,7 @@ module Shoko
         # @param log_config [Hash] Logger configuration from CLI
         # @return [DependencyContainer]
         def create_default_container(log_config: {})
+          FormatRegistryComposition.register!
           container = DependencyContainer.new
           register_infrastructure(container, log_config)
           apply_runtime_configuration(container)
@@ -131,10 +133,6 @@ module Shoko
           app_mode_runner = build_app_mode_runner(container, reader_mode_runner)
           container.register(:app_mode_runner, app_mode_runner)
           build_unified_application_instance(epub_path, app_mode_runner)
-        end
-
-        def build_process_control
-          Shoko::Adapters::Runtime::ProcessControlAdapter.new
         end
 
         # Context for the pre-pagination batch child process spawned by the

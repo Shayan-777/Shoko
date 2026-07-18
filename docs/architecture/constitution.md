@@ -574,3 +574,23 @@ Every resilient boundary:
   model siblings, overlay/pagination/search types), private `*SnapshotInternal`
   scaffolding modules became local variables, and `ui_constants.rb`/`facade.rb`
   were renamed to match what they define.
+
+- **2026-07-18 — The plain require surface becomes lazy, with a budget.**
+  `require 'shoko'` eagerly loaded 369 files (~0.2-0.3 s) because
+  `lib/shoko.rb` required the container factory's registration wall; even
+  `--help` paid the full cost, and `bin/shoko` called
+  `ContainerFactory.build_process_control` before parsing a single option.
+  Now `lib/shoko.rb` requires only version, errors, and the CLI adapter, and
+  declares `autoload` for the composition/application entry constants
+  (`ContainerFactory`, `RuntimeComposition`, `FormatRegistryComposition`,
+  `UnifiedApplication`) — the full graph loads on first reference, exactly as
+  before in behavior but only when actually used. Measured: 7 files / ~9 ms
+  on plain require; `shoko --help` ~55 ms end-to-end; a container build pulls
+  the graph on demand; `SHOKO_TEST_MODE`/`SHOKO_EAGER_BOOT` still eager-boot
+  the manifest (the spec suite runs fully eager). Format registration moved
+  from require time into `create_default_container` (idempotent), the CLI
+  defaults its own `process_control`, and the dead `build_process_control`
+  seam is gone. The boot-surface guardrail now enforces a **total budget**
+  (≤20 files on plain require) alongside the existing denylist, so
+  re-eagering the graph fails the suite by an order of magnitude instead of
+  needing a listed filename.

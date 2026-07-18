@@ -55,6 +55,7 @@ RSpec.describe 'Plain require boot surface guardrails' do
 
     features = JSON.parse(stdout)
     forbidden_suffixes = %w[
+      shoko/composition/container_factory.rb
       shoko/composition/container_factory/controller_composition/reader_builder.rb
       shoko/composition/container_factory/controller_composition/reader_runtime_assembler.rb
       shoko/adapters/input/controllers/annotation_overlay_controller.rb
@@ -71,7 +72,6 @@ RSpec.describe 'Plain require boot surface guardrails' do
       shoko/adapters/runtime/reader_mode_runner.rb
       shoko/adapters/runtime/app_mode_runner_adapter.rb
       shoko/adapters/runtime/cli_progress_presenter.rb
-      shoko/adapters/book_sources/document_loader_adapter.rb
       shoko/adapters/book_sources/cache_import_adapter.rb
       shoko/application/workflows/cli/folder_import_workflow.rb
       shoko/application/workflows/cli/folder_import_readiness_warmup.rb
@@ -82,6 +82,29 @@ RSpec.describe 'Plain require boot surface guardrails' do
     end
 
     expect(loaded_forbidden).to eq([])
+  end
+
+  # Not just a denylist: the plain require surface has a total budget. The
+  # composition graph autoloads on first reference (constitution §V,
+  # amendment 2026-07-18), so `require 'shoko'` must stay a thin CLI
+  # surface — version, errors, the CLI adapter, and their direct
+  # dependencies. Re-eagering the container factory would blow this budget
+  # by an order of magnitude, not sneak past a list.
+  it 'keeps the plain require surface within the boot budget' do
+    env = {
+      'SHOKO_TEST_MODE' => nil,
+      'SHOKO_EAGER_BOOT' => nil,
+    }
+    stdout, stderr, status = Open3.capture3(env, 'ruby', '-e', code)
+    expect(status.success?).to be(true), stderr
+
+    features = JSON.parse(stdout)
+    budget = 20
+
+    expect(features.length).to be <= budget, <<~MSG
+      Plain `require 'shoko'` loaded #{features.length} lib/shoko files (budget: #{budget}):
+      #{features.join("\n")}
+    MSG
   end
 end
 
