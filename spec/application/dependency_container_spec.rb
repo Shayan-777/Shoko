@@ -524,7 +524,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
 
         it 'resolves document_loader as typed port' do
           loader = container.resolve(:document_loader)
-          expect(loader).to be_a(Shoko::Application::Ports::Outbound::DocumentLoader)
+          expect(loader).to be_a(Shoko::Application::Ports::Internal::DocumentLoader)
         end
       end
 

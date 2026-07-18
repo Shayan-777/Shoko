@@ -149,7 +149,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
     let(:document) { instance_double(Shoko::Application::Models::ReaderDocument) }
     let(:deps) do
       instance_double(
-        Shoko::Adapters::Ui::ReaderUiDependencies,
+        Shoko::Adapters::Input::Controllers::Dependencies::MouseableReaderDependencies,
         ui_state_reader: ui_state_reader,
         formatting_service: formatting_service,
         layout_service: layout_service

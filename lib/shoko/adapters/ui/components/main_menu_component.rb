@@ -66,10 +66,10 @@ module Shoko
           def initialize(main_menu, menu_ui_dependencies:, menu_visual_profile: nil)
             super()
             @main_menu = main_menu
-            @observer_registry = main_menu.observer_registry
             @menu_ui_dependencies = menu_ui_dependencies
             @menu_visual_profile = menu_visual_profile
-            @catalog = @main_menu.catalog
+            @observer_registry = menu_ui_dependencies.observer_registry
+            @catalog = menu_ui_dependencies.catalog_service
 
             setup_screen_factories
 

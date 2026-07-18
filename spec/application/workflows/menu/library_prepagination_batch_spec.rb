@@ -17,7 +17,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch do
   let(:document) { instance_double(Shoko::Application::Models::ReaderDocument, cached?: true, chapter_count: 12) }
   let(:document_loader) do
     Class.new do
-      include Shoko::Application::Ports::Outbound::DocumentLoader
+      include Shoko::Application::Ports::Internal::DocumentLoader
 
       def initialize(document)
         @document = document

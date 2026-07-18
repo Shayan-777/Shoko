@@ -32,7 +32,7 @@ RSpec.describe 'Ports contract' do
   end
 
   describe 'port layout' do
-    it 'keeps ports application-owned under inbound/outbound only' do
+    it 'keeps ports application-owned under inbound/outbound/internal only' do
       core_ports_root = File.join(lib_root, 'core', 'ports')
       inbound = File.join(ports_root, 'inbound')
       outbound = File.join(ports_root, 'outbound')
@@ -42,12 +42,42 @@ RSpec.describe 'Ports contract' do
       expect(Dir.exist?(outbound)).to eq(true), "Missing outbound ports directory: #{outbound}"
 
       unexpected_dirs = Dir[File.join(ports_root, '*')].select do |path|
-        File.directory?(path) && !%w[inbound outbound].include?(File.basename(path))
+        File.directory?(path) && !%w[inbound outbound internal].include?(File.basename(path))
       end
       root_files = Dir[File.join(ports_root, '*.rb')]
 
       expect(unexpected_dirs + root_files).to be_empty,
                                               "Non-canonical application/ports artifacts found:\n#{(unexpected_dirs + root_files).join("\n")}"
+    end
+
+    # An outbound port is a contract fulfilled by an adapter. A contract
+    # implemented ONLY by application-layer objects is an internal role
+    # interface and lives under ports/internal — keeping "outbound" meaning
+    # what it says (constitution amendment 2026-07-18).
+    it 'keeps outbound ports adapter-implemented and internal ports application-implemented' do
+      includers = Hash.new { |h, k| h[k] = [] }
+      Dir[File.join(lib_root, '**', '*.rb')].each do |path|
+        non_comment_content(path).scan(/\binclude Shoko::Application::Ports::(Outbound|Internal)::([\w:]+)/) do |kind, name|
+          includers[[kind, name]] << path
+        end
+      end
+
+      misfiled_outbound = includers.filter_map do |(kind, name), paths|
+        next unless kind == 'Outbound'
+        next if paths.any? { |p| p.start_with?(File.join(lib_root, 'adapters')) }
+
+        "Outbound::#{name} is implemented only by #{paths.map { |p| rel(p) }.join(', ')} — move it to ports/internal"
+      end
+
+      misfiled_internal = includers.filter_map do |(kind, name), paths|
+        next unless kind == 'Internal'
+        adapter_impls = paths.select { |p| p.start_with?(File.join(lib_root, 'adapters')) }
+        next if adapter_impls.empty?
+
+        "Internal::#{name} has adapter implementer(s) #{adapter_impls.map { |p| rel(p) }.join(', ')} — it is outbound"
+      end
+
+      expect(misfiled_outbound + misfiled_internal).to eq([])
     end
   end
 
@@ -60,7 +90,7 @@ RSpec.describe 'Ports contract' do
     # consumers call duck-typed collaborators, so a production `include` is
     # the reliable, false-positive-free signal.
     it 'requires every interface port to have a production implementer (includer)' do
-      interface_ports = Dir[File.join(ports_root, '{inbound,outbound}', '**', '*.rb')].select do |path|
+      interface_ports = Dir[File.join(ports_root, '{inbound,outbound,internal}', '**', '*.rb')].select do |path|
         non_comment_content(path).include?('NotImplementedError')
       end
       expect(interface_ports).not_to be_empty, 'No interface ports found — glob or layout changed.'

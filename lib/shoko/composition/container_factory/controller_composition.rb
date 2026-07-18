@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../adapters/ui/menu_ui_dependencies'
-require_relative '../../adapters/ui/reader_ui_dependencies'
 require_relative 'controller_composition/menu_builder'
 
 module Shoko

@@ -11,7 +11,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::InlineLinkNavigator 
   let(:current_chapter) { 0 }
   let(:chapter_class) { Struct.new(:metadata) }
   let(:chapters) { [chapter_class.new({ source_path: 'OPS/ch1.xhtml' })] }
-  let(:document) { instance_double(Shoko::Application::Ports::Outbound::ReaderDocument, chapters: chapters) }
+  let(:document) { instance_double(Shoko::Application::Ports::Internal::ReaderDocument, chapters: chapters) }
   let(:document_reader) { -> { document } }
   let(:navigator) do
     described_class.new(

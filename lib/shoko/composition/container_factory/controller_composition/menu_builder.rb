@@ -3,8 +3,10 @@
 require 'shoko/shared/lazy_proxy'
 require 'shoko/application/use_cases/menu_intent_handler'
 require 'shoko/adapters/input/controllers/menu/controller'
+require 'shoko/adapters/input/controllers/menu/input_mode_observer'
 require 'shoko/adapters/input/controllers/menu/reader_launch_ports_adapter'
 require 'shoko/adapters/input/controllers/menu/workflow_ports_adapter'
+require 'shoko/adapters/input/controllers/menu/workflow_render_observer'
 require 'shoko/adapters/input/controllers/menu/intent_runtime_bridge'
 require 'shoko/adapters/ui/rendering/noop_terminal_state_writer'
 require 'shoko/adapters/ui/menu_ui_dependencies'
@@ -135,10 +137,7 @@ module Shoko
 
             def menu_ui_dependencies
               Shoko::Adapters::Ui::MenuUiDependencies.new(
-                menu_state_reader: menu_state_reader,
-                menu_session_mutator: menu_session_mutator,
-                reader_state_reader: reader_state_reader,
-                config_reader: app_config_store,
+                **menu_ui_state_attributes,
                 runtime_config: runtime_config,
                 dictionary_availability: dictionary_availability,
                 dictionary_storage: dictionary_storage,
@@ -149,6 +148,16 @@ module Shoko
                 reader_launch_state: reader_launch_state,
                 document: document
               )
+            end
+
+            def menu_ui_state_attributes
+              {
+                observer_registry: observer_registry,
+                menu_state_reader: menu_state_reader,
+                menu_session_mutator: menu_session_mutator,
+                reader_state_reader: reader_state_reader,
+                config_reader: app_config_store,
+              }
             end
 
             def self.resolve_services(container, service_map)
@@ -170,13 +179,15 @@ module Shoko
           def build_menu_controller(container)
             context = MenuBuildContext.resolve(container)
             controller_class = Shoko::Adapters::Input::Controllers::Menu::Controller
-            controller_class.new(
+            controller = controller_class.new(
               **menu_controller_dependencies(
                 container: container,
                 context: context,
                 controller_class: controller_class
               )
             )
+            register_menu_observers(controller: controller, context: context)
+            controller
           end
 
           private
@@ -228,22 +239,35 @@ module Shoko
 
           def build_runtime_dependencies(controller_class:, context:, frame_coordinator:, render_pipeline:)
             controller_class::RuntimeDependencies.build(
-              observer_registry: context.observer_registry,
               catalog: context.catalog_service,
               terminal_service: context.terminal_service,
               frame_coordinator: frame_coordinator,
               render_pipeline: render_pipeline,
               menu_state_reader: context.menu_state_reader,
               menu_session_mutator: context.menu_session_mutator,
-              clock: context.clock,
               process_control: context.process_control
             )
           end
 
+          # Observer wiring is composition, not controller behavior: the
+          # controller no longer carries observer_registry or clock just to
+          # register these two observers at construction.
+          def register_menu_observers(controller:, context:)
+            workflow_observer = Shoko::Adapters::Input::Controllers::Menu::WorkflowRenderObserver.new(
+              menu: controller, clock: context.clock, logger: context.logger
+            )
+            context.observer_registry.add_observer(workflow_observer, *workflow_observer.observed_paths)
+
+            input_observer = Shoko::Adapters::Input::Controllers::Menu::InputModeObserver.new(
+              input_controller: controller.input_controller, logger: context.logger
+            )
+            context.observer_registry.add_observer(input_observer, *input_observer.observed_paths)
+          end
+
           def build_builder_dependencies(controller_class:, container:, context:, composition_context:)
             controller_class::BuilderDependencies.build(
-              menu_ui_dependencies: context.menu_ui_dependencies,
-              ui_component_factory: context.ui_component_factory,
+              main_menu_component_factory: build_main_menu_component_factory(context),
+              **built_menu_notices(context),
               key_classifier: context.key_classifier,
               input_system_factory: context.input_system_factory,
               intent_handler_factory: build_intent_handler_factory(context),
@@ -252,6 +276,32 @@ module Shoko
                 context: composition_context
               )
             )
+          end
+
+          def built_menu_notices(context)
+            {
+              prepagination_toast: context.ui_component_factory.prepagination_toast(
+                menu_state_reader: context.menu_state_reader
+              ),
+              startup_notice: context.ui_component_factory.startup_notice(
+                menu_state_reader: context.menu_state_reader
+              ),
+            }
+          end
+
+          # The main menu component needs the controller for screen callbacks,
+          # so it stays a factory — but the closure captures the UI wiring
+          # here instead of handing the controller a component factory plus a
+          # 13-field dependency bag it never reads itself.
+          def build_main_menu_component_factory(context)
+            ui_component_factory = context.ui_component_factory
+            menu_ui_dependencies = context.menu_ui_dependencies
+            lambda do |controller|
+              ui_component_factory.main_menu_component(
+                controller: controller,
+                menu_ui_dependencies: menu_ui_dependencies
+              )
+            end
           end
 
           def build_intent_handler_factory(context)
@@ -268,11 +318,7 @@ module Shoko
             controller_class::SupportDependencies.build(
               notification_service: context.notification_service,
               clipboard_service: context.clipboard_service,
-              settings_service: context.settings_service,
-              annotation_service: context.annotation_service,
-              logger: context.logger,
-              file_probe: context.file_probe,
-              path_ops: context.path_ops
+              logger: context.logger
             )
           end
 
@@ -408,11 +454,13 @@ module Shoko
             }
           end
 
-          def menu_intent_service_dependencies(menu, context)
+          # Services come from the composition context directly — the menu
+          # controller is not a service locator for its intent handler.
+          def menu_intent_service_dependencies(_menu, context)
             {
-              settings_service: menu.settings_service,
-              annotation_service: menu.annotation_service,
-              catalog: menu.catalog,
+              settings_service: context.settings_service,
+              annotation_service: context.annotation_service,
+              catalog: context.catalog_service,
               menu_transient_store: context.menu_transient_store,
               logger: context.logger,
             }

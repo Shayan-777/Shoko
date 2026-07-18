@@ -3,7 +3,7 @@
 module Shoko
   module Application
     module Ports
-      module Outbound
+      module Internal
         # Port interface for loading a document for a source path.
         module DocumentLoader
           # @param path [String]

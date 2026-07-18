@@ -3,7 +3,7 @@
 module Shoko
   module Application
     module Ports
-      module Outbound
+      module Internal
         # Port interface for warming a freshly imported document so it opens
         # immediately in the subsequent session (e.g. persisted pagination).
         module DocumentWarmup

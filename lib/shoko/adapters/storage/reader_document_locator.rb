@@ -2,7 +2,7 @@
 
 require_relative '../../application/ports/outbound/cache_pointer_resolver'
 require_relative '../../application/ports/outbound/path_ops'
-require_relative '../../application/ports/outbound/reader_document'
+require_relative '../../application/ports/internal/reader_document'
 require_relative '../../application/ports/outbound/reader_document_locator'
 
 module Shoko
@@ -36,8 +36,8 @@ module Shoko
 
         def document_matches_path?(document, target_path)
           return false unless document && target_path
-          unless document.is_a?(Shoko::Application::Ports::Outbound::ReaderDocument)
-            raise ArgumentError, 'document must implement Application::Ports::Outbound::ReaderDocument'
+          unless document.is_a?(Shoko::Application::Ports::Internal::ReaderDocument)
+            raise ArgumentError, 'document must implement Application::Ports::Internal::ReaderDocument'
           end
 
           doc_path = document.canonical_path

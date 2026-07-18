@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Storage::ReaderDocumentLocator do
   ResolverPayload = Struct.new(:source_path)
   class ResolverDocument
-    include Shoko::Application::Ports::Outbound::ReaderDocument
+    include Shoko::Application::Ports::Internal::ReaderDocument
 
     attr_reader :canonical_path
 

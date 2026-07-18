@@ -24,7 +24,7 @@ RSpec.describe Shoko::Core::Services::TocTreeService do
       end
     end
     document_class = Class.new do
-      include Shoko::Application::Ports::Outbound::ReaderDocument
+      include Shoko::Application::Ports::Internal::ReaderDocument
 
       def initialize(chapters)
         @chapters = chapters

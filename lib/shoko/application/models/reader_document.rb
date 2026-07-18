@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../ports/outbound/reader_document'
+require_relative '../ports/internal/reader_document'
 
 module Shoko
   module Application
@@ -13,7 +13,7 @@ module Shoko
       # `book.title` is always populated. If a title is still missing here,
       # the importer failed its contract and we treat it as a parse error.
       class ReaderDocument
-        include Shoko::Application::Ports::Outbound::ReaderDocument
+        include Shoko::Application::Ports::Internal::ReaderDocument
 
         attr_reader :title,
                     :chapters,

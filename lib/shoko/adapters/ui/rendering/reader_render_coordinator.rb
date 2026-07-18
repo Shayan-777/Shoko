@@ -25,7 +25,7 @@ module Shoko
             :wrapping_service,
             :pagination,
             :doc,
-            :reader_dependencies,
+            :render_dependencies,
             :coordinate_service,
             :notification_service,
             :logger,
@@ -217,45 +217,9 @@ module Shoko
             )
           end
 
+          # Built fully formed at the composition root; no repackaging here.
           def render_dependencies
-            @render_dependencies ||= build_render_dependencies
-          end
-
-          def build_render_dependencies
-            reader_deps = deps.reader_dependencies
-            Shoko::Adapters::Ui::Components::Reading::RenderDependencies.new(
-              **render_dependency_attributes(reader_deps)
-            )
-          end
-
-          def render_dependency_attributes(reader_deps)
-            base_render_dependency_attributes(reader_deps).merge(pipeline_render_dependency_attributes(reader_deps))
-          end
-
-          def base_render_dependency_attributes(reader_deps)
-            {
-              layout_service: reader_deps.layout_service,
-              layout_metrics: reader_deps.layout_metrics,
-              render_state_writer: reader_deps.render_state_writer,
-              config_reader: reader_deps.config_reader,
-              reader_state_reader: reader_deps.reader_state_reader,
-              rendered_content_reader: reader_deps.rendered_content_reader,
-              logger: reader_deps.logger,
-              observer_registry: reader_deps.observer_registry,
-            }
-          end
-
-          def pipeline_render_dependency_attributes(reader_deps)
-            {
-              reader_launch_state: reader_deps.reader_launch_state,
-              document: reader_deps.document,
-              page_calculator: reader_deps.page_calculator,
-              formatting_service: reader_deps.formatting_service,
-              wrapping_service: reader_deps.wrapping_service,
-              kitty_image_renderer: reader_deps.kitty_image_renderer,
-              runtime_config: reader_deps.runtime_config,
-              terminal_output: reader_deps.terminal_service.output,
-            }
+            deps.render_dependencies
           end
         end
       end

@@ -21,14 +21,12 @@ module Shoko
             FallbackBounds = Data.define(:x, :y, :width, :height)
 
             RuntimeDependencies = Data.define(
-              :observer_registry,
               :catalog,
               :terminal_service,
               :frame_coordinator,
               :render_pipeline,
               :menu_state_reader,
               :menu_session_mutator,
-              :clock,
               :process_control
             ) do
               extend Shoko::Adapters::Input::Controllers::Dependencies::DependencyBuilder
@@ -36,21 +34,20 @@ module Shoko
 
               def self.required_fields
                 %i[
-                  observer_registry
                   catalog
                   terminal_service
                   frame_coordinator
                   render_pipeline
                   menu_state_reader
                   menu_session_mutator
-                  clock
                 ]
               end
             end
 
             BuilderDependencies = Data.define(
-              :menu_ui_dependencies,
-              :ui_component_factory,
+              :main_menu_component_factory,
+              :prepagination_toast,
+              :startup_notice,
               :key_classifier,
               :input_system_factory,
               :intent_handler_factory,
@@ -67,11 +64,7 @@ module Shoko
             SupportDependencies = Data.define(
               :notification_service,
               :clipboard_service,
-              :settings_service,
-              :annotation_service,
-              :logger,
-              :file_probe,
-              :path_ops
+              :logger
             ) do
               extend Shoko::Adapters::Input::Controllers::Dependencies::DependencyBuilder
 
@@ -81,8 +74,7 @@ module Shoko
             end
 
             attr_accessor :filtered_epubs
-            attr_reader :observer_registry,
-                        :main_menu_component,
+            attr_reader :main_menu_component,
                         :catalog,
                         :terminal_service,
                         :frame_coordinator,
@@ -91,9 +83,7 @@ module Shoko
                         :input_controller,
                         :menu_state_reader,
                         :menu_session_mutator,
-                        :intent_handler,
-                        :settings_service,
-                        :annotation_service
+                        :intent_handler
 
             def initialize(runtime:, builder:, support:)
               runtime.validate!
@@ -102,13 +92,11 @@ module Shoko
 
               assign_runtime_dependencies(runtime)
               assign_support_dependencies(support)
-              build_menu_component(builder)
-              @prepagination_toast = ui_component_factory.prepagination_toast(menu_state_reader: @menu_state_reader)
-              @startup_notice = ui_component_factory.startup_notice(menu_state_reader: @menu_state_reader)
+              @main_menu_component = builder.main_menu_component_factory.call(self)
+              @prepagination_toast = builder.prepagination_toast
+              @startup_notice = builder.startup_notice
               @filtered_epubs = []
               build_input_graph(builder)
-              register_workflow_render_observer
-              register_input_mode_observer
             end
 
             # Shared runtime helper still used by workflow bridges.
@@ -297,38 +285,20 @@ module Shoko
               @logger_ref
             end
 
-            def ui_component_factory
-              @ui_component_factory_ref
-            end
-
             def assign_runtime_dependencies(runtime)
-              @observer_registry = runtime.observer_registry
               @catalog = runtime.catalog
               @terminal_service = runtime.terminal_service
               @frame_coordinator = runtime.frame_coordinator
               @render_pipeline = runtime.render_pipeline
               @menu_state_reader = runtime.menu_state_reader
               @menu_session_mutator = runtime.menu_session_mutator
-              @clock = runtime.clock
               @process_control = runtime.process_control
             end
 
             def assign_support_dependencies(support)
               @notification_service = support.notification_service
               @clipboard_service = support.clipboard_service
-              @settings_service = support.settings_service
-              @annotation_service = support.annotation_service
               @logger_ref = support.logger
-              @file_probe = support.file_probe
-              @path_ops = support.path_ops
-            end
-
-            def build_menu_component(builder)
-              @ui_component_factory_ref = builder.ui_component_factory
-              @main_menu_component = ui_component_factory.main_menu_component(
-                controller: self,
-                menu_ui_dependencies: builder.menu_ui_dependencies
-              )
             end
 
             def build_input_graph(builder)
@@ -365,16 +335,6 @@ module Shoko
                 intent_handler: @intent_handler,
                 main_menu_component: @main_menu_component
               )
-            end
-
-            def register_workflow_render_observer
-              observer = WorkflowRenderObserver.new(menu: self, clock: @clock, logger: logger)
-              @observer_registry.add_observer(observer, *observer.observed_paths)
-            end
-
-            def register_input_mode_observer
-              observer = InputModeObserver.new(input_controller: @input_controller, logger: logger)
-              @observer_registry.add_observer(observer, *observer.observed_paths)
             end
 
             def cleanup_terminal

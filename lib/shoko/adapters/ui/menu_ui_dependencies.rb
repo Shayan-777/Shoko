@@ -5,6 +5,7 @@ module Shoko
     module Ui
       # Typed dependencies used by menu-facing UI adapters.
       MenuUiDependencies = Data.define(
+        :observer_registry,
         :menu_state_reader,
         :menu_session_mutator,
         :reader_state_reader,

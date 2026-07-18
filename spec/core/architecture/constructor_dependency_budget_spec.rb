@@ -176,9 +176,9 @@ RSpec.describe 'Constructor dependency budget' do
     budgets = {
       Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies => 4,
       Shoko::Application::Workflows::Menu::ReaderLaunchService::Dependencies => 10,
-      Shoko::Adapters::Input::Controllers::Menu::Controller::RuntimeDependencies => 10,
-      Shoko::Adapters::Input::Controllers::Menu::Controller::BuilderDependencies => 8,
-      Shoko::Adapters::Input::Controllers::Menu::Controller::SupportDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Menu::Controller::RuntimeDependencies => 7,
+      Shoko::Adapters::Input::Controllers::Menu::Controller::BuilderDependencies => 7,
+      Shoko::Adapters::Input::Controllers::Menu::Controller::SupportDependencies => 3,
       Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerCoreDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerStateDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerServiceDependencies => 8,
@@ -206,6 +206,64 @@ RSpec.describe 'Constructor dependency budget' do
 
     expect(offenders).to be_empty, <<~MSG
       Critical dependency objects exceed field budget:
+      #{offenders.join("\n")}
+    MSG
+  end
+
+  # Per-record budgets alone let aggregate coupling hide: a controller can
+  # satisfy every record cap while receiving dozens of capabilities across
+  # records. This ratchet counts the TRANSITIVE leaf dependencies each
+  # coordinating class receives (record fields summed, plus direct extras)
+  # and is frozen at post-refactor actuals — it may only shrink.
+  it 'caps the aggregate leaf dependencies of the coordinating controllers (shrink-only ratchet)' do
+    menu_controller = Shoko::Adapters::Input::Controllers::Menu::Controller
+    aggregates = {
+      # runtime + builder + support records
+      'Menu::Controller' => {
+        actual: menu_controller::RuntimeDependencies.members.size +
+                menu_controller::BuilderDependencies.members.size +
+                menu_controller::SupportDependencies.members.size,
+        budget: 17,
+      },
+      # six records + epub_path-independent direct extras
+      # (render_state_writer, mouse_handler, runtime_components_factory)
+      'MouseableReader' => {
+        actual: [
+          Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerCoreDependencies,
+          Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerStateDependencies,
+          Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerServiceDependencies,
+          Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeBootDependencies,
+          Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeStartupDependencies,
+          Shoko::Adapters::Input::Controllers::Dependencies::MouseableReaderDependencies,
+        ].sum { |record| record.members.size } + 3,
+        budget: 44,
+      },
+      # state + controllers + services bundle
+      'UIController' => {
+        actual: %i[StateDependencies ControllerDependencies ServiceDependencies].sum do |name|
+          Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies.const_get(name).members.size
+        end,
+        budget: 19,
+      },
+      # menu-facing UI component bag
+      'MenuUiDependencies' => {
+        actual: Shoko::Adapters::Ui::MenuUiDependencies.members.size,
+        budget: 14,
+      },
+      # render dependencies built at the composition root
+      'Reading::RenderDependencies' => {
+        actual: Shoko::Adapters::Ui::Components::Reading::RenderDependencies.members.size,
+        budget: 16,
+      },
+    }
+
+    offenders = aggregates.filter_map do |name, entry|
+      "#{name}: aggregate #{entry[:actual]} exceeds budget #{entry[:budget]}" if entry[:actual] > entry[:budget]
+    end
+
+    expect(offenders).to eq([]), <<~MSG
+      Aggregate dependency budgets exceeded (constitution: aggregate coupling is
+      measured across all dependency records a class receives, not per record):
       #{offenders.join("\n")}
     MSG
   end

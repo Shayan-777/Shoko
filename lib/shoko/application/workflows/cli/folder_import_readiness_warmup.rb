@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/application/ports/outbound/app_config_store'
-require 'shoko/application/ports/outbound/document_warmup'
+require 'shoko/application/ports/internal/document_warmup'
 require 'shoko/application/ports/outbound/reader_view_state_store'
 require 'shoko/application/ports/outbound/reader_runtime_context'
 require 'shoko/core/services/progress_ratio'
@@ -13,7 +13,7 @@ module Shoko
         # Warms persisted reader-ready pagination so imported books can open
         # immediately in the subsequent menu session.
         class FolderImportReadinessWarmup
-          include Shoko::Application::Ports::Outbound::DocumentWarmup
+          include Shoko::Application::Ports::Internal::DocumentWarmup
 
           Dependencies = Data.define(
             :page_calculator,

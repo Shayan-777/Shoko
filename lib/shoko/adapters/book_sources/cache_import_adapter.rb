@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../application/ports/outbound/folder_importer'
-require_relative '../../application/ports/outbound/document_loader'
-require_relative '../../application/ports/outbound/document_warmup'
+require_relative '../../application/ports/internal/document_loader'
+require_relative '../../application/ports/internal/document_warmup'
 require_relative '../support/progress_range_reporter'
 
 module Shoko
@@ -13,11 +13,11 @@ module Shoko
         include Shoko::Application::Ports::Outbound::FolderImporter
 
         def initialize(document_loader:, document_warmup: nil)
-          unless document_loader.is_a?(Shoko::Application::Ports::Outbound::DocumentLoader)
-            raise ArgumentError, 'document_loader must implement Application::Ports::Outbound::DocumentLoader'
+          unless document_loader.is_a?(Shoko::Application::Ports::Internal::DocumentLoader)
+            raise ArgumentError, 'document_loader must implement Application::Ports::Internal::DocumentLoader'
           end
-          if document_warmup && !document_warmup.is_a?(Shoko::Application::Ports::Outbound::DocumentWarmup)
-            raise ArgumentError, 'document_warmup must implement Application::Ports::Outbound::DocumentWarmup'
+          if document_warmup && !document_warmup.is_a?(Shoko::Application::Ports::Internal::DocumentWarmup)
+            raise ArgumentError, 'document_warmup must implement Application::Ports::Internal::DocumentWarmup'
           end
 
           @document_loader = document_loader

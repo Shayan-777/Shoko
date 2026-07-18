@@ -4,14 +4,14 @@ require_relative '../models/reader_document'
 require_relative '../ports/outbound/book_cache_store'
 require_relative '../ports/outbound/book_importer_resolver'
 require_relative '../ports/outbound/book_resource_warmup'
-require_relative '../ports/outbound/document_loader'
+require_relative '../ports/internal/document_loader'
 
 module Shoko
   module Application
     module Services
       # Application workflow for opening a book from cache or source import.
       class BookDocumentLoader
-        include Shoko::Application::Ports::Outbound::DocumentLoader
+        include Shoko::Application::Ports::Internal::DocumentLoader
 
         def initialize(book_cache_store:, book_importer_resolver:, runtime_config:, logger: nil,
                        book_resource_warmup: nil)

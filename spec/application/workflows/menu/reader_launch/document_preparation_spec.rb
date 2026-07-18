@@ -29,7 +29,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
   let(:loaded_document) { instance_double(Shoko::Application::Models::ReaderDocument, chapter_count: 7, canonical_path: '/books/a.epub') }
   let(:document_loader) do
     Class.new do
-      include Shoko::Application::Ports::Outbound::DocumentLoader
+      include Shoko::Application::Ports::Internal::DocumentLoader
 
       def load(path:, progress_reporter: nil)
       end

@@ -3,7 +3,7 @@
 module Shoko
   module Application
     module Ports
-      module Outbound
+      module Internal
         # Strict reader document contract used by core/application services.
         module ReaderDocument
           def canonical_path

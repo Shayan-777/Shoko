@@ -17,14 +17,15 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
       expect(menu).to be_a(described_class)
     end
 
-    it 'exposes observer_registry' do
-      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
-      expect(menu.observer_registry).to respond_to(:add_observer)
-    end
-
     it 'does not expose a container service-locator surface' do
       menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu).not_to respond_to(:container)
+      # Observer wiring moved to the composition root; the controller no
+      # longer carries the registry (or services it never used itself) just
+      # so other builders can read them back off it.
+      expect(menu).not_to respond_to(:observer_registry)
+      expect(menu).not_to respond_to(:settings_service)
+      expect(menu).not_to respond_to(:annotation_service)
     end
 
     it 'creates main_menu_component' do

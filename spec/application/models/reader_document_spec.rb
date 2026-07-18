@@ -27,7 +27,7 @@ RSpec.describe Shoko::Application::Models::ReaderDocument do
       loaded_from_cache: true
     )
 
-    expect(document).to be_a(Shoko::Application::Ports::Outbound::ReaderDocument)
+    expect(document).to be_a(Shoko::Application::Ports::Internal::ReaderDocument)
     expect(document.chapter_count).to eq(1)
     expect(document.get_chapter(0).lines).to eq([])
     expect(document.cached?).to be(true)

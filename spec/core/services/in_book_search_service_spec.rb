@@ -25,7 +25,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
   end
   let(:document_class) do
     Class.new do
-      include Shoko::Application::Ports::Outbound::ReaderDocument
+      include Shoko::Application::Ports::Internal::ReaderDocument
 
       attr_reader :chapters
 
@@ -122,7 +122,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     ]
 
     lazy_document = Class.new do
-      include Shoko::Application::Ports::Outbound::ReaderDocument
+      include Shoko::Application::Ports::Internal::ReaderDocument
 
       attr_reader :chapters
 

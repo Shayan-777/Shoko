@@ -15,7 +15,7 @@ require 'shoko/adapters/input/controllers/dependencies/reader_warmup_services'
 require 'shoko/adapters/input/controllers/mouseable_reader'
 require 'shoko/adapters/input/controllers/reader/intent_runtime_bridge'
 require 'shoko/adapters/input/controllers/reader/lifecycle_runner'
-require 'shoko/adapters/ui/reader_ui_dependencies'
+require 'shoko/adapters/ui/rendering/line/render_dependencies'
 require_relative 'reader_runtime_assembler'
 
 module Shoko
@@ -135,16 +135,12 @@ module Shoko
 
           OVERRIDDEN_FIELDS = %i[worker async_executor].freeze
 
-          READER_UI_DIRECT_FIELDS = {
+          RENDER_DEPENDENCY_FIELDS = {
             observer_registry: :observer_registry,
-            terminal_service: :terminal_service,
             reader_state_reader: :reader_state_reader,
             render_state_writer: :render_state_writer,
             rendered_content_reader: :rendered_content_reader,
-            notification_service: :notification_service,
             logger: :logger,
-            coordinate_service: :coordinate_service,
-            view_model_builder_factory: :view_model_builder_factory,
             layout_service: :layout_service,
             layout_metrics: :layout_metrics,
             page_calculator: :page_calculator,
@@ -154,7 +150,6 @@ module Shoko
             runtime_config: :runtime_config,
             reader_launch_state: :reader_launch_state,
             document: :document,
-            annotation_service: :annotation_service,
           }.freeze
 
           SERVICE_CONTEXT_FIELDS = {
@@ -186,9 +181,9 @@ module Shoko
               background_worker: background_worker
             )
             prepared = prepare_runtime_dependencies(resolved)
-            reader_ui_dependencies = build_reader_ui_dependencies(prepared)
+            render_dependencies = build_render_dependencies(prepared)
             controller_dependencies = build_controller_dependencies(prepared)
-            runtime_context = build_runtime_context(prepared, reader_ui_dependencies: reader_ui_dependencies)
+            runtime_context = build_runtime_context(prepared, render_dependencies: render_dependencies)
 
             instantiate_reader_controller(
               epub_path: epub_path,
@@ -315,14 +310,17 @@ module Shoko
 
           # ----- dependency construction --------------------------------------
 
-          def build_reader_ui_dependencies(prepared)
-            Shoko::Adapters::Ui::ReaderUiDependencies.new(
-              **extract_attributes(prepared, READER_UI_DIRECT_FIELDS),
-              ui_state_reader: prepared.reader_runtime_context,
-              config_reader: prepared.app_config_store
+          # The render dependencies are built here, fully formed, instead of
+          # shipping a wider ReaderUiDependencies bag for the render
+          # coordinator to repackage into this exact record at draw time.
+          def build_render_dependencies(prepared)
+            Shoko::Adapters::Ui::Components::Reading::RenderDependencies.new(
+              **extract_attributes(prepared, RENDER_DEPENDENCY_FIELDS),
+              config_reader: prepared.app_config_store,
+              terminal_output: prepared.terminal_service.output
             )
           end
-          private_class_method :build_reader_ui_dependencies
+          private_class_method :build_render_dependencies
 
           def build_controller_dependencies(prepared)
             ControllerDependencies.new(
@@ -472,13 +470,14 @@ module Shoko
 
           # ----- runtime context ----------------------------------------------
 
-          def build_runtime_context(prepared, reader_ui_dependencies:)
+          def build_runtime_context(prepared, render_dependencies:)
             ReaderRuntimeAssembler::RuntimeContext.new(
               platform: build_platform_context(prepared),
               state: build_state_context(prepared),
               ui: build_ui_context(prepared),
               services: build_service_context(prepared),
-              reader_ui_dependencies: reader_ui_dependencies
+              render_dependencies: render_dependencies,
+              view_model_builder_factory: prepared.view_model_builder_factory
             )
           end
           private_class_method :build_runtime_context

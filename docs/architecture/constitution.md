@@ -594,3 +594,37 @@ Every resilient boundary:
   (≤20 files on plain require) alongside the existing denylist, so
   re-eagering the graph fails the suite by an order of magnitude instead of
   needing a listed filename.
+
+- **2026-07-18 — Aggregate coupling becomes measurable; dependency bags stop
+  concealing it; "outbound" regains its meaning.** Typed dependency records
+  had made constructor budgets look healthy while hiding aggregate coupling:
+  the menu controller took 3 records carrying 22 leaf dependencies (two of
+  them — file_probe, path_ops — write-only dead fields), acted as a service
+  locator (menu_builder read settings_service/annotation_service/catalog back
+  off the controller's public readers; MainMenuComponent pulled
+  observer_registry/catalog off the controller instead of its own
+  dependencies), and ReaderUiDependencies (21 fields) existed only to be
+  repackaged by the render coordinator into the 16-field RenderDependencies
+  at draw time, with 4 fields dead in transit. Changes:
+  - Menu controller: dead fields removed; services the controller never used
+    rerouted from the composition context; observer wiring moved to the
+    composition root (controller drops observer_registry and clock); the
+    component-factory-plus-13-field-bag pass-through replaced by a closure
+    built in menu_builder. Aggregate: 22 → 17, with the locator surface
+    (settings_service/annotation_service/observer_registry readers) gone.
+  - Reader side: ReaderUiDependencies deleted. RenderDependencies is built
+    fully formed at the composition root and injected; the render
+    coordinator no longer repackages, and the assembler passes
+    view_model_builder_factory explicitly.
+  - The constructor-budget guardrail now ALSO ratchets **aggregate leaf
+    dependencies** per coordinating class (records summed + direct extras),
+    frozen at post-refactor actuals (Menu::Controller 17, MouseableReader 44,
+    UIController 19, MenuUiDependencies 14, RenderDependencies 16) —
+    shrink-only. Satisfying per-record caps by re-bagging no longer works.
+  - **Port doctrine:** an outbound port is a contract implemented by an
+    adapter. Contracts implemented only by application-layer objects are
+    internal role interfaces and live under `application/ports/internal/`
+    (ReaderDocument, DocumentLoader, DocumentWarmup moved). The
+    ports-contract guardrail enforces both directions: an outbound port
+    without an adapter implementer and an internal port with one are each
+    violations.

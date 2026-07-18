@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'contracts'
-require 'shoko/application/ports/outbound/document_loader'
+require 'shoko/application/ports/internal/document_loader'
 require 'shoko/application/ports/outbound/background_worker_builder'
 require 'shoko/application/ports/outbound/reader_launch_state'
 require 'shoko/application/ports/outbound/reader_session_store'
@@ -41,8 +41,8 @@ module Shoko
 
               def validate_contracts!
                 validate_contract(document_loader,
-                                  Shoko::Application::Ports::Outbound::DocumentLoader,
-                                  'document_loader must implement Application::Ports::Outbound::DocumentLoader')
+                                  Shoko::Application::Ports::Internal::DocumentLoader,
+                                  'document_loader must implement Application::Ports::Internal::DocumentLoader')
                 validate_contract(background_worker_builder,
                                   Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder,
                                   'background_worker_builder must implement Application::Ports::Outbound::BackgroundWorkerBuilder')

@@ -13,14 +13,14 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
 
   let(:document_loader) do
     Class.new do
-      include Shoko::Application::Ports::Outbound::DocumentLoader
+      include Shoko::Application::Ports::Internal::DocumentLoader
 
       def load(path:, progress_reporter: nil); end
     end.new
   end
   let(:document_warmup) do
     Class.new do
-      include Shoko::Application::Ports::Outbound::DocumentWarmup
+      include Shoko::Application::Ports::Internal::DocumentWarmup
 
       def warm(document, progress_reporter: nil)
         _ = [document, progress_reporter]
@@ -103,7 +103,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
     collector = build_progress_collector
     document = instance_double(Shoko::Application::Models::ReaderDocument, cached?: false)
     loader = Class.new do
-      include Shoko::Application::Ports::Outbound::DocumentLoader
+      include Shoko::Application::Ports::Internal::DocumentLoader
 
       attr_reader :reporters
 
@@ -120,7 +120,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
       end
     end.new(document)
     warmup = Class.new do
-      include Shoko::Application::Ports::Outbound::DocumentWarmup
+      include Shoko::Application::Ports::Internal::DocumentWarmup
 
       attr_reader :reporters
 

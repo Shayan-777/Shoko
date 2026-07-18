@@ -2,7 +2,7 @@
 
 require 'shoko/shared/errors'
 require_relative '../../ports/outbound/cache_availability'
-require_relative '../../ports/outbound/document_loader'
+require_relative '../../ports/internal/document_loader'
 require_relative '../../ports/outbound/prepagination_progress_writer'
 
 module Shoko
@@ -109,7 +109,7 @@ module Shoko
 
           def validate_ports!(deps)
             contract!(deps.cache_availability, Ports::Outbound::CacheAvailability, 'cache_availability')
-            contract!(deps.document_loader, Ports::Outbound::DocumentLoader, 'document_loader')
+            contract!(deps.document_loader, Ports::Internal::DocumentLoader, 'document_loader')
             contract!(deps.progress_writer, Ports::Outbound::PrepaginationProgressWriter, 'progress_writer')
           end
 

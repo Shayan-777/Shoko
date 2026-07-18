@@ -90,7 +90,8 @@ module Shoko
             :reader_pagination_store
           )
 
-          RuntimeContext = Data.define(:platform, :state, :ui, :services, :reader_ui_dependencies)
+          RuntimeContext = Data.define(:platform, :state, :ui, :services, :render_dependencies,
+                                       :view_model_builder_factory)
 
           # The assembled UI controller graph.
           Graph = Data.define(
@@ -671,10 +672,10 @@ module Shoko
               ui_state_reader: context.state.reader_runtime_context,
               terminal_service: context.platform.terminal_service,
               doc: context.platform.doc,
-              reader_dependencies: context.reader_ui_dependencies,
-              render_state_writer: context.reader_ui_dependencies&.render_state_writer,
+              render_dependencies: context.render_dependencies,
+              render_state_writer: context.render_dependencies.render_state_writer,
               config_reader: context.state.app_config_store,
-              view_model_builder_factory: context.reader_ui_dependencies&.view_model_builder_factory,
+              view_model_builder_factory: context.view_model_builder_factory,
               reader_state_reader: context.services.reader_state_reader,
             }
           end
