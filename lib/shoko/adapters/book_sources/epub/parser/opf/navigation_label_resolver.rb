@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'path_resolution'
 require 'cgi'
 
 require_relative '../html_processor'
@@ -58,14 +59,8 @@ module Shoko
           end
 
           def expanded_document_path(base)
-            base_dir = source_dir(@source_path)
+            base_dir = OPFPathResolution.dirname(@source_path)
             @entry_reader.expand_path(base_dir, base)
-          end
-
-          def source_dir(path)
-            str = path.to_s
-            idx = str.rindex('/')
-            idx ? str[0...idx] : ''
           end
 
           def heading_label_for(href)

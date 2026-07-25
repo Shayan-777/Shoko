@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'progress_throttle'
 require 'shoko/application/ports/outbound/catalog_refresh_control'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/application/ports/outbound/app_config_store'
@@ -24,7 +25,6 @@ module Shoko
         # the menu thread when the relay drains. Without a relay executor the
         # workflow stays fully synchronous.
         class DownloadWorkflow
-          MIN_PROGRESS_DELTA = 0.01
           include MenuStatePersistence
 
           # Raised inside the worker's progress callback to abort a download
@@ -291,7 +291,7 @@ module Shoko
               raise DownloadCancelledError, 'download cancelled' if @cancel_requested
 
               progress = total.to_i.positive? ? done.to_f / total : 0.0
-              next unless publish_progress?(progress, last_progress)
+              next unless ProgressThrottle.publish?(progress, last_progress)
 
               last_progress = progress
               @async_relay.enqueue { update_download_state(download_progress_payload(title, source, progress, total)) }
@@ -318,13 +318,6 @@ module Shoko
 
           def download_result_message(result)
             result[:existing] ? 'Already downloaded' : "Saved to #{path_basename(result[:path])}"
-          end
-
-          def publish_progress?(progress, last_progress)
-            return true if last_progress.nil?
-            return true if progress >= 1.0
-
-            (progress - last_progress).abs >= MIN_PROGRESS_DELTA
           end
 
           def log_resilient(operation, error, **metadata)

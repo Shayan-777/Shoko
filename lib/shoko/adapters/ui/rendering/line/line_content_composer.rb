@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/thread_local_scope'
 require_relative '../../components/render_style'
 require_relative '../../constants/highlighting'
 require 'shoko/application/ports/outbound/formatting/display_line'
@@ -33,12 +34,8 @@ module Shoko
             RUNTIME_CONFIG_KEY = :shoko_line_content_compose_runtime_config
 
             class << self
-              def with_runtime_config(config:)
-                previous = Thread.current[RUNTIME_CONFIG_KEY]
-                Thread.current[RUNTIME_CONFIG_KEY] = config if config
-                yield
-              ensure
-                Thread.current[RUNTIME_CONFIG_KEY] = previous
+              def with_runtime_config(config:, &)
+                Shoko::Shared::ThreadLocalScope.with(key: RUNTIME_CONFIG_KEY, value: config, &)
               end
 
               def with_compose_cache(enabled:)

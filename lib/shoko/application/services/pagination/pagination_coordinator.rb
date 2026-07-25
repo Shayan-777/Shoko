@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/core/reading/page_restore_updates'
 require_relative 'page_info_calculator'
 require_relative 'pagination_orchestrator'
 require 'shoko/core/services/progress_ratio'
@@ -395,16 +396,8 @@ module Shoko
           def apply_pending_restore(reader_snapshot, restore)
             return unless restore
 
-            updates = pending_restore_updates(restore)
+            updates = Shoko::Core::Reading::PageRestoreUpdates.build(restore)
             @reader_session_store.save(reader_snapshot.with(**updates)) unless updates.empty?
-          end
-
-          def pending_restore_updates(restore)
-            updates = {}
-            index = restore[:current_page_index]
-            updates[:current_page_index] = index if restore.key?(:current_page_index) && !index.nil?
-            updates[:pending_progress] = nil if restore[:clear_pending_progress]
-            updates
           end
 
           # Extracted coordinator bootstrap helpers so the coordinator entrypoint

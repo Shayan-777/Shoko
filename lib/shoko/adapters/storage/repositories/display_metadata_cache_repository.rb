@@ -9,6 +9,7 @@ require_relative '../atomic_file_writer'
 require_relative '../cache_paths'
 require 'shoko/shared/errors'
 require 'shoko/shared/hash_normalizer'
+require 'shoko/shared/display_metadata_fingerprint'
 
 module Shoko
   module Adapters
@@ -16,6 +17,8 @@ module Shoko
       module Repositories
         # JSON-backed cache for lightweight display metadata used by Browse Library.
         class DisplayMetadataCacheRepository
+          DisplayMetadataFingerprint = Shoko::Shared::DisplayMetadataFingerprint
+
           include Shoko::Application::Ports::Outbound::DisplayMetadataCache
 
           VERSION = 1
@@ -98,9 +101,11 @@ module Shoko
           def valid_payload?(payload, path:, size:, modified:)
             return false unless payload.is_a?(Hash)
             return false unless payload['version'].to_i == VERSION
+
+            fingerprint = DisplayMetadataFingerprint
             return false unless payload['path'].to_s == path.to_s
-            return false unless normalized_size(payload['size']) == normalized_size(size)
-            return false unless normalized_modified(payload['modified']) == normalized_modified(modified)
+            return false unless fingerprint.size(payload['size']) == fingerprint.size(size)
+            return false unless fingerprint.modified(payload['modified']) == fingerprint.modified(modified)
 
             %w[ok error].include?(payload['status'].to_s)
           end
@@ -109,8 +114,8 @@ module Shoko
             {
               'version' => VERSION,
               'path' => path.to_s,
-              'size' => normalized_size(size),
-              'modified' => normalized_modified(modified),
+              'size' => DisplayMetadataFingerprint.size(size),
+              'modified' => DisplayMetadataFingerprint.modified(modified),
             }
           end
 
@@ -160,24 +165,6 @@ module Shoko
             FileUtils.rm_f(path)
           rescue SystemCallError
             nil
-          end
-
-          # Integer-coerce with nil/blank/non-numeric → nil. The
-          # `exception: false` form is rescue-free.
-          def normalized_size(value)
-            return nil if value.nil?
-
-            string = value.to_s.strip
-            return nil if string.empty?
-
-            Integer(string, exception: false)
-          end
-
-          def normalized_modified(value)
-            return nil if value.nil?
-
-            string = value.to_s.strip
-            string.empty? ? nil : string
           end
         end
       end

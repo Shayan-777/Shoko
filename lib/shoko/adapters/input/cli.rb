@@ -160,7 +160,8 @@ module Shoko
 
           def emit_fatal_external_input_message(output, error)
             output.puts
-            output.puts("[#{fatal_event_id_for(error)}] Fatal external input error: #{error.message}")
+            event_id = Shoko::FatalExternalInputError.event_id(error)
+            output.puts("[#{event_id}] Fatal external input error: #{error.message}")
           end
 
           # The very last boundary: any error escaping the application (startup
@@ -171,19 +172,6 @@ module Shoko
             output.puts("Error: #{error.message} (#{error.class})")
             output.puts('Run with --log PATH --log-level debug for details.')
             process_control.terminate(1)
-          end
-
-          def fatal_event_id_for(error)
-            case error
-            when Shoko::MalformedBookInputError
-              'fatal.external_input.book'
-            when Shoko::MalformedMetadataInputError
-              'fatal.external_input.metadata'
-            when Shoko::MalformedDictionaryInputError
-              'fatal.external_input.dictionary'
-            else
-              'fatal.external_input.unknown'
-            end
           end
 
           # Contract coercion helpers for folder import workflow responses.

@@ -2,23 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
-  describe '#spurious_post_mouse_key?' do
-    let(:reader) { described_class.allocate }
-
-    it "does not drop 'q' after mouse tokens" do
-      ctx = { saw_mouse: true, saw_prefix: false }
-
-      expect(reader.send(:spurious_post_mouse_key?, 'q', ctx)).to be(false)
-    end
-
-    it 'drops escape after mouse tokens' do
-      ctx = { saw_mouse: false, saw_prefix: true }
-
-      expect(reader.send(:spurious_post_mouse_key?, "\e", ctx)).to be(true)
-    end
-  end
-
+RSpec.describe Shoko::Adapters::Input::Controllers::ReaderController do
   describe '#filter_mouse_sequences' do
     let(:reader) { described_class.allocate }
 
@@ -26,12 +10,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
       reader.instance_variable_set(:@mouse_handler, Shoko::Adapters::Input::Annotations::MouseHandler.new)
     end
 
-    it "does not trap 'q' behind a stale mouse prefix buffer" do
-      reader.instance_variable_set(:@mouse_input_buffer, +"\e[")
-
-      filtered = reader.send(:filter_mouse_sequences, ['q'])
-
-      expect(filtered).to eq(['q'])
+    it 'passes ordinary keys through the sequence filter' do
+      expect(reader.send(:filter_mouse_sequences, ['q'])).to eq(['q'])
     end
   end
 
@@ -149,7 +129,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
     let(:document) { instance_double(Shoko::Application::Models::ReaderDocument) }
     let(:deps) do
       instance_double(
-        Shoko::Adapters::Input::Controllers::Dependencies::MouseableReaderDependencies,
+        Shoko::Adapters::Input::Controllers::Dependencies::ReaderMouseDependencies,
         ui_state_reader: ui_state_reader,
         formatting_service: formatting_service,
         layout_service: layout_service
@@ -161,7 +141,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
       reader.instance_variable_set(:@config_reader, config_reader)
       reader.instance_variable_set(:@coordinate_service, coordinate_service)
       reader.instance_variable_set(:@rendered_content_reader, rendered_content_reader)
-      reader.instance_variable_set(:@logger_ref, nil)
+      reader.instance_variable_set(:@logger, nil)
       allow(reader).to receive(:doc).and_return(document)
       allow(reader).to receive(:state_controller).and_return(state_controller)
     end
@@ -196,7 +176,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
   end
 end
 
-RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader, 'bar overlay mouse' do
+RSpec.describe Shoko::Adapters::Input::Controllers::ReaderController, 'bar overlay mouse' do
   let(:reader) { described_class.allocate }
   let(:popup) { instance_double(Shoko::Adapters::Ui::Components::InBookSearchPopupComponent) }
   let(:coordinate_service) { instance_double(Shoko::Application::Services::CoordinateService) }

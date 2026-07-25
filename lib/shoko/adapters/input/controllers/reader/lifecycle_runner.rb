@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/adapters/runtime/inline_execution'
 require_relative 'startup_sequence'
 require 'shoko/application/ports/outbound/async_executor'
 require 'shoko/application/ports/outbound/background_worker_builder'
@@ -44,7 +45,7 @@ module Shoko
               end
 
               @background_worker = builder.build(logger: @logger, name: name)
-              @async_executor = @background_worker if inline_executor?(@async_executor)
+              @async_executor = @background_worker if Shoko::Adapters::Runtime::InlineExecution.inline?(@async_executor)
               @background_worker
             end
 
@@ -89,31 +90,12 @@ module Shoko
             def worker_executor?(executor)
               return false unless executor
 
-              executor.is_a?(Shoko::Application::Ports::Outbound::AsyncExecutor) && !inline_executor?(executor)
-            end
-
-            def inline_executor?(executor)
-              return false unless executor
-              return false unless defined?(Shoko::Adapters::Runtime::InlineExecutorAdapter)
-
-              executor.is_a?(Shoko::Adapters::Runtime::InlineExecutorAdapter)
+              executor.is_a?(Shoko::Application::Ports::Outbound::AsyncExecutor) && !Shoko::Adapters::Runtime::InlineExecution.inline?(executor)
             end
 
             def log_fatal_external_input(error)
-              @controller.logger&.error(fatal_event_id_for(error), error: error.class.name, message: error.message)
-            end
-
-            def fatal_event_id_for(error)
-              case error
-              when Shoko::MalformedBookInputError
-                'fatal.external_input.book'
-              when Shoko::MalformedMetadataInputError
-                'fatal.external_input.metadata'
-              when Shoko::MalformedDictionaryInputError
-                'fatal.external_input.dictionary'
-              else
-                'fatal.external_input.unknown'
-              end
+              @controller.logger&.error(Shoko::FatalExternalInputError.event_id(error),
+                                        error: error.class.name, message: error.message)
             end
           end
         end

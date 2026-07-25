@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/core/reading/page_restore_updates'
 require_relative 'cli_progress_presenter'
 require_relative '../../application/ports/internal/document_loader'
 require_relative '../../core/services/progress_ratio'
@@ -182,15 +183,7 @@ module Shoko
           restore = @page_calculator.apply_pending_precise_restore!(reader_snapshot)
           return reader_snapshot unless restore
 
-          persist_reader_snapshot(reader_snapshot, **dynamic_restore_updates(restore))
-        end
-
-        def dynamic_restore_updates(restore)
-          updates = {}
-          index = restore[:current_page_index]
-          updates[:current_page_index] = index if restore.key?(:current_page_index) && !index.nil?
-          updates[:pending_progress] = nil if restore[:clear_pending_progress]
-          updates
+          persist_reader_snapshot(reader_snapshot, **Shoko::Core::Reading::PageRestoreUpdates.build(restore))
         end
 
         def build_dynamic_cli_pages(context, progress)

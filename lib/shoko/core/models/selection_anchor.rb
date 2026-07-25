@@ -7,6 +7,8 @@ module Shoko
     module Models
       # Lightweight value object describing an anchor within rendered geometry.
       class SelectionAnchor
+        HashNormalizer = Shoko::Shared::HashNormalizer
+
         ATTRIBUTES = %i[page_id column_id geometry_key line_offset cell_index row column_origin].freeze
 
         attr_reader(*ATTRIBUTES)
@@ -25,22 +27,17 @@ module Shoko
           return anchor if anchor.is_a?(SelectionAnchor)
           return nil unless anchor.is_a?(Hash)
 
+          fields = HashNormalizer.symbolize_keys(anchor) || {}
           new(
-            page_id: extract(anchor, :page_id),
-            column_id: extract(anchor, :column_id),
-            geometry_key: extract(anchor, :geometry_key),
-            line_offset: extract(anchor, :line_offset, 0),
-            cell_index: extract(anchor, :cell_index, 0),
-            row: extract(anchor, :row, 0),
-            column_origin: extract(anchor, :column_origin, 0)
+            page_id: fields[:page_id],
+            column_id: fields[:column_id],
+            geometry_key: fields[:geometry_key],
+            line_offset: fields.fetch(:line_offset, 0),
+            cell_index: fields.fetch(:cell_index, 0),
+            row: fields.fetch(:row, 0),
+            column_origin: fields.fetch(:column_origin, 0)
           )
         end
-
-        def self.extract(hash, key, default = nil)
-          normalized = Shoko::Shared::HashNormalizer.symbolize_keys(hash) || {}
-          normalized.key?(key) ? normalized[key] : default
-        end
-        private_class_method :extract
 
         def to_h
           {

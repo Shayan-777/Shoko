@@ -7,8 +7,8 @@ module Shoko
     module Input
       module Controllers
         module Dependencies
-          # UI/composition collaborators for the mouse-capable reader shell.
-          MouseableReaderDependencies = Data.define(
+          # UI/composition collaborators for the reader's mouse state machine.
+          ReaderMouseDependencies = Data.define(
             :formatting_service,
             :layout_service,
             :dictionary_availability,

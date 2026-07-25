@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../source_path'
 require 'shoko/shared/errors'
 require 'shoko/core/models/chapter'
 require 'shoko/core/models/toc_entry'
@@ -42,7 +43,7 @@ module Shoko
           # @param path [String] path to .rtf file
           # @return [Core::Models::BookData]
           def import(path)
-            @rtf_path = validated_rtf_path(path)
+            @rtf_path = SourcePath.validated(path)
             doc = parsed_rtf_document
             metadata = instrumented_rtf_metadata(doc)
             chapters = build_chapters(instrumented_chapter_groups(doc))
@@ -54,13 +55,6 @@ module Shoko
           end
 
           private
-
-          def validated_rtf_path(path)
-            expanded = File.expand_path(path)
-            raise Shoko::FileNotFoundError, path unless File.file?(expanded)
-
-            expanded
-          end
 
           def parsed_rtf_document
             report('Reading RTF file...', progress: 0.0)

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../source_path'
 require 'base64'
 require 'rexml/document'
 require 'shoko/shared/errors'
@@ -41,7 +42,7 @@ module Shoko
           # @param path [String] path to .fb2 or .fb2.zip file
           # @return [Core::Models::BookData]
           def import(path)
-            @fb2_path = validated_fb2_path(path)
+            @fb2_path = SourcePath.validated(path)
             doc = parsed_fb2_document
             metadata = instrumented_fb2_metadata(doc)
             chapters = instrumented_fb2_chapters(doc)
@@ -56,13 +57,6 @@ module Shoko
           end
 
           private
-
-          def validated_fb2_path(path)
-            expanded = File.expand_path(path)
-            raise Shoko::FileNotFoundError, path unless File.file?(expanded)
-
-            expanded
-          end
 
           def parsed_fb2_document
             report('Reading FB2 file...', progress: 0.0)

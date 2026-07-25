@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative '../base_component'
 require 'shoko/shared/download_source_policy'
 require 'shoko/shared/terminal/text_sanitizer'
@@ -22,6 +23,10 @@ module Shoko
           # under the rule; search/download progress rides an accent stroke on
           # the status line.
           class DownloadBooksScreenComponent < BaseComponent
+            HashNormalizer = Shoko::Shared::HashNormalizer
+
+            TextSanitizer = Shoko::Shared::Terminal::TextSanitizer
+
             include Ui::TextUtils
 
             Palette = StatusBar::Palette
@@ -93,7 +98,7 @@ module Shoko
             end
 
             def status_label
-              msg = safe_text(download_message)
+              msg = TextSanitizer.single_line(download_message)
               case download_status
               when :searching then [msg.empty? ? "Searching #{current_source_label}…" : msg, Palette::LIST_MATCH_FG]
               when :downloading then [msg.empty? ? 'Downloading…' : msg, Palette::LIST_MATCH_FG]
@@ -104,7 +109,7 @@ module Shoko
             end
 
             def idle_status_text
-              query = safe_text(search_query).strip
+              query = TextSanitizer.single_line(search_query).strip
               query.empty? ? 'Press / and type to search the catalog' : "Results for “#{query}”"
             end
 
@@ -187,7 +192,7 @@ module Shoko
             def empty_state
               case download_status
               when :searching then ["Searching #{current_source_label}…", Palette::LIST_MATCH_FG]
-              when :error then [safe_text(download_message), Palette::LANDING_QUIT_FG]
+              when :error then [TextSanitizer.single_line(download_message), Palette::LANDING_QUIT_FG]
               else
                 if search_query.strip.empty?
                   ['No search results yet', Palette::LANDING_DIM_FG]
@@ -279,34 +284,27 @@ module Shoko
 
             def extract_book_fields(book)
               {
-                title: safe_text(value_for(book, :title, 'title', 'Untitled')),
-                authors: safe_text(Array(value_for(book, :authors, 'authors', [])).join(', ')),
-                languages: safe_text(Array(value_for(book, :languages, 'languages', [])).join(',')),
+                title: TextSanitizer.single_line(HashNormalizer.indifferent_fetch(book, :title,
+                                                                                  'Untitled')),
+                authors: TextSanitizer.single_line(Array(HashNormalizer.indifferent_fetch(book,
+                                                                                          :authors, [])).join(', ')),
+                languages: TextSanitizer.single_line(Array(HashNormalizer.indifferent_fetch(book,
+                                                                                            :languages, [])).join(',')),
                 meta: result_meta(book),
               }
             end
 
-            def value_for(book, key_sym, key_str, default)
-              return default unless book.is_a?(Hash)
-              return book[key_sym] if book.key?(key_sym)
-              return book[key_str] if book.key?(key_str)
-
-              default
-            end
-
             def result_meta(book)
-              return safe_text(value_for(book, :extension, 'extension', '').to_s.upcase) if libgen_result?(book)
+              if libgen_result?(book)
+                return TextSanitizer.single_line(HashNormalizer.indifferent_fetch(book, :extension,
+                                                                                  '').to_s.upcase)
+              end
 
-              value_for(book, :download_count, 'download_count', 0).to_i.to_s
+              HashNormalizer.indifferent_fetch(book, :download_count, 0).to_i.to_s
             end
 
             def libgen_result?(book)
-              value_for(book, :source, 'source', current_source) == :libgen
-            end
-
-            def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                                         preserve_tabs: false)
+              HashNormalizer.indifferent_fetch(book, :source, current_source) == :libgen
             end
 
             attr_reader :menu_state_reader, :config_reader

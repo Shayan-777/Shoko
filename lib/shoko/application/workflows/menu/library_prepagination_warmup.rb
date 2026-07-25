@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'port_contract'
 require 'shoko/shared/errors'
 require_relative '../../ports/outbound/reader_runtime_context'
 require_relative '../../ports/outbound/prepagination_progress_writer'
@@ -27,6 +28,8 @@ module Shoko
         # failure must never take down the menu — at worst pre-pagination
         # silently does nothing.
         class LibraryPrepaginationWarmup
+          include PortContract
+
           Dependencies = Data.define(
             :batch_runner, :app_config_store, :reader_runtime_context,
             :progress_writer, :background_worker_builder, :logger
@@ -159,12 +162,6 @@ module Shoko
             contract!(deps.progress_writer, Ports::Outbound::PrepaginationProgressWriter, 'progress_writer')
             contract!(deps.background_worker_builder, Ports::Outbound::BackgroundWorkerBuilder,
                       'background_worker_builder')
-          end
-
-          def contract!(object, port, name)
-            return if object.is_a?(port)
-
-            raise ArgumentError, "#{name} must implement #{port.name}"
           end
         end
       end

@@ -7,7 +7,7 @@ module Shoko
     module Runtime
       module SessionState
         # Application adapter implementing the ObserverRegistry port.
-        # Delegates observer registration to ObserverStateStore.
+        # Delegates observer registration to the application StateStore.
         class ObserverRegistryAdapter
           include Application::Ports::Outbound::ObserverRegistry
 

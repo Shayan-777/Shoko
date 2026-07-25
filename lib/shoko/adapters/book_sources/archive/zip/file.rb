@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'exact_io'
 require_relative 'central_directory_header_parser'
 require_relative 'central_directory_variable_fields'
 require_relative 'entry_factory'
@@ -98,8 +99,8 @@ module Shoko
       end
 
       def read_central_directory_entry
-        verify_signature(Signatures::CENTRAL_DIR, 'invalid central directory header signature')
-        fixed_header = read_exact(42, error_message: 'truncated central directory header')
+        ExactIo.verify_signature(@io, Signatures::CENTRAL_DIR, 'invalid central directory header signature')
+        fixed_header = ExactIo.read_exact(@io, 42, error_message: 'truncated central directory header')
         build_entry_from_header(fixed_header)
       end
 
@@ -152,18 +153,6 @@ module Shoko
 
         gp_flags = entry.gp_flags.to_i
         raise Error, "unsupported encrypted entry: #{entry_name}" if gp_flags.anybits?(0x1)
-      end
-
-      def verify_signature(expected_signature, error_message)
-        signature_bytes = @io.read(expected_signature.bytesize)
-        raise Error, error_message unless signature_bytes == expected_signature
-      end
-
-      def read_exact(byte_count, error_message:)
-        data = @io.read(byte_count)
-        return data if data && data.bytesize == byte_count
-
-        raise Error, error_message
       end
     end
   end

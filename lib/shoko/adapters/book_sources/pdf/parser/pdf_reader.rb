@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'stream_offset'
 require 'zlib'
 
 require_relative 'reader/dictionary_value_parser'
@@ -263,14 +264,7 @@ module Shoko
             endobj_idx = @data.index('endobj', offset)
             return nil unless endobj_idx && stream_start < endobj_idx
 
-            [@data[offset...stream_start], stream_data_start(stream_start)]
-          end
-
-          def stream_data_start(stream_start)
-            pos = stream_start + 6
-            pos += 1 if @data.getbyte(pos) == 0x0D
-            pos += 1 if @data.getbyte(pos) == 0x0A
-            pos
+            [@data[offset...stream_start], StreamOffset.data_start(@data, stream_start)]
           end
 
           def xref_table_parser

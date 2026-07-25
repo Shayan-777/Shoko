@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
@@ -36,6 +37,8 @@ module Shoko
         # renderer: it owns no selection/draft/caret state and re-renders from the
         # reader view-state store each frame.
         class NotesLookupPopupComponent < BaseComponent
+          HashNormalizer = Shoko::Shared::HashNormalizer
+
           include BottomLeftPanel
           include OverlayMouseTarget
           include Ui::CursorBlink
@@ -332,7 +335,7 @@ module Shoko
           end
 
           def render_editor(surface, bounds, layout, width, text_width, rows)
-            cursor_row, cursor_col = cursor_location(rows)
+            cursor_row, cursor_col = Ui::TextUtils.cursor_location(rows, cursor: @cursor)
             top = scroll_to_cursor(rows.length, layout[:source_rows], cursor_row)
             layout[:source_rows].times do |slot|
               idx = top + slot
@@ -441,10 +444,10 @@ module Shoko
               next unless ann.is_a?(Hash)
 
               {
-                note: value(ann, :note).to_s,
-                text: value(ann, :text).to_s,
-                chapter_index: value(ann, :chapter_index).to_i,
-                chapter_title: value(ann, :chapter_title).to_s,
+                note: HashNormalizer.indifferent_fetch(ann, :note).to_s,
+                text: HashNormalizer.indifferent_fetch(ann, :text).to_s,
+                chapter_index: HashNormalizer.indifferent_fetch(ann, :chapter_index).to_i,
+                chapter_title: HashNormalizer.indifferent_fetch(ann, :chapter_title).to_s,
                 page: page_value(ann),
               }
             end
@@ -454,40 +457,15 @@ module Shoko
           # controller (`display_page`) from the stored reading position, so it stays
           # correct across terminal resizes. Nil when not yet computed / unknown.
           def page_value(entry)
-            page = value(entry, :display_page)
+            page = HashNormalizer.indifferent_fetch(entry, :display_page)
             return nil if page.nil? || page.to_s.strip.empty?
 
             page.to_i
           end
 
-          def value(entry, key)
-            return entry[key] if entry.key?(key)
-
-            entry[key.to_s]
-          end
-
           # ----- caret/wrap helpers (shared shape with the translator editor) -----
 
           # Map the flat caret index onto a (row, column) in the wrapped layout.
-          def cursor_location(rows)
-            rows.each_with_index do |row, index|
-              finish = row[:start] + row[:text].length
-              next unless @cursor.between?(row[:start], finish)
-              next if crosses_into_next?(rows, index)
-
-              return [index, @cursor - row[:start]]
-            end
-            last = rows.length - 1
-            [last, rows[last][:text].length]
-          end
-
-          def crosses_into_next?(rows, index)
-            nxt = rows[index + 1]
-            return false unless nxt
-
-            @cursor == nxt[:start] && @cursor != rows[index][:start]
-          end
-
           def scroll_to_cursor(total, visible, cursor_row)
             return 0 if total <= visible
 

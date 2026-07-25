@@ -7,21 +7,7 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
   let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:config_dir) { @tmpdir }
   let(:config_file) { File.join(@tmpdir, 'config.json') }
-  let(:config_storage) do
-    storage = Object.new
-    dir = config_dir
-    file = config_file
-    storage.define_singleton_method(:config_dir) { dir }
-    storage.define_singleton_method(:config_file) { file }
-    storage.define_singleton_method(:ensure_config_dir) { FileUtils.mkdir_p(dir) }
-    storage.define_singleton_method(:atomic_write) do |path, data|
-      File.write(path, data)
-    end
-    storage.define_singleton_method(:read_file) do |path|
-      File.exist?(path) ? File.read(path) : nil
-    end
-    storage
-  end
+  let(:config_storage) { SpecSupport::FakeConfigStorage.new(config_dir) }
 
   around do |example|
     Dir.mktmpdir do |dir|

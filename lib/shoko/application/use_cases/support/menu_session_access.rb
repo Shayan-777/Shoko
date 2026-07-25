@@ -27,8 +27,8 @@ module Shoko
           end
 
           def current_menu
-            Shoko::Application::Ports::Outbound::State::MenuSnapshot.build(
-              @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
+            Shoko::Application::Ports::Outbound::State::MenuSnapshot.from_stores(
+              @menu_session_store, @menu_transient_store
             )
           end
 

@@ -18,6 +18,42 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     )
   end
 
+  # The core classifies failures by the typed code the repository port raises,
+  # never by sniffing a backend's error text. Two identical SQLite corruptions
+  # reported under different message wordings must classify the same, and a
+  # non-SQLite backend must classify at all.
+  describe 'backend-agnostic failure classification' do
+    before { allow(repository).to receive(:language_pair_available?).and_return(true) }
+
+    it 'uses the typed failure code, not the backend message wording' do
+      [
+        'database disk image is malformed',
+        'file is not a database',
+        'no such table: entries',
+        'something entirely different',
+      ].each do |message|
+        allow(repository).to receive(:search).and_raise(
+          Shoko::Core::Errors::DictionaryFailure.new(code: :corrupt_data, message: message)
+        )
+
+        result = service.lookup('haus')
+
+        expect(result.search_mode).to eq(:error)
+        expect(result.error_message).to eq('Dictionary database is corrupted. Reinstall the dictionary file.')
+      end
+    end
+
+    it 'classifies an untyped backend error as internal rather than guessing from its text' do
+      allow(repository).to receive(:search).and_raise(
+        Shoko::StorageError.new(:read, '/dict.sqlite3', 'database disk image is malformed')
+      )
+
+      expect(logger).to receive(:error).with('dictionary_lookup_failed', hash_including(code: :internal))
+
+      expect(service.lookup('haus').search_mode).to eq(:error)
+    end
+  end
+
   describe '#lookup' do
     it 'returns an empty result for blank input' do
       result = service.lookup(' ')

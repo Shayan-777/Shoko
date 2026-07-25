@@ -34,6 +34,8 @@ module Shoko
           # in height, so the window is measured in rows rather than counted in
           # books.
           class LibraryScreenComponent < BaseScreenComponent
+            TextSanitizer = Shoko::Shared::Terminal::TextSanitizer
+
             include Ui::TextUtils
 
             Palette = StatusBar::Palette
@@ -219,7 +221,7 @@ module Shoko
             end
 
             def title_of(item)
-              safe_text(item.title.to_s.strip.empty? ? 'Untitled' : item.title)
+              TextSanitizer.single_line(item.title.to_s.strip.empty? ? 'Untitled' : item.title)
             end
 
             # The label fills the column exactly, so the channel to its left
@@ -288,7 +290,7 @@ module Shoko
               return if rect.width < 20
 
               well = MenuDesign::CanvasWell.new(surface, bounds, rect: rect)
-              well.paint(title: well.truncate(safe_text(item.title || 'Untitled')), accent: accent)
+              well.paint(title: well.truncate(TextSanitizer.single_line(item.title || 'Untitled')), accent: accent)
               detail_lines(item, well.inner_width).each_with_index do |segments, offset|
                 break if offset >= well.inner_height
 
@@ -318,7 +320,7 @@ module Shoko
             end
 
             def append_detail(rows, label, value, width)
-              safe_value = safe_text(value.to_s.strip)
+              safe_value = TextSanitizer.single_line(value.to_s.strip)
               safe_value = '—' if safe_value.empty?
               value_width = [width - DETAIL_KEY_WIDTH - 1, 8].max
               wrap_text(safe_value, value_width).each_with_index do |part, index|
@@ -427,16 +429,11 @@ module Shoko
               value = path.to_s
               return '—' if value.empty?
 
-              safe_text(File.basename(value))
+              TextSanitizer.single_line(File.basename(value))
             end
 
             def format_size(bytes)
               format('%.1f MB', (bytes.to_f / (1024 * 1024)).round(1))
-            end
-
-            def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                                         preserve_tabs: false)
             end
 
             attr_reader :menu_state_reader

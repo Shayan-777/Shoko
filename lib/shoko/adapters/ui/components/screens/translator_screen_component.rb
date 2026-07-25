@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/index_range'
+require 'shoko/core/models/translation_language'
 require_relative '../base_component'
 require_relative '../menu_design/canvas_frame'
 require_relative '../menu_design/view_accents'
@@ -109,7 +111,7 @@ module Shoko
               return '' unless selection
 
               kind = selection[:pane].to_sym
-              start_index, end_index = selection_bounds(selection)
+              start_index, end_index = Shoko::Shared::IndexRange.ordered(selection)
               return '' if end_index <= start_index
 
               body_text(kind)[start_index...end_index].to_s
@@ -119,7 +121,7 @@ module Shoko
               return false unless selection && hit
               return false unless selection[:pane].to_sym == hit[:kind].to_sym
 
-              start_index, end_index = selection_bounds(selection)
+              start_index, end_index = Shoko::Shared::IndexRange.ordered(selection)
               return false if end_index <= start_index
 
               if hit[:inside_cluster]
@@ -671,16 +673,8 @@ module Shoko
             end
 
             def language_options(kind)
-              languages = Array(menu_state_reader&.translator_languages).map { |item| normalize_language(item) }
+              languages = Array(menu_state_reader&.translator_languages).map { |item| Shoko::Core::Models::TranslationLanguage.normalized_entry(item) }
               kind == :source ? [{ code: 'auto', name: 'Auto Detect' }, *languages] : languages
-            end
-
-            def normalize_language(item)
-              normalized = Shoko::Shared::HashNormalizer.symbolize_keys(item) || {}
-              {
-                code: normalized[:code].to_s,
-                name: normalized[:name].to_s,
-              }
             end
 
             def normalize_hash(value)
@@ -840,19 +834,13 @@ module Shoko
               selection = translator_selection
               return nil unless selection && selection[:pane].to_sym == kind
 
-              start_index, end_index = selection_bounds(selection)
+              start_index, end_index = Shoko::Shared::IndexRange.ordered(selection)
               return nil unless end_index > start_index
 
               {
                 start_index: start_index,
                 end_index: end_index,
               }
-            end
-
-            def selection_bounds(selection)
-              start_index = selection[:start_index].to_i
-              end_index = selection[:end_index].to_i
-              start_index <= end_index ? [start_index, end_index] : [end_index, start_index]
             end
 
             def source_cursor_index_for(kind, selection)

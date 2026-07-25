@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/terminal/mouse_button'
 require_relative 'inline_link/link_hit_resolver'
 require_relative 'inline_link/destination_resolver'
 
@@ -55,14 +56,9 @@ module Shoko
             private
 
             def navigation_context_for(event)
-              return nil unless left_click_release?(event)
+              return nil unless Shoko::Shared::Terminal::MouseButton.left_release?(event)
 
               @link_hit_resolver.context_for_event(event)
-            end
-
-            def left_click_release?(event)
-              button = event[:button].to_i
-              event[:released] && button.nobits?(0b11) && button.nobits?(32)
             end
           end
         end

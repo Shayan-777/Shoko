@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/text_buffer_edit'
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_access'
 require 'shoko/shared/text_sanitizer'
@@ -29,6 +30,8 @@ module Shoko
         #   * picker mode — type to filter languages, ↑/↓ move, ←/→ (or Tab) flip
         #     Source⇄Target, ↵ applies the language and re-translates, Esc backs out.
         class TranslatorController
+          TextBufferEdit = Shoko::Shared::TextBufferEdit
+
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
           include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
 
@@ -274,36 +277,8 @@ module Shoko
           def edit_source(edit_op)
             text = @reader_state.translator_query.to_s
             cursor = clamp_cursor(@reader_state.translator_cursor.to_i, text.length)
-            new_text, new_cursor = apply_source_edit(text, cursor, edit_op)
+            new_text, new_cursor = TextBufferEdit.apply(text, cursor, edit_op)
             @translator_ui_session.write_source(text: new_text, cursor: new_cursor)
-          end
-
-          def apply_source_edit(text, cursor, edit_op)
-            case edit_op&.operation
-            when :insert    then insert_at(text, cursor, edit_op.text.to_s)
-            when :newline   then insert_at(text, cursor, "\n", literal: true)
-            when :backspace then backspace_at(text, cursor)
-            when :delete    then delete_at(text, cursor)
-            else [text, cursor]
-            end
-          end
-
-          def insert_at(text, cursor, char, literal: false)
-            return [text, cursor] unless literal || Shoko::Shared::TextSanitizer.printable_char?(char)
-
-            ["#{text[0...cursor]}#{char}#{text[cursor..]}", cursor + char.length]
-          end
-
-          def backspace_at(text, cursor)
-            return [text, cursor] if cursor <= 0
-
-            ["#{text[0...(cursor - 1)]}#{text[cursor..]}", cursor - 1]
-          end
-
-          def delete_at(text, cursor)
-            return [text, cursor] if cursor >= text.length
-
-            ["#{text[0...cursor]}#{text[(cursor + 1)..]}", cursor]
           end
 
           def source_navigate(direction)

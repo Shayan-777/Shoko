@@ -4,6 +4,8 @@ require_relative '../../components/base_component'
 require_relative '../models/rendering_context'
 require_relative '../models/render_params'
 require 'shoko/shared/terminal/text_metrics'
+require 'shoko/application/ports/outbound/formatting/display_line'
+require 'shoko/core/models/block_type'
 require_relative '../line/render_dependencies'
 require_relative '../line/config_resolution'
 require_relative '../line/line_drawer'
@@ -249,6 +251,35 @@ module Shoko
 
             def draw_line_spacing(context)
               context ? ConfigResolution.line_spacing(context.config_reader) : :normal
+            end
+
+            # Column-fit and image probes are shared by the single- and
+            # split-column renderers; both ask the same question of the same
+            # DisplayLine shape, so the base owns one answer.
+            def lines_fit_column?(lines, col_width)
+              width = col_width.to_i
+              return true if width <= 0
+
+              Array(lines).first(6).all? do |line|
+                next true unless line
+                next true if image_line?(line)
+
+                text = display_line?(line) ? line.text.to_s : line.to_s
+                Shoko::Shared::Terminal::TextMetrics.visible_length(text) <= width
+              end
+            end
+
+            def image_line?(line)
+              return false unless display_line?(line)
+
+              meta = line.metadata
+              return false unless meta.is_a?(Hash)
+
+              Shoko::Core::Models::BlockType.image?(meta[:block_type])
+            end
+
+            def display_line?(line)
+              line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
             end
           end
         end

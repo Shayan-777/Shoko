@@ -220,7 +220,7 @@ module Shoko
           # ----- source well -----
 
           def render_source(surface, bounds, layout, width, text_width, rows)
-            cursor_row, cursor_col = cursor_location(rows)
+            cursor_row, cursor_col = Ui::TextUtils.cursor_location(rows, cursor: @cursor)
             top = scroll_to_cursor(rows.length, layout[:source_rows], cursor_row)
             layout[:source_rows].times do |slot|
               idx = top + slot
@@ -265,27 +265,8 @@ module Shoko
           end
 
           # Map the flat caret index onto a (row, column) in the wrapped layout.
-          def cursor_location(rows)
-            rows.each_with_index do |row, index|
-              finish = row[:start] + row[:text].length
-              next unless @cursor.between?(row[:start], finish)
-              next if crosses_into_next?(rows, index)
-
-              return [index, @cursor - row[:start]]
-            end
-            last = rows.length - 1
-            [last, rows[last][:text].length]
-          end
-
           # Prefer the *next* row when the caret sits exactly on a wrap boundary, so it
           # reads as "start of the next line" rather than "past the end of this one".
-          def crosses_into_next?(rows, index)
-            nxt = rows[index + 1]
-            return false unless nxt
-
-            @cursor == nxt[:start] && @cursor != rows[index][:start]
-          end
-
           def scroll_to_cursor(total, visible, cursor_row)
             return 0 if total <= visible
 

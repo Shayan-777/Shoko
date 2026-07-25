@@ -117,9 +117,17 @@ module Shoko
           Dir.glob(File.join(path, '*.sqlite3')).any?
         end
 
+        # A predicate answers its question. "The sqlite3 gem is not installed"
+        # is the false case, not a swallowed error: every caller
+        # (settings service, dictionary settings screen, reader controller)
+        # treats the result as a boolean, and three of them do not rescue — so
+        # raising here turned a missing optional gem into a crash instead of a
+        # "Needs sqlite3" notice.
         def self.sqlite3_available?
           Shoko::Shared::OptionalDependency.require_gem!('sqlite3')
           true
+        rescue Shoko::DependencyUnavailableError
+          false
         end
 
         SEARCH_HANDLERS = {

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'element_text'
+
 module Shoko
   module Adapters
     module BookSources
@@ -46,19 +48,8 @@ module Shoko
               element = parent.elements[tag]
               return nil unless element
 
-              text = collect_text(element).strip
+              text = ElementText.collect(element).strip
               text.empty? ? nil : text
-            end
-
-            def collect_text(element)
-              text = +''
-              element.each_child do |child|
-                case child
-                when REXML::Text then text << child.value
-                when REXML::Element then text << collect_text(child)
-                end
-              end
-              text
             end
 
             def extract_authors(title_info)
@@ -80,7 +71,7 @@ module Shoko
               date_element = title_info.elements['date']
               return nil unless date_element
 
-              raw = date_element.attributes['value'] || collect_text(date_element)
+              raw = date_element.attributes['value'] || ElementText.collect(date_element)
               return nil unless raw
 
               match = raw.match(/\d{4}/)

@@ -1,18 +1,19 @@
 # frozen_string_literal: true
 
+require 'shoko/adapters/runtime/inline_execution'
 require 'shoko/application/pending_jump_handler'
 require 'shoko/application/ports/outbound/background_worker_builder'
 require 'shoko/application/services/pagination/pagination_coordinator'
 require 'shoko/application/use_cases/reader_intent_handler'
 require 'shoko/core/services/in_book_search_service'
-require 'shoko/adapters/input/controllers/dependencies/mouseable_reader_dependencies'
+require 'shoko/adapters/input/controllers/dependencies/reader_mouse_dependencies'
 require 'shoko/adapters/input/controllers/dependencies/reader_controller_core_dependencies'
 require 'shoko/adapters/input/controllers/dependencies/reader_controller_service_dependencies'
 require 'shoko/adapters/input/controllers/dependencies/reader_controller_state_dependencies'
 require 'shoko/adapters/input/controllers/dependencies/reader_runtime_boot_dependencies'
 require 'shoko/adapters/input/controllers/dependencies/reader_runtime_startup_dependencies'
 require 'shoko/adapters/input/controllers/dependencies/reader_warmup_services'
-require 'shoko/adapters/input/controllers/mouseable_reader'
+require 'shoko/adapters/input/controllers/reader_controller'
 require 'shoko/adapters/input/controllers/reader/intent_runtime_bridge'
 require 'shoko/adapters/input/controllers/reader/lifecycle_runner'
 require 'shoko/adapters/ui/rendering/line/render_dependencies'
@@ -64,7 +65,6 @@ module Shoko
             :wrapping_service,
             :rendered_content_reader,
             :annotation_service,
-            :render_registry,
             :document_loader,
             :coordinate_service,
             :reader_document_locator,
@@ -260,19 +260,11 @@ module Shoko
           def prefer_worker_executor(async_executor:, worker:)
             return async_executor unless worker
             return worker if async_executor.nil?
-            return worker if inline_executor?(async_executor)
+            return worker if Shoko::Adapters::Runtime::InlineExecution.inline?(async_executor)
 
             async_executor
           end
           private_class_method :prefer_worker_executor
-
-          def inline_executor?(executor)
-            return false unless executor
-            return false unless defined?(Shoko::Adapters::Runtime::InlineExecutorAdapter)
-
-            executor.is_a?(Shoko::Adapters::Runtime::InlineExecutorAdapter)
-          end
-          private_class_method :inline_executor?
 
           def reader_lifecycle_factory
             lambda do |controller, **kwargs|
@@ -367,7 +359,6 @@ module Shoko
               popup_position_service: prepared.popup_position_service,
               rendered_content_reader: prepared.rendered_content_reader,
               annotation_service: prepared.annotation_service,
-              render_registry: prepared.render_registry,
               coordinate_service: prepared.coordinate_service
             ).validate!
           end
@@ -410,7 +401,7 @@ module Shoko
           private_class_method :build_runtime_startup_dependencies
 
           def build_mouse_support_dependencies(prepared)
-            deps::MouseableReaderDependencies.new(
+            deps::ReaderMouseDependencies.new(
               formatting_service: prepared.formatting_service,
               layout_service: prepared.layout_service,
               dictionary_availability: prepared.dictionary_availability,
@@ -553,7 +544,7 @@ module Shoko
           # ----- controller instantiation -------------------------------------
 
           def instantiate_reader_controller(epub_path:, prepared:, controller_dependencies:, runtime_context:)
-            Shoko::Adapters::Input::Controllers::MouseableReader.new(
+            Shoko::Adapters::Input::Controllers::ReaderController.new(
               epub_path,
               core: controller_dependencies.core,
               state: controller_dependencies.state,

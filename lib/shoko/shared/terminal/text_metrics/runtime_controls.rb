@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/thread_local_scope'
 require_relative '../../errors'
 
 module Shoko
@@ -15,12 +16,8 @@ module Shoko
           VISIBLE_LENGTH_CACHE_ENABLED_KEY = :shoko_visible_length_cache_enabled
           WRAP_PLAIN_TEXT_CACHE_ENABLED_KEY = :shoko_wrap_plain_text_cache_enabled
 
-          def with_runtime_config(config:)
-            previous = Thread.current[RUNTIME_CONFIG_KEY]
-            Thread.current[RUNTIME_CONFIG_KEY] = config if config
-            yield
-          ensure
-            Thread.current[RUNTIME_CONFIG_KEY] = previous
+          def with_runtime_config(config:, &)
+            Shoko::Shared::ThreadLocalScope.with(key: RUNTIME_CONFIG_KEY, value: config, &)
           end
 
           def configure_runtime_config!(runtime_config:)

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../../components/ui/bounds_geometry'
 require 'shoko/shared/terminal/text_metrics'
 require_relative 'config_resolution'
 require_relative 'kitty_image_line_renderer'
@@ -97,10 +98,6 @@ module Shoko
               context&.reader_state_reader&.hovered_inline_link
             end
 
-            def absolute_cell(bounds, row, col)
-              [bounds.y + row - 1, bounds.x + col - 1]
-            end
-
             def draw_prepared_line(surface:, bounds:, request:)
               prepared_line = prepared_line_for(bounds, request)
               record_line_geometry_for_request(prepared_line, request)
@@ -139,7 +136,7 @@ module Shoko
                 line_offset: line_offset,
                 hovered_inline_link: hovered_inline_link
               )
-              abs_row, abs_col = absolute_cell(bounds, row, col)
+              abs_row, abs_col = Ui::BoundsGeometry.absolute_position(bounds, row, col)
               clipped_styled, clipped_plain = clip_to_bounds(styled_text, width, bounds, abs_col)
               PreparedLine.new(
                 abs_row: abs_row,

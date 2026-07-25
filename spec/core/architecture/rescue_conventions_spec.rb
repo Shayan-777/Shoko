@@ -201,6 +201,16 @@ RSpec.describe 'Rescue and fallback conventions' do
     # this exemption states the same judgment honestly. Over-limit
     # expansion is NOT rescued: TooLarge always propagates.
     'adapters/rss/bounded_http_body.rb',
+
+    # `sqlite3_available?`: a predicate's contract is to answer its question,
+    # and "the optional gem is not installed" is the false case rather than a
+    # swallowed failure. Previously this raised and the reader controller
+    # laundered the literal through a `dictionary_lookup_unavailable?` wrapper
+    # returning `false` — invisible to the analyzer, exactly the pattern the
+    # bounded_http_body entry above describes — while the three call sites
+    # that did NOT rescue turned a missing gem into a crash. Answering
+    # honestly here is the fix; this exemption states that judgment openly.
+    'adapters/storage/sqlite_dictionary_adapter.rb',
   ].freeze
 
   it 'forbids fallback literal defaults directly after rescue branches' do

@@ -276,9 +276,27 @@ module Shoko
             content: full_content,
             summary: derive_summary(article[:summary], full_content)
           )
-        rescue ArticleContentFetcher::FetchError => e
-          log_debug('rss_reader.article_content_fetch_failed', url: article[:url], error: e.message)
+        # Resilient boundary (R4): full-article hydration is a best-effort
+        # enrichment that runs arbitrary third-party HTML through the fetcher,
+        # the extractor, and the entity decoder. The error set there is
+        # unbounded — malformed markup, mislabelled encodings, and plain bugs
+        # are not Shoko errors — and a single unreadable article must never
+        # abort subscribing to the feed. The article keeps its feed-supplied
+        # summary and the subscription proceeds.
+        # resilient-boundary
+        rescue StandardError => e
+          record_article_hydration_error(article, e)
           article
+        end
+
+        def record_article_hydration_error(article, error)
+          log_debug(
+            'rss_reader.article_content_fetch_failed',
+            url: article[:url],
+            error_class: error.class.name,
+            error: error.message
+          )
+          nil
         end
 
         def should_fetch_full_content?(payload)

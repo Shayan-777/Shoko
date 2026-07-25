@@ -8,6 +8,26 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
     File.binwrite(path, "SQLite format 3\0")
   end
 
+  # The predicate answers its question rather than raising: three of its call
+  # sites (settings service, dictionary settings screen, reader controller) do
+  # not rescue, so raising turned a missing optional gem into a crash instead
+  # of a "Needs sqlite3" notice.
+  describe '.sqlite3_available?' do
+    it 'is true when the optional gem loads' do
+      allow(Shoko::Shared::OptionalDependency).to receive(:require_gem!).with('sqlite3').and_return(true)
+
+      expect(described_class.sqlite3_available?).to be(true)
+    end
+
+    it 'is false — not an exception — when the optional gem is missing' do
+      allow(Shoko::Shared::OptionalDependency).to receive(:require_gem!).with('sqlite3').and_raise(
+        Shoko::DependencyUnavailableError, "Required optional gem 'sqlite3' is not installed"
+      )
+
+      expect(described_class.sqlite3_available?).to be(false)
+    end
+  end
+
   describe '#available_language_pairs' do
     it 'detects language pairs from valid database files' do
       Dir.mktmpdir do |dir|

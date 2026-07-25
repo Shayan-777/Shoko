@@ -4,9 +4,9 @@ module Shoko
   module Adapters
     module Input
       module Controllers
-        # Reopened here (defined in mouseable_reader.rb, which requires this file
+        # Reopened here (defined in reader_controller.rb, which requires this file
         # after the class body so the nesting resolves).
-        class MouseableReader
+        class ReaderController
           # Owns mouse-sequence buffering and filtering so stale prefixes do not trap real keys.
           class InputSequenceFilter
             def initialize(mouse_handler:, handle_mouse_input:)
@@ -55,7 +55,10 @@ module Shoko
                 @handle_mouse_input.call(token)
                 ctx[:saw_mouse] = true
               elsif @mouse_handler.mouse_prefix?(token)
-                @mouse_input_buffer = String(token)
+                # Unary + : the buffer is appended to as later tokens arrive,
+                # and the decoder hands back frozen literals for bare lead
+                # bytes (`"\e["`), so it must own a mutable copy.
+                @mouse_input_buffer = +String(token)
                 ctx[:saw_prefix] = true
               elsif spurious_post_mouse_key?(token, ctx)
                 nil

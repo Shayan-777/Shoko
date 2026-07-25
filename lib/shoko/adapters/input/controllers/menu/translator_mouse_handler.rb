@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/index_range'
 require 'shoko/shared/hash_normalizer'
+require 'shoko/shared/terminal/mouse_button'
 
 module Shoko
   module Adapters
@@ -30,7 +32,9 @@ module Shoko
               return false unless event
               return false unless @menu_state_reader.mode.to_sym == :translator
 
-              return handle_context_click(event, bounds) if right_click_press?(event)
+              if Shoko::Shared::Terminal::MouseButton.right_click_press?(event)
+                return handle_context_click(event, bounds)
+              end
               return dispatch_popup_event!(event, bounds) if context_menu_visible?
               return start_drag_interaction!(event, bounds) if left_button_press?(event)
               return update_drag_selection!(event, bounds) if left_drag?(event)
@@ -47,12 +51,6 @@ module Shoko
 
             def source_selection?(selection)
               selection && selection[:pane].to_sym == :source
-            end
-
-            def selection_bounds(selection)
-              start_index = selection[:start_index].to_i
-              end_index = selection[:end_index].to_i
-              start_index <= end_index ? [start_index, end_index] : [end_index, start_index]
             end
 
             def current_source_cursor
@@ -117,11 +115,6 @@ module Shoko
             def left_drag?(event)
               button = event[:button].to_i
               !event[:released] && button.anybits?(32) && button.nobits?(0b11)
-            end
-
-            def right_click_press?(event)
-              button = event[:button].to_i
-              !event[:released] && (button & 0b11) == 2 && button.nobits?(32)
             end
 
             def handle_context_click(event, bounds)
@@ -282,7 +275,7 @@ module Shoko
             end
 
             def replacement_range(menu, current_length)
-              return selection_bounds(current_selection) if replace_source_selection?(menu)
+              return Shoko::Shared::IndexRange.ordered(current_selection) if replace_source_selection?(menu)
 
               index = menu.fetch(:paste_index, current_source_cursor).to_i.clamp(0, current_length)
               [index, index]
@@ -317,7 +310,7 @@ module Shoko
               return [current_source_cursor, false] unless hit[:kind] == :source
               return [hit[:index], false] unless source_selection?(selection)
 
-              [selection_bounds(selection).first, true]
+              [Shoko::Shared::IndexRange.ordered(selection).first, true]
             end
 
             def notify_and_dismiss(message)

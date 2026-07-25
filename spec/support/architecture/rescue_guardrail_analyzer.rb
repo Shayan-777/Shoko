@@ -229,7 +229,7 @@ module SpecSupport
 
       def implicit_null_runtime_config_offenders(lib_root:)
         files = ruby_files(lib_root:)
-        pattern = /\|\|\s*Shoko::(?:Adapters|Shared)::Runtime::NullRuntimeConfig\.instance/
+        pattern = /\|\|\s*(?:Shoko::)?(?:[\w:]*::)?NullRuntimeConfig\.instance/
         offenders = []
 
         files.each do |path|

@@ -2,12 +2,12 @@
 
 require 'spec_helper'
 
-# Text selection and the right-click context menu are part of MouseableReader's
-# own mouse state machine (they were previously a SelectionMouseHandler mixin).
+# Text selection and the right-click context menu are part of ReaderController's
+# own mouse state machine.
 # These exercise that behavior directly on the host without standing up its full
 # dependency graph: `allocate` skips initialize, then only the ivars each method
 # touches are set.
-RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
+RSpec.describe Shoko::Adapters::Input::Controllers::ReaderController do
   let(:config_reader_class) do
     Class.new do
       def initialize(backend)
@@ -104,13 +104,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
       end
     end
 
-    context 'when dictionary availability raises a typed dependency error' do
-      it 'returns false instead of crashing the UI path' do
-        dict = instance_double(Shoko::Application::Ports::Outbound::DictionaryAvailability)
-        allow(dict).to receive(:sqlite3_available?).and_raise(
-          Shoko::DependencyUnavailableError,
-          "Required optional gem 'sqlite3' is not installed"
-        )
+    context 'when the sqlite3 backend is unavailable' do
+      # The port's contract is a boolean answer, so the controller simply
+      # believes it. The "optional gem is missing" case is answered honestly at
+      # the source (SqliteDictionaryAdapter.sqlite3_available?), covered in
+      # that adapter's own spec, rather than being rescued here.
+      it 'returns false without needing to rescue' do
+        dict = instance_double(Shoko::Application::Ports::Outbound::DictionaryAvailability, sqlite3_available?: false)
         reader = build_reader(config_reader: config_reader_class.new(:sqlite), dictionary_availability: dict)
 
         expect(reader.send(:dictionary_lookup_available?)).to be(false)

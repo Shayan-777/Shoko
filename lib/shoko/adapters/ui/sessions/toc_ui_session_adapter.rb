@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'support/session_outcome_construction'
 require 'shoko/shared/contracts/session_outcome'
 
 module Shoko
@@ -14,7 +15,9 @@ module Shoko
         # Mirrors InBookSearchUiSessionAdapter: a pure renderer fed from state, with
         # the document/tree logic living in the controller that drives this session.
         class TocUiSessionAdapter
-          RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
+          include Support::SessionOutcomeConstruction
+
+          RESCUABLE_ERRORS = Support::SessionOutcomeConstruction::RESCUABLE_ERRORS
 
           BLANK_TOC_STATE = {
             toc_query: '',
@@ -102,19 +105,6 @@ module Shoko
           rescue *RESCUABLE_ERRORS => e
             log_error('toc.session.current_popup', e)
             nil
-          end
-
-          def success_outcome(status, code, payload: nil)
-            Shoko::Shared::Contracts::SessionOutcome.success(status: status, code: code, payload: payload)
-          end
-
-          def failure_outcome(status, code, message, payload: nil)
-            Shoko::Shared::Contracts::SessionOutcome.failure(status: status, code: code, message: message,
-                                                             payload: payload)
-          end
-
-          def log_error(event, error)
-            @logger&.error(event, error: error.class.name, message: error.message)
           end
         end
       end

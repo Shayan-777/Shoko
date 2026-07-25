@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'policy_key'
+
 module Shoko
   module Shared
     # Shared normalization and validation rules for persisted download source identity.
@@ -19,7 +21,7 @@ module Shoko
       end
 
       def normalize(value)
-        key = normalize_key(value)
+        key = PolicyKey.normalize(value)
         return nil unless key
 
         CANONICAL_IDS.include?(key) ? key : nil
@@ -33,16 +35,6 @@ module Shoko
         normalized = normalize(value) || DEFAULT_ID
         LABELS.fetch(normalized)
       end
-
-      def normalize_key(value)
-        return nil if value.nil?
-
-        key = value.is_a?(Symbol) ? value : value.to_s.strip.downcase.to_sym
-        return nil if key == :''
-
-        key
-      end
-      private_class_method :normalize_key
     end
   end
 end

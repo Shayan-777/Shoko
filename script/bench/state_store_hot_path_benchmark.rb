@@ -31,7 +31,7 @@ module ShokoStateStoreHotPathBenchmark
   end
 
   def measure_simple_updates
-    with_store(Shoko::Adapters::Runtime::SessionState::ObserverStateStore) do |store|
+    with_store(Shoko::Application::State::StateStore) do |store|
       {
         scenario: 'simple_updates',
         updates: 10_000,
@@ -41,7 +41,7 @@ module ShokoStateStoreHotPathBenchmark
   end
 
   def measure_large_updates
-    with_store(Shoko::Adapters::Runtime::SessionState::ObserverStateStore) do |store|
+    with_store(Shoko::Application::State::StateStore) do |store|
       seed_large_state(store)
       store_timing = measure_updates(store: store, count: 2_000)
 
@@ -61,7 +61,7 @@ module ShokoStateStoreHotPathBenchmark
   end
 
   def measure_snapshot_loads
-    with_store(Shoko::Adapters::Runtime::SessionState::ObserverStateStore) do |store|
+    with_store(Shoko::Application::State::StateStore) do |store|
       seed_large_state(store)
       reader_store = Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter.new(store)
 

@@ -1,15 +1,16 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/terminal/mouse_button'
 require 'shoko/shared/hash_normalizer'
 
 module Shoko
   module Adapters
     module Input
       module Controllers
-        # Reopened here (defined in mouseable_reader.rb, which requires this file
+        # Reopened here (defined in reader_controller.rb, which requires this file
         # after the class body so the nesting resolves).
-        class MouseableReader
-          # Owns inline-link hover and click behavior for mouseable reader interactions.
+        class ReaderController
+          # Owns inline-link hover and click behavior for the reader's mouse interactions.
           class InlineLinkInteraction
             def initialize(inline_link_navigator:, reader_state_reader:, reader_session_mutator:)
               @inline_link_navigator = inline_link_navigator
@@ -45,7 +46,7 @@ module Shoko
 
             def inline_link_click_candidate?(event, mouse_handler)
               mouse_handler&.selecting &&
-                released_primary_click?(event) &&
+                Shoko::Shared::Terminal::MouseButton.left_release?(event) &&
                 collapsed_selection?(mouse_handler)
             end
 
@@ -84,11 +85,6 @@ module Shoko
                 end_char: end_char,
                 href: href,
               }
-            end
-
-            def released_primary_click?(event)
-              button = event[:button].to_i
-              event[:released] && button.nobits?(0b11) && button.nobits?(32)
             end
 
             def collapsed_selection?(mouse_handler)

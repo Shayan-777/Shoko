@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/dictionary_language_setting'
+
+require_relative 'catalog_list_rendering'
 require_relative '../base_component'
 require 'shoko/shared/terminal/text_sanitizer'
 require 'shoko/application/ports/inbound/menu_catalog'
@@ -22,7 +25,10 @@ module Shoko
           # search lives in the status bar; download progress rides an accent
           # stroke under the status line.
           class DictionarySettingsScreenComponent < BaseComponent
+            TextSanitizer = Shoko::Shared::Terminal::TextSanitizer
+
             include Ui::TextUtils
+            include CatalogListRendering
 
             Palette = StatusBar::Palette
 
@@ -86,17 +92,6 @@ module Shoko
             end
 
             # ----- settings rows -----
-
-            def render_actions(list, frame)
-              row = frame.body_top
-              action_items.each_with_index do |item, index|
-                break if row > frame.body_bottom
-
-                render_action_row(list, frame, item: item, index: index, row: row)
-                row += 1
-              end
-              row + 1
-            end
 
             def render_action_row(list, frame, item:, index:, row:)
               selected = selected_index == index
@@ -179,16 +174,6 @@ module Shoko
               ]
             end
 
-            def render_catalog_empty(frame, top, height)
-              frame.write_line(top + [height / 2, 0].max, [[empty_state_message, empty_state_fg]])
-            end
-
-            def catalog_window(items, height)
-              selection = [selected_index - action_items.length, 0].max
-              start_index, visible = Ui::ListWindowing.slice_visible(items, height, selection)
-              { start: start_index, items: visible }
-            end
-
             # ----- state + labels -----
 
             def dictionary_results
@@ -246,7 +231,7 @@ module Shoko
               return message unless message.empty?
 
               count = filtered_results.length
-              query = safe_text(dictionary_query).strip
+              query = TextSanitizer.single_line(dictionary_query).strip
               return "#{count} dictionaries" if query.empty?
 
               "#{count} for “#{query}”"
@@ -332,7 +317,7 @@ module Shoko
             def pair_value
               source = config_reader&.dictionary_source_lang
               target = config_reader&.dictionary_target_lang
-              src = dictionary_auto_setting?(source) ? 'Auto' : source.to_s.upcase
+              src = Shoko::Shared::DictionaryLanguageSetting.auto?(source) ? 'Auto' : source.to_s.upcase
               tgt = target.to_s.strip.empty? ? 'EN' : target.to_s.upcase
               "#{src} → #{tgt}"
             end
@@ -357,19 +342,6 @@ module Shoko
 
             def display_path(path)
               dictionary_storage&.display_path(path).to_s
-            end
-
-            def dictionary_auto_setting?(value)
-              return true if value.nil?
-
-              str = value.to_s.strip
-              str.empty? || str.casecmp('auto').zero?
-            end
-
-            def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(
-                text.to_s, preserve_newlines: false, preserve_tabs: false
-              )
             end
           end
         end

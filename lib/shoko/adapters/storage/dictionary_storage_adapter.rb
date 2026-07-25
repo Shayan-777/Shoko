@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'storage_error_translation'
 require 'fileutils'
 require_relative '../../application/ports/outbound/dictionary_storage'
 require_relative 'config_paths'
@@ -10,6 +11,8 @@ module Shoko
     module Storage
       # Adapter implementing dictionary database path/storage policy.
       class DictionaryStorageAdapter
+        include StorageErrorTranslation
+
         include Application::Ports::Outbound::DictionaryStorage
 
         def default_databases_path
@@ -73,12 +76,6 @@ module Shoko
           real
         rescue StandardError => e
           raise_storage_error('resolve_realpath', path, e)
-        end
-
-        def raise_storage_error(operation, path, error)
-          raise error if error.is_a?(Shoko::Error)
-
-          raise Shoko::StorageError.new(operation, path.to_s, error.message)
         end
       end
     end

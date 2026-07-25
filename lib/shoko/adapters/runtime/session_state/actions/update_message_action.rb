@@ -1,22 +1,19 @@
 # frozen_string_literal: true
 
-require_relative 'base_action'
-
 module Shoko
   module Adapters
     module Runtime
       module SessionState
         module Actions
-          # Action for updating the status message
-          class UpdateMessageAction < BaseAction
+          # Action for updating the status message, applied through
+          # StateStore#dispatch.
+          class UpdateMessageAction
             def initialize(message)
-              super(message: message)
+              @message = message
             end
 
             def apply(state)
-              msg = payload[:message]
-              safe = msg&.to_s
-              state.update({ %i[reader message] => safe })
+              state.update({ %i[reader message] => @message&.to_s })
             end
           end
         end

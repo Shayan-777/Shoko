@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'exact_io'
 require_relative 'decompressed_data'
 require_relative 'entry_decompressor'
 require_relative 'error'
@@ -26,12 +27,12 @@ module Shoko
 
       def seek_to_entry_data(entry)
         @io.seek(entry.local_header_offset, ::IO::SEEK_SET)
-        verify_signature(Signatures::LOCAL_FILE, 'invalid local file header signature')
+        ExactIo.verify_signature(@io, Signatures::LOCAL_FILE, 'invalid local file header signature')
         skip_local_file_header
       end
 
       def skip_local_file_header
-        header = read_exact(26, error_message: 'truncated local file header')
+        header = ExactIo.read_exact(@io, 26, error_message: 'truncated local file header')
         name_length, extra_length = LocalFileHeaderParser.extract_lengths(header)
         @io.seek(name_length + extra_length, ::IO::SEEK_CUR)
       end
@@ -56,18 +57,6 @@ module Shoko
       def decompress_deflated_entry(entry)
         decompressor = EntryDecompressor.new(@io, @limits)
         decompressor.inflate_deflated_entry(entry)
-      end
-
-      def verify_signature(expected_signature, error_message)
-        signature_bytes = @io.read(expected_signature.bytesize)
-        raise Error, error_message unless signature_bytes == expected_signature
-      end
-
-      def read_exact(byte_count, error_message:)
-        data = @io.read(byte_count)
-        return data if data && data.bytesize == byte_count
-
-        raise Error, error_message
       end
     end
   end

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/thread_local_scope'
 require 'shoko/adapters/output/terminal/text_metrics'
 
 module Shoko
@@ -24,12 +25,8 @@ module Shoko
 
               module_function
 
-              def with_runtime_config(config:)
-                previous = Thread.current[RUNTIME_CONFIG_KEY]
-                Thread.current[RUNTIME_CONFIG_KEY] = config if config
-                yield
-              ensure
-                Thread.current[RUNTIME_CONFIG_KEY] = previous
+              def with_runtime_config(config:, &)
+                Shoko::Shared::ThreadLocalScope.with(key: RUNTIME_CONFIG_KEY, value: config, &)
               end
 
               def configure_runtime_config!(runtime_config:)

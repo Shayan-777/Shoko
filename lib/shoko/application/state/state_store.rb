@@ -12,7 +12,7 @@ require_relative 'config_persistence'
 module Shoko
   module Application
     module State
-      # Immutable-snapshot state store.
+      # Immutable-snapshot state store with path-scoped observers.
       #
       # The store is the application's single in-memory source of truth for
       # session state. It is constructed at the composition root, given a
@@ -26,6 +26,10 @@ module Shoko
       # are rejected. Reads can therefore return internals without defensive
       # copies; out-of-band mutation raises instead of bypassing validation,
       # locking, change sets, and observers.
+      #
+      # Path observers are the store's single notification mechanism: consumers
+      # subscribe to state paths and are notified after a committed update, on
+      # the updating thread and outside the store's lock.
       class StateStore
         # Error raised when a state transition is invalid
         class StateUpdateError < StandardError
@@ -45,6 +49,11 @@ module Shoko
         LINE_SPACING_ALIASES = { tight: :compact, wide: :relaxed }.freeze
         private_constant :SYMBOL_KEYS, :LINE_SPACING_ALIASES
 
+        # @param config_storage [Application::Ports::Outbound::ConfigStorage] Port for configuration persistence
+        # @param terminal_capabilities [Application::Ports::Outbound::TerminalCapabilities]
+        #   Port for terminal capability detection
+        # @param schema_registry [SchemaRegistry] Composed schema fragments
+        # @param logger [Application::Ports::Outbound::Logging, nil] Logger (optional)
         def initialize(config_storage:, terminal_capabilities:, schema_registry:, logger: nil)
           @config_storage = config_storage
           @terminal_capabilities = terminal_capabilities
@@ -60,6 +69,9 @@ module Shoko
           )
           @state = build_initial_state
           @mutex = Mutex.new
+          @observers_by_path = {}
+          @observers_all = []
+          load_persisted_config
         end
 
         def config_dir = @config_storage.config_dir
@@ -80,12 +92,43 @@ module Shoko
           end
         end
 
+        # Commit updates, then notify observers outside the lock so a
+        # subscriber may read the store (or update it again) without deadlock.
         def update(updates)
-          @mutex.synchronize { commit_update(updates) }
+          change_set = @mutex.synchronize { commit_update(updates) }
+          notify_observers_for_change_set(change_set) if change_set && !change_set.empty?
+          change_set
         end
 
         def set(path, value)
-          update({ path => value })
+          update({ normalize_path(path) => value })
+          value
+        end
+
+        # Register an observer for specific state paths; with no paths the
+        # observer receives every change.
+        # Observer must respond to `state_changed(path, old_value, new_value)`.
+        #
+        # @param observer [Object] Object implementing state_changed
+        # @param paths [Array<Symbol, Array>] State paths to observe
+        def add_observer(observer, *paths)
+          if paths.empty?
+            @observers_all << observer unless @observers_all.include?(observer)
+            return
+          end
+
+          paths.each do |path|
+            list = (@observers_by_path[normalize_path(path)] ||= [])
+            list << observer unless list.include?(observer)
+          end
+        end
+
+        # Remove observer from all paths
+        #
+        # @param observer [Object] Observer to remove
+        def remove_observer(observer)
+          @observers_all.delete(observer)
+          @observers_by_path.each_value { |list| list.delete(observer) }
         end
 
         # Validate state transition (override in subclasses)
@@ -231,11 +274,81 @@ module Shoko
           end
         end
 
-        # Merge persisted config into state. Called by ObserverStateStore
-        # during construction; the base store never loads it on its own.
-        def load_config_from_file
+        # Merge persisted config into state during construction, writing the
+        # file back when this is the first run.
+        def load_persisted_config
+          config_missing = !@config_storage.file_exist?(config_file)
           config_updates = @config_persistence.load(config: get([:config]) || {}, config_file: config_file)
           update(config_updates) unless config_updates.empty?
+          save_config if config_missing
+        end
+
+        def notify_observers_for_change_set(change_set)
+          change_set.each do |change|
+            notify_observers(normalize_path(change.path), change.old_value, change.new_value)
+          end
+        end
+
+        # Each observer hears about a given change at most once, even when it
+        # is subscribed to the exact path, a parent path, and globally.
+        def notify_observers(path, old_value, new_value)
+          notified = {}.compare_by_identity
+          change = [path, old_value, new_value]
+
+          notify_observer_list(@observers_by_path[path], change, notified)
+          notify_parent_path_observers(change, notified)
+          notify_observer_list(@observers_all, change, notified)
+        end
+
+        # Notify observers watching parent paths (e.g. [:reader] when
+        # [:reader, :mode] changes).
+        def notify_parent_path_observers(change, notified)
+          path = change[0]
+          return if path.length <= 1
+
+          (1...path.length).each do |i|
+            notify_observer_list(@observers_by_path[path[0, i]], change, notified)
+          end
+        end
+
+        def notify_observer_list(observers, change, notified)
+          path, old_value, new_value = change
+          Array(observers).each do |observer|
+            next if notified.key?(observer)
+
+            safe_notify(observer, path, old_value, new_value)
+            notified[observer] = true
+          end
+        end
+
+        # Observer notification is an isolation boundary: observers are
+        # arbitrary registered code, so one failing observer must not break
+        # the state update or starve the remaining observers.
+        def safe_notify(observer, path, old_value, new_value)
+          observer.state_changed(path, old_value, new_value)
+        # resilient-boundary
+        rescue StandardError => e
+          record_observer_notification_error(observer, path, e)
+        end
+
+        def record_observer_notification_error(observer, path, error)
+          log_debug(
+            'observer.notify failed',
+            observer: observer.class.name,
+            path: path,
+            error_class: error.class.name,
+            error: error.message
+          )
+          nil
+        end
+
+        # Normalize a path to a frozen array of symbols.
+        def normalize_path(path)
+          case path
+          when Array then path.dup.freeze
+          when Symbol then [path].freeze
+          else [path.to_sym].freeze
+          end
         end
 
         def validate_state_update(path, value)

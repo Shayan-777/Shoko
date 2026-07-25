@@ -7,6 +7,7 @@ require_relative '../../shared/errors'
 require_relative '../../shared/version'
 require_relative '../base_adapter'
 require_relative 'bounded_http_body'
+require_relative 'redirect_resolver'
 require_relative 'feed_parser'
 
 module Shoko
@@ -59,7 +60,7 @@ module Shoko
             location = response['location'].to_s.strip
             raise FetchError, 'Feed redirect is missing a location' if location.empty?
 
-            return perform_request(resolve_redirect(uri, location),
+            return perform_request(RedirectResolver.resolve(uri, location),
                                    etag: etag,
                                    last_modified: last_modified,
                                    redirects_left: redirects_left - 1)
@@ -119,21 +120,6 @@ module Shoko
           uri
         end
 
-        def resolve_redirect(uri, location)
-          parsed = URI.parse(location)
-          return uri + parsed.to_s if parsed.relative?
-
-          parsed
-        rescue URI::InvalidURIError
-          uri + location
-        end
-
-        def decoded_body(response)
-          body = response.body.to_s
-          encoding = response['content-encoding'].to_s.downcase
-          BoundedHttpBody.decompress(body, encoding, limit: @max_decompressed_bytes)
-        end
-
         def not_modified_payload(response, uri, etag, last_modified)
           {
             not_modified: true,
@@ -157,7 +143,7 @@ module Shoko
         end
 
         def build_fetch_payload(response, final_uri)
-          parsed = @parser.parse(decoded_body(response))
+          parsed = @parser.parse(BoundedHttpBody.decode(response, limit: @max_decompressed_bytes))
           {
             not_modified: false,
             url: final_uri.to_s,

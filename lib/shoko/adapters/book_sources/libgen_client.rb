@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require 'fileutils'
 require 'json'
 require 'net/http'
@@ -29,6 +30,8 @@ module Shoko
       # Downloads resolve through the site's real chain:
       # `ads.php?md5=…` → keyed `get.php` link → CDN, streamed to disk.
       class LibgenClient < Shoko::Adapters::BaseAdapter
+        HashNormalizer = Shoko::Shared::HashNormalizer
+
         class Error < Shoko::Error; end
 
         # Mirrors are tried in order; the first that answers is promoted to
@@ -96,7 +99,7 @@ module Shoko
         # @param book [Hash] a search result carrying :md5
         # @return [String] absolute keyed get.php URL
         def resolve_download_url(book)
-          md5 = value_for(book, :md5, 'md5', '').to_s.strip.downcase
+          md5 = HashNormalizer.indifferent_fetch(book, :md5, '').to_s.strip.downcase
           raise Error, "Invalid md5: #{md5.inspect}" unless md5.match?(MD5_PATTERN)
 
           link = fetch("/ads.php?md5=#{md5}")[DOWNLOAD_LINK_PATTERN]
@@ -458,14 +461,6 @@ module Shoko
         def translate_download_error(error, url, dest_path)
           log_error('libgen_download_failed', error: error.message, url: url.to_s, dest_path: dest_path)
           Error.new(error.message)
-        end
-
-        def value_for(book, key_sym, key_str, default)
-          return default unless book.is_a?(Hash)
-          return book[key_sym] if book.key?(key_sym)
-          return book[key_str] if book.key?(key_str)
-
-          default
         end
       end
     end

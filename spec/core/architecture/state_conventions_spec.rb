@@ -80,7 +80,6 @@ RSpec.describe 'State conventions' do
     it 'forbids direct filesystem probes in the application state store' do
       files = [
         File.join(lib_root, 'application', 'state', 'state_store.rb'),
-        File.join(lib_root, 'application', 'state', 'observer_state_store.rb'),
         File.join(lib_root, 'application', 'state', 'config_persistence.rb'),
       ]
       offenders = files.filter_map do |path|
@@ -95,7 +94,7 @@ RSpec.describe 'State conventions' do
 
     it 'requires state-store persistence collaborators to rely on config_storage.file_exist?' do
       files = [
-        File.join(lib_root, 'application', 'state', 'observer_state_store.rb'),
+        File.join(lib_root, 'application', 'state', 'state_store.rb'),
         File.join(lib_root, 'application', 'state', 'config_persistence.rb'),
       ]
       missing = files.filter_map do |path|
@@ -235,14 +234,7 @@ RSpec.describe 'State conventions' do
 
   describe 'frozen-tree state invariant' do
     def build_store(dir, registry: nil)
-      storage = Object.new
-      file = File.join(dir, 'config.json')
-      storage.define_singleton_method(:config_dir) { dir }
-      storage.define_singleton_method(:config_file) { file }
-      storage.define_singleton_method(:ensure_config_dir) { FileUtils.mkdir_p(dir) }
-      storage.define_singleton_method(:atomic_write) { |path, data| File.write(path, data) }
-      storage.define_singleton_method(:read_file) { |path| File.exist?(path) ? File.read(path) : nil }
-      storage.define_singleton_method(:file_exist?) { |path| File.exist?(path) }
+      storage = SpecSupport::FakeConfigStorage.new(dir)
 
       registry ||= Shoko::Application::State::SchemaRegistry.new
                                                             .register(Shoko::Core::Reading::Schema)

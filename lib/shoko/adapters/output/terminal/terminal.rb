@@ -164,11 +164,7 @@ module Shoko
             end
 
             def configure_runtime_config(runtime_config)
-              unless runtime_config.is_a?(Shoko::Application::Ports::Outbound::RuntimeConfig)
-                raise ArgumentError, 'runtime_config must implement Application::Ports::Outbound::RuntimeConfig'
-              end
-
-              @runtime_config = runtime_config
+              @runtime_config = Shoko::Application::Ports::Outbound::RuntimeConfig.validate!(runtime_config)
             end
 
             def color_mode

@@ -54,7 +54,7 @@ RSpec.describe 'No reflection probing' do
       adapters/output/kitty/kitty_graphics.rb
       adapters/ui/rendering/line/config_resolution.rb
       adapters/ui/components/main_menu_component.rb
-      adapters/ui/components/ui/backdrop_overlay.rb
+      adapters/ui/components/ui/backdrop_cell_map.rb
       adapters/ui/sessions/dictionary_ui_session_adapter.rb
       shared/lazy_proxy.rb
       shared/language_directory.rb

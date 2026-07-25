@@ -7,6 +7,17 @@ module Shoko
         # Port interface for process-level runtime configuration.
         # Implementations adapt environment variables or other runtime sources.
         module RuntimeConfig
+          # The contract states what conformance means, so every adapter that
+          # accepts a runtime config checks it the same way and reports it with
+          # the same message.
+          #
+          # @raise [ArgumentError] when the object does not implement this port
+          def self.validate!(runtime_config)
+            return runtime_config if runtime_config.is_a?(self)
+
+            raise ArgumentError, 'runtime_config must implement Application::Ports::Outbound::RuntimeConfig'
+          end
+
           # @return [Boolean]
           def skip_progress_overlay?
             raise NotImplementedError, "#{self.class} must implement #skip_progress_overlay?"

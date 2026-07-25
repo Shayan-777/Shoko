@@ -6,6 +6,28 @@ module Shoko
 
   # Base error for malformed/corrupt external input that must terminate execution.
   class FatalExternalInputError < Error
+    # Structured log/event id for a fatal external-input failure. The mapping
+    # is a property of the taxonomy, so it lives with the taxonomy: every
+    # termination path (CLI, menu controller, reader lifecycle) reports the
+    # same id for the same error, and adding a member here cannot leave a
+    # reporting site behind.
+    UNKNOWN_EVENT_ID = 'fatal.external_input.unknown'
+
+    # Matched by class, not by name, so subclasses report their parent's id
+    # (BookParseError is a MalformedBookInputError and must stay
+    # `fatal.external_input.book`).
+    #
+    # @param error [Exception]
+    # @return [String]
+    def self.event_id(error)
+      case error
+      when MalformedBookInputError then 'fatal.external_input.book'
+      when MalformedMetadataInputError then 'fatal.external_input.metadata'
+      when MalformedDictionaryInputError then 'fatal.external_input.dictionary'
+      else UNKNOWN_EVENT_ID
+      end
+    end
+
     attr_reader :source
 
     def initialize(message, source: nil)

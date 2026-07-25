@@ -37,7 +37,7 @@ require_relative '../../adapters/storage/repositories/bookmark_repository'
 require_relative '../../adapters/storage/repositories/annotation_repository'
 require_relative '../../adapters/storage/repositories/progress_repository'
 require_relative '../../adapters/runtime/session_state/session_schema_reset_guard'
-require_relative '../../application/state/observer_state_store'
+require_relative '../../application/state/state_store'
 require_relative '../../application/state/schema_registry'
 require_relative '../../core/reading/schema'
 require_relative '../../application/state/schema/reader_process'
@@ -423,7 +423,7 @@ module Shoko
         def register_global_state(container)
           container.register_singleton(:global_state) do |c|
             reset_result = run_schema_reset_guard(c)
-            store = Shoko::Application::State::ObserverStateStore.new(
+            store = Shoko::Application::State::StateStore.new(
               config_storage: c.resolve(:config_storage),
               terminal_capabilities: c.resolve(:terminal_capabilities),
               schema_registry: c.resolve(:schema_registry),

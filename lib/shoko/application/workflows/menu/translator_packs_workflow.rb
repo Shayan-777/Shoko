@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'progress_throttle'
 require 'shoko/application/ports/outbound/menu_session_store'
 require 'shoko/application/ports/outbound/menu_transient_store'
 require 'shoko/core/models/translator_pack_entry'
@@ -13,7 +14,6 @@ module Shoko
         # model provider offers, marking what is installed, and downloading
         # or removing packs.
         class TranslatorPacksWorkflow
-          MIN_PROGRESS_DELTA = 0.01
           include MenuStatePersistence
 
           def initialize(model_catalog_service:, model_store:, menu_session_store:, menu_transient_store:,
@@ -106,7 +106,7 @@ module Shoko
             last_progress = nil
             @model_catalog_service.download(remote, @model_store) do |done, total|
               progress = total.to_i.positive? ? done.to_f / total : 0.0
-              next unless publish_progress?(progress, last_progress)
+              next unless ProgressThrottle.publish?(progress, last_progress)
 
               update_packs_state(download_progress_payload(label, progress, total))
               last_progress = progress
@@ -183,13 +183,6 @@ module Shoko
             return value if value.is_a?(Shoko::Core::Models::TranslatorPackEntry)
 
             Shoko::Core::Models::TranslatorPackEntry.from_h(value)
-          end
-
-          def publish_progress?(progress, last_progress)
-            return true if last_progress.nil?
-            return true if progress >= 1.0
-
-            (progress - last_progress).abs >= MIN_PROGRESS_DELTA
           end
 
           def log_resilient(operation, error, **metadata)

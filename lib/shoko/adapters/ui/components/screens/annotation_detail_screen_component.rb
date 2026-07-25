@@ -19,6 +19,8 @@ module Shoko
           # the in-book notes panel's reading order, given the whole canvas.
           # Small dim labels separate the sections; no divider lines.
           class AnnotationDetailScreenComponent < BaseComponent
+            TextSanitizer = Shoko::Shared::Terminal::TextSanitizer
+
             include Ui::TextUtils
             include AnnotationScreenRendering
 
@@ -109,22 +111,18 @@ module Shoko
             end
 
             def wrap_block(text, width, empty:)
-              clean = safe_text(text.to_s)
+              clean = TextSanitizer.single_line(text.to_s)
               clean = empty if clean.strip.empty?
               wrap_words(clean, [width, 8].max)
             end
 
             def compact_book_label
-              safe_text(resolve_book_label.to_s)
+              TextSanitizer.single_line(resolve_book_label.to_s)
             end
 
             def selected_annotation
               ann = menu_state_reader&.selected_annotation
               ann if ann.is_a?(Hash)
-            end
-
-            def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(text, preserve_newlines: false, preserve_tabs: false)
             end
           end
         end

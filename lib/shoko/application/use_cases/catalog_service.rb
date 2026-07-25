@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'time'
+require 'shoko/shared/display_metadata_fingerprint'
 
 require_relative '../../application/ports/outbound/background_worker_builder'
 require_relative '../../application/ports/outbound/display_metadata_cache'
@@ -16,6 +17,8 @@ module Shoko
       # Facade providing catalog data (cached books, scan status, metadata) to higher layers.
       # Wraps the infrastructure scanner/metadata helpers so presentation never touches them directly.
       class CatalogService
+        DisplayMetadataFingerprint = Shoko::Shared::DisplayMetadataFingerprint
+
         DISPLAY_METADATA_KEYS = %i[title author authors author_str year language].freeze
         ERROR_METADATA = Object.new.freeze
 
@@ -366,8 +369,8 @@ module Shoko
         def metadata_fingerprint(path:, size:, modified:)
           {
             path: path.to_s,
-            size: normalized_size(size.nil? ? fingerprint_size_for(path) : size),
-            modified: normalized_modified(modified || modified_for(path)),
+            size: DisplayMetadataFingerprint.size(size.nil? ? fingerprint_size_for(path) : size),
+            modified: DisplayMetadataFingerprint.modified(modified || modified_for(path)),
           }
         end
 
@@ -383,7 +386,7 @@ module Shoko
         # the file is gone. Filesystem exceptions are handled inside the
         # `FileProbe` adapter; this method sees only a typed result.
         def modified_for(path)
-          normalized_modified(@file_probe.mtime(path))
+          DisplayMetadataFingerprint.modified(@file_probe.mtime(path))
         end
 
         def fingerprint_size_for(path)
@@ -394,22 +397,6 @@ module Shoko
         # nil. `Integer(..., exception: false)` returns nil on parse
         # failure without needing a rescue, so this normalizer is fully
         # exception-free.
-        def normalized_size(value)
-          return nil if value.nil?
-
-          string = value.to_s.strip
-          return nil if string.empty?
-
-          Integer(string, exception: false)
-        end
-
-        def normalized_modified(value)
-          return nil if value.nil?
-
-          string = value.to_s.strip
-          string.empty? ? nil : string
-        end
-
         # Logger-write failures (Shoko::LoggingError) deliberately surface
         # — the LoggerAdapter is designed to raise on broken output
         # streams and that signal must not be swallowed by observability

@@ -11,6 +11,8 @@ module Shoko
     module BookSources
       # Coordinates remote catalog search + download to the local library.
       class DownloadService < Shoko::Adapters::BaseAdapter
+        HashNormalizer = Shoko::Shared::HashNormalizer
+
         class DownloadError < Shoko::Error; end
         # Remote catalogs supply the id/extension that become path components.
         # Cap the extension so a hostile value can't bloat the filename.
@@ -44,7 +46,8 @@ module Shoko
 
         def download(book, source: nil)
           normalized_book = normalize_book_payload(book)
-          source_id = normalize_source(source || value_for(normalized_book, :source, 'source', nil))
+          source_id = normalize_source(source || HashNormalizer.indifferent_fetch(normalized_book,
+                                                                                  :source, nil))
           url = pick_download_url(normalized_book, source: source_id)
           extension = filename_extension_for(normalized_book, source: source_id)
           raise DownloadError, missing_download_message(source_id) unless url
@@ -109,7 +112,7 @@ module Shoko
         end
 
         def pick_gutendex_download_url(book)
-          formats = value_for(book, :formats, 'formats', {})
+          formats = HashNormalizer.indifferent_fetch(book, :formats, {})
           return nil unless formats.is_a?(Hash)
 
           epub_key = preferred_epub_key(formats)
@@ -120,7 +123,7 @@ module Shoko
 
         def filename_for(book, extension:)
           id = sanitize_path_component(raw_id(book))
-          title = value_for(book, :title, 'title', 'book').to_s
+          title = HashNormalizer.indifferent_fetch(book, :title, 'book').to_s
           slug = title.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/^-|-$/, '')
           slug = "book-#{id}" if slug.empty?
           file_extension = normalize_extension(extension)
@@ -128,8 +131,8 @@ module Shoko
         end
 
         def raw_id(book)
-          id = value_for(book, :id, 'id', '').to_s.strip
-          id = value_for(book, :md5, 'md5', '').to_s.strip if id.empty?
+          id = HashNormalizer.indifferent_fetch(book, :id, '').to_s.strip
+          id = HashNormalizer.indifferent_fetch(book, :md5, '').to_s.strip if id.empty?
           id
         end
 
@@ -157,7 +160,7 @@ module Shoko
                       when :gutendex
                         'epub'
                       when :libgen
-                        value_for(book, :extension, 'extension', 'epub')
+                        HashNormalizer.indifferent_fetch(book, :extension, 'epub')
                       end
 
           extension || 'epub'
@@ -239,14 +242,6 @@ module Shoko
           return default unless payload.is_a?(Hash)
           return payload[key_sym] if payload.key?(key_sym)
           return payload[key_str] if payload.key?(key_str)
-
-          default
-        end
-
-        def value_for(book, key_sym, key_str, default)
-          return default unless book.is_a?(Hash)
-          return book[key_sym] if book.key?(key_sym)
-          return book[key_str] if book.key?(key_str)
 
           default
         end

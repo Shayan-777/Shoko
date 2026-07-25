@@ -166,6 +166,14 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationWarmup d
   end
 
   context 'when enabled and the size changed' do
+    # Snappiness guarantee: the warmup SUPERVISES an out-of-process batch
+    # through the PrepaginationBatchRunner port and never paginates in the
+    # menu process. Pagination is CPU-bound; under the GIL even a low-priority
+    # thread starves the render loop (measured at ~6x press->paint latency and
+    # multi-second freezes before the 2026-06 fix — see
+    # script/bench/menu_responsiveness_benchmark.rb). That the work is
+    # requested from the port, and that the warmup owns no document loader or
+    # page calculator to do it with, is what these assertions establish.
     it 'runs the batch at the current size and mirrors its progress' do
       expect(warmup.start).to eq(:started)
 

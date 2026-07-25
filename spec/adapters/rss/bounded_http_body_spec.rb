@@ -26,6 +26,80 @@ RSpec.describe Shoko::Adapters::Rss::BoundedHttpBody do
     end
   end
 
+  def body_response(body, content_type: nil, content_encoding: nil)
+    headers = { 'content-type' => content_type, 'content-encoding' => content_encoding }
+    response = Object.new
+    response.define_singleton_method(:body) { body }
+    response.define_singleton_method(:[]) { |name| headers[name.to_s.downcase] }
+    response
+  end
+
+  # Net::HTTP hands back ASCII-8BIT bytes. Every consumer downstream (feed
+  # parser, article extractor, HTML entity decoder) does regex/String work
+  # against UTF-8 literals, so a BINARY body raised Encoding::CompatibilityError
+  # inside the parsers — not a Shoko::Error, so it escaped every rescue on the
+  # add-feed path and the failure disappeared into the relay's debug log.
+  describe '.decode' do
+    it 'returns UTF-8 text for a binary body' do
+      body = 'Kriegsgerät: Leopard 2'.dup.force_encoding(Encoding::BINARY)
+
+      decoded = described_class.decode(body_response(body, content_type: 'text/html'), limit: 1024)
+
+      expect(decoded.encoding).to eq(Encoding::UTF_8)
+      expect(decoded).to be_valid_encoding
+      expect(decoded).to eq('Kriegsgerät: Leopard 2')
+    end
+
+    it 'is usable with UTF-8 string operations (the regression that broke add-feed)' do
+      body = 'Bundeswehr — Waffen'.dup.force_encoding(Encoding::BINARY)
+
+      decoded = described_class.decode(body_response(body, content_type: 'text/html'), limit: 1024)
+
+      expect { decoded.gsub(/&auml;/, 'ä') }.not_to raise_error
+    end
+
+    it 'honours a declared non-UTF-8 charset' do
+      body = 'Grüße'.encode('ISO-8859-1').dup.force_encoding(Encoding::BINARY)
+
+      decoded = described_class.decode(
+        body_response(body, content_type: 'text/html; charset=ISO-8859-1'), limit: 1024
+      )
+
+      expect(decoded).to eq('Grüße')
+    end
+
+    it 'degrades to scrubbed UTF-8 for an unknown charset instead of raising' do
+      body = 'plain text'.dup.force_encoding(Encoding::BINARY)
+
+      decoded = described_class.decode(
+        body_response(body, content_type: 'text/html; charset=x-not-a-real-charset'), limit: 1024
+      )
+
+      expect(decoded.encoding).to eq(Encoding::UTF_8)
+      expect(decoded).to eq('plain text')
+    end
+
+    it 'replaces undecodable bytes rather than aborting the fetch' do
+      body = "ok\xFF\xFEbytes".dup.force_encoding(Encoding::BINARY)
+
+      decoded = described_class.decode(body_response(body, content_type: 'text/html'), limit: 1024)
+
+      expect(decoded).to be_valid_encoding
+      expect(decoded).to include('ok')
+      expect(decoded).to include('bytes')
+    end
+
+    it 'decompresses before transcoding' do
+      body = gzip('Kriegsgerät').dup.force_encoding(Encoding::BINARY)
+
+      decoded = described_class.decode(
+        body_response(body, content_type: 'text/html', content_encoding: 'gzip'), limit: 1024
+      )
+
+      expect(decoded).to eq('Kriegsgerät')
+    end
+  end
+
   describe '.read' do
     it 'accumulates chunks under the limit' do
       response = streaming_response('abc', 'def')

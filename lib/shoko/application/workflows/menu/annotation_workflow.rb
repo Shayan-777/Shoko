@@ -18,6 +18,7 @@ require_relative '../../ports/outbound/reader_runner'
 require_relative '../../ports/outbound/menu_session_store'
 require_relative '../../ports/outbound/menu_transient_store'
 require_relative '../../ports/outbound/reader_session_store'
+require_relative 'menu_state_persistence'
 
 module Shoko
   module Application
@@ -25,6 +26,8 @@ module Shoko
       module Menu
         # Coordinates menu-side annotation actions and reader handoff payloads.
         class AnnotationWorkflow
+          include MenuStatePersistence
+
           def initialize(
             mode_switcher:,
             menu_session_store:,
@@ -176,36 +179,8 @@ module Shoko
             { path: path, id: ann_id, text: text }
           end
 
-          def current_menu
-            Shoko::Application::Ports::Outbound::State::MenuSnapshot.build(
-              @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
-            )
-          end
-
           def current_reader
             @reader_session_store.load
-          end
-
-          def persist_menu_payload(payload)
-            session_attributes, transient_attributes =
-              Shoko::Application::Ports::Outbound::State::MenuStatePartition.split(payload)
-            previous_session = @menu_session_store.load
-            previous_transient = @menu_transient_store.load
-
-            @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
-            @menu_transient_store.save(previous_transient.with(**transient_attributes)) if transient_attributes.any?
-          rescue Shoko::Error, ArgumentError
-            rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
-            raise
-          end
-
-          def rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
-            @menu_session_store.save(previous_session) if previous_session && session_attributes&.any?
-            return unless previous_transient && transient_attributes && !transient_attributes.empty?
-
-            @menu_transient_store.save(previous_transient)
-          rescue Shoko::Error, ArgumentError => e
-            @last_menu_payload_rollback_error = e
           end
 
           def assign_dependencies(

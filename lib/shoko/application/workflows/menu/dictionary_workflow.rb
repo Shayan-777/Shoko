@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'progress_throttle'
 require 'shoko/application/ports/outbound/app_config_store'
 require 'shoko/application/ports/outbound/menu_session_store'
 require 'shoko/application/ports/outbound/menu_transient_store'
@@ -15,7 +16,6 @@ module Shoko
       module Menu
         # Coordinates menu-side dictionary catalog loading and installation state.
         class DictionaryWorkflow
-          MIN_PROGRESS_DELTA = 0.01
           include MenuStatePersistence
 
           def initialize(dictionary_catalog_service:, dictionary_storage:, app_config_store:, menu_session_store:,
@@ -149,7 +149,7 @@ module Shoko
             last_progress = nil
             @dictionary_catalog_service.download(selected_entry.to_download_h, dest_dir) do |done, total|
               progress = total.to_i.positive? ? done.to_f / total : 0.0
-              next unless publish_progress?(progress, last_progress)
+              next unless ProgressThrottle.publish?(progress, last_progress)
 
               update_dictionary_state(dictionary_progress_payload(name, progress, total))
               last_progress = progress
@@ -218,13 +218,6 @@ module Shoko
             end
 
             normalized
-          end
-
-          def publish_progress?(progress, last_progress)
-            return true if last_progress.nil?
-            return true if progress >= 1.0
-
-            (progress - last_progress).abs >= MIN_PROGRESS_DELTA
           end
         end
       end

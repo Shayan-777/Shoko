@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'port_contract'
 require 'shoko/shared/errors'
 require_relative '../../ports/outbound/cache_availability'
 require_relative '../../ports/internal/document_loader'
@@ -20,6 +21,8 @@ module Shoko
         # Every book is still individually defensive: one corrupt book must
         # never abort the rest of the batch.
         class LibraryPrepaginationBatch
+          include PortContract
+
           Dependencies = Data.define(
             :catalog_service, :cache_availability, :document_loader,
             :page_calculator, :app_config_store, :progress_writer, :logger
@@ -111,12 +114,6 @@ module Shoko
             contract!(deps.cache_availability, Ports::Outbound::CacheAvailability, 'cache_availability')
             contract!(deps.document_loader, Ports::Internal::DocumentLoader, 'document_loader')
             contract!(deps.progress_writer, Ports::Outbound::PrepaginationProgressWriter, 'progress_writer')
-          end
-
-          def contract!(object, port, name)
-            return if object.is_a?(port)
-
-            raise ArgumentError, "#{name} must implement #{port.name}"
           end
         end
       end

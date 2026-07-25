@@ -137,6 +137,33 @@ module Shoko
               Shoko::Shared::Terminal::TextMetrics.pad_right(text.to_s, width.to_i, pad: pad)
             end
 
+            # Map a flat caret index onto a [row, column] position in a wrapped
+            # layout produced by wrap_indexed. Shared by the notes and
+            # translator editors, which wrap the same row shape.
+            #
+            # @param rows [Array<Hash>] rows carrying :start and :text
+            # @param cursor [Integer] flat caret index
+            def cursor_location(rows, cursor:)
+              rows.each_with_index do |row, index|
+                finish = row[:start] + row[:text].length
+                next unless cursor.between?(row[:start], finish)
+                next if cursor_crosses_into_next?(rows, index, cursor)
+
+                return [index, cursor - row[:start]]
+              end
+              last = rows.length - 1
+              [last, rows[last][:text].length]
+            end
+
+            # A caret sitting exactly on the next row's start belongs to that
+            # row, not to the end of this one.
+            def cursor_crosses_into_next?(rows, index, cursor)
+              nxt = rows[index + 1]
+              return false unless nxt
+
+              cursor == nxt[:start] && cursor != rows[index][:start]
+            end
+
             def pad_left(text, width, pad: ' ')
               Shoko::Shared::Terminal::TextMetrics.pad_left(text.to_s, width.to_i, pad: pad)
             end

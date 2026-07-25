@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/adapters/book_sources/canonical_metadata'
 require_relative 'pdb_header_parser'
 require_relative 'mobi_header_parser'
 require_relative 'exth_parser'
@@ -27,7 +28,7 @@ module Shoko
             def from_file(path, file_reader: nil, path_ops: nil, **_)
               validate_dependencies!(file_reader, path_ops)
               canonical = read_canonical_metadata(path, file_reader: file_reader, path_ops: path_ops)
-              canonical_metadata_hash(canonical)
+              CanonicalMetadata.build(canonical)
             rescue Shoko::Error, ArgumentError, TypeError, IOError, SystemCallError => e
               raise if e.is_a?(Shoko::MalformedMetadataInputError)
 
@@ -59,17 +60,6 @@ module Shoko
 
               exth_data = record0.byteslice(mobi.exth_offset..)
               ExthParser.new(exth_data, encoding_name: mobi.encoding_name)
-            end
-
-            def canonical_metadata_hash(canonical)
-              authors = Array(canonical[:authors]).map(&:to_s).reject(&:empty?)
-              {
-                title: canonical[:title],
-                authors: authors,
-                author_str: authors.empty? ? nil : authors.join('; '),
-                year: canonical[:year],
-                language: canonical[:language],
-              }.compact
             end
 
             def fallback_title(path, path_ops: nil)

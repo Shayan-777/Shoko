@@ -83,6 +83,40 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
       .to raise_error(Shoko::Adapters::Rss::FeedFetcher::FetchError, /already subscribed/)
   end
 
+  # Article hydration runs arbitrary third-party HTML through the fetcher,
+  # extractor, and entity decoder. Before this was a resilient boundary, a
+  # non-Shoko error there (an Encoding::CompatibilityError from a mislabelled
+  # page, in the reported case) escaped add_feed, escaped the workflow's
+  # `rescue Shoko::Error`, and was swallowed by the async relay's debug log —
+  # so adding a feed silently did nothing.
+  it 'still subscribes when article hydration raises a non-Shoko error' do
+    payload = {
+      url: 'https://example.com/feed.xml',
+      title: 'Example Feed',
+      site_url: 'https://example.com',
+      articles: [
+        {
+          guid: 'story-1',
+          title: 'Top Story',
+          summary: 'Short excerpt',
+          content: '',
+          url: 'https://example.com/story-1',
+          published_at: '2026-04-06T08:00:00Z',
+        },
+      ],
+    }
+    allow(feed_fetcher).to receive(:fetch).and_return(payload)
+    allow(article_content_fetcher).to receive(:fetch).and_raise(
+      Encoding::CompatibilityError, 'incompatible character encodings: BINARY (ASCII-8BIT) and UTF-8'
+    )
+
+    result = service.add_feed('https://example.com/feed.xml')
+
+    expect(result[:added_count]).to eq(1)
+    expect(repository.load[:feeds].map(&:title)).to eq(['Example Feed'])
+    expect(repository.load[:articles].map(&:title)).to eq(['Top Story'])
+  end
+
   it 'hydrates linked article pages when the feed only provides an excerpt' do
     payload = {
       url: 'https://example.com/feed.xml',

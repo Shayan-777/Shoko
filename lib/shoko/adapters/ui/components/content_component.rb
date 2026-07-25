@@ -29,7 +29,7 @@ module Shoko
             @render_dependencies.observer_registry.add_observer(self, *OBSERVED_PATHS)
           end
 
-          # Observer callback triggered by ObserverStateStore: drop the cached
+          # Observer callback triggered by the StateStore: drop the cached
           # renderer so the next frame builds one for the new mode/view.
           def state_changed(_path, _old_value, _new_value)
             @view_renderer = nil

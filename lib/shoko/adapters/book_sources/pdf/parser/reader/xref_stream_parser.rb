@@ -103,19 +103,12 @@ module Shoko
             end
 
             def read_stream_data(stream_start, header)
-              data_start = stream_data_start(stream_start)
+              data_start = StreamOffset.data_start(@data, stream_start)
               raw = @read_stream_bytes.call(data_start, header)
               return nil unless raw
 
               decoded = header.include?('FlateDecode') ? @decompress.call(raw) : raw
               @predictor.apply(decoded, header)
-            end
-
-            def stream_data_start(stream_start)
-              pos = stream_start + 6
-              pos += 1 if @data.getbyte(pos) == 0x0D
-              pos += 1 if @data.getbyte(pos) == 0x0A
-              pos
             end
 
             def read_uint(data, offset, width)

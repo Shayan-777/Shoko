@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
@@ -30,6 +31,8 @@ module Shoko
         # (`toc_visible_entries`): each a Hash with :title, :level, :current,
         # :navigable. ↑/↓ move `toc_selected_index` (app-side); ⏎ jumps; Esc closes.
         class TocLookupPopupComponent < BaseComponent
+          HashNormalizer = Shoko::Shared::HashNormalizer
+
           include BottomLeftPanel
           include OverlayMouseTarget
           include Ui::PanelSpans
@@ -251,18 +254,12 @@ module Shoko
               next unless entry.is_a?(Hash)
 
               {
-                title: value(entry, :title).to_s,
-                level: value(entry, :level).to_i,
-                current: value(entry, :current) == true,
-                navigable: value(entry, :navigable) != false,
+                title: HashNormalizer.indifferent_fetch(entry, :title).to_s,
+                level: HashNormalizer.indifferent_fetch(entry, :level).to_i,
+                current: HashNormalizer.indifferent_fetch(entry, :current) == true,
+                navigable: HashNormalizer.indifferent_fetch(entry, :navigable) != false,
               }
             end
-          end
-
-          def value(entry, key)
-            return entry[key] if entry.key?(key)
-
-            entry[key.to_s]
           end
 
           def plural(count, singular, plural)

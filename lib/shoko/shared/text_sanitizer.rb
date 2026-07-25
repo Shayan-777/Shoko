@@ -36,6 +36,17 @@ module Shoko
       # @param preserve_newlines [Boolean] keep `\n` (and normalize `\r` to `\n`)
       # @param preserve_tabs [Boolean] keep `\t`
       # @return [String] UTF-8 string safe for display
+      # Text destined for a single-line screen field: control sequences,
+      # newlines, and tabs all removed. Seven screen components each carried a
+      # private `safe_text` spelling out sanitize's own defaults; this names
+      # the intent once.
+      #
+      # @param text [Object] coerced with to_s
+      # @return [String]
+      def single_line(text)
+        sanitize(text.to_s)
+      end
+
       def sanitize(text, preserve_newlines: false, preserve_tabs: false)
         return '' if text.nil?
 

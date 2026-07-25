@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'element_text'
 require 'rexml/document'
 
 module Shoko
@@ -99,21 +100,10 @@ module Shoko
           private_class_method :extract_section_title
 
           def element_text(element)
-            collect_text(element).gsub(/\s+/, ' ').strip
+            ElementText.collect(element).gsub(/\s+/, ' ').strip
           end
 
-          def collect_text(element)
-            text = +''
-            element.each_child do |child|
-              case child
-              when REXML::Text then text << child.value
-              when REXML::Element then text << collect_text(child)
-              end
-            end
-            text
-          end
           private_class_method :element_text
-          private_class_method :collect_text
 
           # Check if a section has meaningful content elements before the first child section
           def preamble_content?(section, first_child_section)

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/application/use_cases/support/editor_text_routes'
 require_relative '../../requests/cursor_move'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
@@ -16,6 +17,7 @@ module Shoko
           # through the editor control port's close hook.
           class AnnotationEditor
             include Shoko::Application::UseCases::Support::IntentActionGroup
+            include Shoko::Application::UseCases::Support::EditorTextRoutes
 
             SUPPORTED_INTENTS = %i[
               edit_annotation_text
@@ -55,14 +57,6 @@ module Shoko
                                     :annotation_editor_spellcheck,
                                     :annotation_editor_confirm))
                 .freeze
-            end
-
-            def editor_text_routes
-              {
-                edit_annotation_text: route(payload: :edit_op, result: :handled) do |op|
-                  operator.apply(op)
-                end,
-              }
             end
 
             def editor_movement_routes

@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tmpdir'
 
-# Enforces architecture constitution R1 ("hard zero" include-once mixins):
-# a module mixed into exactly one host is forbidden. Such behavior must live as
-# private methods on the host, or be promoted to a real collaborator object.
+# Enforces architecture constitution R1 ("hard zero" include-once mixins)
+# through all three of its doors: a unit of behavior fused into exactly one
+# host is forbidden whether it arrives by `include`/`prepend`/`extend`, by
+# reopening the host class in a second file, or by being the superclass of a
+# single subclass. Such behavior must live as private methods on the host, or
+# be promoted to a real collaborator object.
 #
 # This is a RATCHET. The pre-existing violations live in a baseline file and may
 # only ever shrink:
@@ -185,5 +189,82 @@ RSpec.describe 'No include-once mixins (constitution R1)' do
 
       #{fragments.map { |p| "  - #{p}" }.join("\n")}
     MSG
+  end
+
+  # R1 through the third door: inheritance. A superclass with exactly one
+  # subclass that is never used on its own — never constructed, never named as
+  # a type — is an include-once mixin wearing a `<`. It exists only to be
+  # completed by the one subclass, which reaches into its ivars and overrides
+  # its no-op hooks; no caller ever sees the base type. Same fragmentation,
+  # same costs, so the same rule. No allowlist: a base class earns its place
+  # by having a second subclass or by being used in its own right.
+  it 'forbids sole-subclass inheritance used as behavior fragmentation' do
+    offenders = SpecSupport::Architecture::SoleSubclassScanner.violations(lib_root)
+
+    expect(offenders).to eq([]), <<~MSG
+      Sole-subclass base class(es) detected (constitution R1 — inheritance as
+      fragmentation). Merge the base into its one subclass (length is never a
+      reason to split, R2), or give the base a real reason to exist — a second
+      subclass, or use in its own right:
+
+      #{offenders.map { |p| "  - #{p}" }.join("\n")}
+    MSG
+  end
+
+  describe 'sole-subclass scanner parsing (Ripper-backed)' do
+    def edges(source)
+      SpecSupport::Architecture::SoleSubclassScanner::InheritanceExtractor
+        .extract(source)
+        .map { |site| [site.subclass, site.superclass.const, site.superclass.nesting, site.superclass.top_level] }
+    end
+
+    it 'records nested, qualified, and ::-anchored superclass expressions' do
+      source = <<~RUBY
+        module Shoko
+          module Adapters
+            class Alpha < Beta; end
+            class Gamma < Shoko::Core::Delta; end
+            class Epsilon < ::Zeta; end
+          end
+        end
+      RUBY
+
+      expect(edges(source)).to eq(
+        [
+          ['Shoko::Adapters::Alpha', 'Beta', %w[Shoko Adapters], false],
+          ['Shoko::Adapters::Gamma', 'Shoko::Core::Delta', %w[Shoko Adapters], false],
+          ['Shoko::Adapters::Epsilon', 'Zeta', %w[Shoko Adapters], true],
+        ]
+      )
+    end
+
+    it 'ignores classes without a superclass and singleton class bodies' do
+      source = <<~RUBY
+        class Plain
+          class << self
+            def build = new
+          end
+        end
+      RUBY
+
+      expect(edges(source)).to eq([])
+    end
+
+    it 'counts a base as used when it is constructed or named as a type' do
+      Dir.mktmpdir do |dir|
+        File.write(File.join(dir, 'sample.rb'), <<~RUBY)
+          Built.new
+          raise Raised, 'boom'
+          begin; work; rescue Rescued => e; end
+          value.is_a?(Checked)
+          # Commented.new
+        RUBY
+
+        used = SpecSupport::Architecture::SoleSubclassScanner.independently_used_short_names(dir)
+
+        expect(used.keys).to include('Built', 'Raised', 'Rescued', 'Checked')
+        expect(used.keys).not_to include('Commented')
+      end
+    end
   end
 end

@@ -22,7 +22,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
 
       describe 'infrastructure services' do
         it 'resolves global_state' do
-          expect(container.resolve(:global_state)).to be_a(Shoko::Application::State::ObserverStateStore)
+          expect(container.resolve(:global_state)).to be_a(Shoko::Application::State::StateStore)
         end
 
         it 'resolves logger instance' do

@@ -235,28 +235,6 @@ module Shoko
                 divider_col: divider_col
               )
             end
-
-            def lines_fit_column?(lines, col_width)
-              width = col_width.to_i
-              return true if width <= 0
-
-              Array(lines).first(6).all? do |line|
-                next true unless line
-                next true if image_line?(line)
-
-                text = line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine) ? line.text.to_s : line.to_s
-                Shoko::Shared::Terminal::TextMetrics.visible_length(text) <= width
-              end
-            end
-
-            def image_line?(line)
-              return false unless line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
-
-              meta = line.metadata
-              return false unless meta.is_a?(Hash)
-
-              Shoko::Core::Models::BlockType.image?(meta[:block_type])
-            end
           end
         end
       end

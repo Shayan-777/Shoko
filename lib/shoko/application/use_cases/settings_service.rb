@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/dictionary_language_setting'
+
 require_relative 'settings_service/wipe_cache_plan'
 require_relative 'settings_service/wipe_cache_message_builder'
 require_relative '../../core/models/reader_settings'
@@ -211,13 +213,6 @@ module Shoko
           str.empty? ? nil : str
         end
 
-        def dictionary_auto_setting?(value)
-          return true if value.nil?
-
-          str = value.to_s.strip
-          str.empty? || str.casecmp('auto').zero?
-        end
-
         def dictionary_auto_available?
           return false unless @dictionary_availability&.sqlite3_available?
 
@@ -265,13 +260,13 @@ module Shoko
         end
 
         def current_dictionary_pair_index(pairs, source, target)
-          return -1 if dictionary_auto_setting?(source)
+          return -1 if Shoko::Shared::DictionaryLanguageSetting.auto?(source)
 
           pairs.index([source, target]) || -1
         end
 
         def apply_dictionary_pair(pair)
-          if dictionary_auto_setting?(pair[:source])
+          if Shoko::Shared::DictionaryLanguageSetting.auto?(pair[:source])
             dispatch_config(dictionary_source_lang: 'auto')
           else
             dispatch_config(dictionary_source_lang: pair[:source], dictionary_target_lang: pair[:target])

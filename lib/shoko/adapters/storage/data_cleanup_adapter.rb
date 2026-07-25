@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'storage_error_translation'
 require 'fileutils'
 require_relative '../../application/ports/outbound/data_cleanup'
 require_relative '../../shared/errors'
@@ -9,6 +10,8 @@ module Shoko
     module Storage
       # Adapter implementing guarded filesystem cleanup operations.
       class DataCleanupAdapter
+        include StorageErrorTranslation
+
         include Application::Ports::Outbound::DataCleanup
 
         def remove_cache_root(cache_root)
@@ -61,12 +64,6 @@ module Shoko
           real
         rescue StandardError => e
           raise_storage_error('resolve_realpath', path, e)
-        end
-
-        def raise_storage_error(operation, path, error)
-          raise error if error.is_a?(Shoko::Error)
-
-          raise Shoko::StorageError.new(operation, path.to_s, error.message)
         end
 
         def validated_user_data_root(root_path)

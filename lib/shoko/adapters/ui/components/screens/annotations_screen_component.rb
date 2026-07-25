@@ -21,6 +21,8 @@ module Shoko
           # family's selection strip and a slim scrollbar when the list
           # overflows. ENTER drills into the detail view.
           class AnnotationsScreenComponent < BaseComponent
+            TextSanitizer = Shoko::Shared::Terminal::TextSanitizer
+
             include Ui::TextUtils
 
             Palette = StatusBar::Palette
@@ -246,17 +248,12 @@ module Shoko
 
             def compact_book_label(path)
               base = File.basename(path.to_s, '.*')
-              base.empty? ? 'book' : safe_text(base)
+              base.empty? ? 'book' : TextSanitizer.single_line(base)
             end
 
             def one_line(text, fallback: '')
-              clean = safe_text(text.to_s).strip
+              clean = TextSanitizer.single_line(text.to_s).strip
               clean.empty? ? fallback : clean
-            end
-
-            def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                                         preserve_tabs: false)
             end
 
             attr_reader :reader_state_reader, :menu_state_reader

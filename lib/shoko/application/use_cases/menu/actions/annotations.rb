@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/application/use_cases/support/editor_text_routes'
+require 'shoko/application/use_cases/support/annotation_preload'
 require_relative '../../requests/cursor_move'
 require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'
@@ -15,6 +17,8 @@ module Shoko
           # Handles annotations browsing and annotation-editor intents from the menu.
           class Annotations
             include Shoko::Application::UseCases::Support::IntentActionGroup
+            include Shoko::Application::UseCases::Support::EditorTextRoutes
+            include Shoko::Application::UseCases::Support::AnnotationPreload
             include Shoko::Application::UseCases::Support::MenuSessionAccess
 
             SELECTION_MOVE_INTENTS = %i[move_annotation_selection_up move_annotation_selection_down].freeze
@@ -87,14 +91,6 @@ module Shoko
               editor_text_routes.merge(editor_cursor_routes).merge(editor_completion_routes)
             end
 
-            def editor_text_routes
-              {
-                edit_annotation_text: route(payload: :edit_op, result: :handled) do |op|
-                  operator.apply(op)
-                end,
-              }
-            end
-
             def editor_cursor_routes
               {
                 move_annotation_cursor: route(payload: :direction, result: :handled) do |direction|
@@ -147,14 +143,6 @@ module Shoko
             def cancel_annotation_edit
               @annotation_workflow.cancel_current_annotation_edit
               :handled
-            end
-
-            def preload_annotations
-              annotations = @annotation_service ? @annotation_service.list_all : {}
-              update_menu(annotations_all: annotations || {})
-            rescue Shoko::Error => e
-              @logger&.error('menu.preload_annotations.failed', error: e.class.name, message: e.message)
-              update_menu(annotations_all: {})
             end
           end
         end

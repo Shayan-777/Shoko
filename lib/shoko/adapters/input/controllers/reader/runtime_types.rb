@@ -20,7 +20,6 @@ module Shoko
               :wrapping_service,
               :rendered_content_reader,
               :annotation_service,
-              :render_registry,
               :coordinate_service,
               :reader_state_reader,
               :reader_session_mutator,
@@ -65,7 +64,6 @@ module Shoko
                 clock: core.clock,
                 rendered_content_reader: services.rendered_content_reader,
                 annotation_service: services.annotation_service,
-                render_registry: services.render_registry,
                 coordinate_service: services.coordinate_service,
               }
             end

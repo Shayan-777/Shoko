@@ -14,7 +14,6 @@ module Shoko
             :popup_position_service,
             :rendered_content_reader,
             :annotation_service,
-            :render_registry,
             :coordinate_service
           ) do
             include DependencyValidation

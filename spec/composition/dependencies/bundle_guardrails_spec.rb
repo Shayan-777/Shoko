@@ -28,13 +28,13 @@ RSpec.describe 'Dependency bundles' do
     state = build_empty_record(deps_module::ReaderControllerStateDependencies)
     runtime_boot = build_empty_record(deps_module::ReaderRuntimeBootDependencies)
     runtime_startup = build_empty_record(deps_module::ReaderRuntimeStartupDependencies)
-    mouse_support = build_empty_record(deps_module::MouseableReaderDependencies)
+    mouse_support = build_empty_record(deps_module::ReaderMouseDependencies)
 
     expect { core.validate! }.to raise_error(ArgumentError, /Missing required ReaderControllerCoreDependencies/)
     expect { state.validate! }.to raise_error(ArgumentError, /Missing required ReaderControllerStateDependencies/)
     expect { runtime_boot.validate! }.to raise_error(ArgumentError, /Missing required ReaderRuntimeBootDependencies/)
     expect { runtime_startup.validate! }.to raise_error(ArgumentError, /Missing required ReaderRuntimeStartupDependencies/)
-    expect { mouse_support.validate! }.to raise_error(ArgumentError, /Missing required MouseableReaderDependencies/)
+    expect { mouse_support.validate! }.to raise_error(ArgumentError, /Missing required ReaderMouseDependencies/)
   end
 
   it 'keeps removed runtime composition dependency bundles deleted' do

@@ -32,6 +32,14 @@ module Shoko
           )
 
           MenuSnapshot.class_eval do
+            # Compose the full menu partition from its two stores. Three
+            # consumers (the menu progress presenter, MenuSessionAccess, and
+            # MenuStatePersistence) need exactly this merge, so the read model
+            # owns it rather than each rebuilding it.
+            def self.from_stores(session_store, transient_store)
+              build(session_store.load.to_h.merge(transient_store.load.to_h))
+            end
+
             def search_active? = search_active == true
             def loading_active? = loading_active == true
             def library_details_open? = library_details_open == true

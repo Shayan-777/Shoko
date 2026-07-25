@@ -77,7 +77,7 @@ module Shoko
                 "ch. #{@result[:chapter_index].to_i + 1}",
                 "line #{@result[:line_index].to_i + 1}",
               ]
-              truncate(parts.join(' - '), width)
+              Shoko::Shared::Terminal::TextMetrics.truncate_to(parts.join(' - ').to_s, [width.to_i, 0].max)
             end
 
             def span(text, foreground, background)
@@ -86,10 +86,6 @@ module Shoko
 
             def visible_length(text)
               Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
-            end
-
-            def truncate(text, width)
-              Shoko::Shared::Terminal::TextMetrics.truncate_to(text.to_s, [width.to_i, 0].max)
             end
           end
         end

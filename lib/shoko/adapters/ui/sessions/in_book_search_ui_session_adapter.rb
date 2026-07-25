@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'support/session_outcome_construction'
 require 'shoko/shared/contracts/session_outcome'
 
 module Shoko
@@ -11,7 +12,9 @@ module Shoko
         # component instance (create/teardown via the registry), the search-mode
         # flag, and the writes that publish search results to state.
         class InBookSearchUiSessionAdapter
-          RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
+          include Support::SessionOutcomeConstruction
+
+          RESCUABLE_ERRORS = Support::SessionOutcomeConstruction::RESCUABLE_ERRORS
 
           BLANK_SEARCH_STATE = {
             search_query: '',
@@ -113,23 +116,6 @@ module Shoko
           rescue *RESCUABLE_ERRORS => e
             log_error('in_book_search.session.current_popup', e)
             nil
-          end
-
-          def success_outcome(status, code, payload: nil)
-            Shoko::Shared::Contracts::SessionOutcome.success(status: status, code: code, payload: payload)
-          end
-
-          def failure_outcome(status, code, message, payload: nil)
-            Shoko::Shared::Contracts::SessionOutcome.failure(
-              status: status,
-              code: code,
-              message: message,
-              payload: payload
-            )
-          end
-
-          def log_error(event, error)
-            @logger&.error(event, error: error.class.name, message: error.message)
           end
         end
       end

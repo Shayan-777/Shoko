@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/core/models/translation_language'
 require_relative '../dependencies/dependency_builder'
 require_relative '../dependencies/dependency_validation'
 require_relative 'state_controller'
@@ -395,7 +396,8 @@ module Shoko
             end
 
             def log_fatal_external_input(error)
-              @logger_ref&.error(fatal_event_id_for(error), error: error.class.name, message: error.message)
+              @logger_ref&.error(Shoko::FatalExternalInputError.event_id(error),
+                                 error: error.class.name, message: error.message)
             end
 
             def bootstrap_catalog
@@ -417,19 +419,6 @@ module Shoko
             def record_ensure_cleanup_error(error)
               @logger_ref&.debug('menu.run.ensure_terminal_cleanup_failed',
                                  error: error.class.name, message: error.message)
-            end
-
-            def fatal_event_id_for(error)
-              case error
-              when Shoko::MalformedBookInputError
-                'fatal.external_input.book'
-              when Shoko::MalformedMetadataInputError
-                'fatal.external_input.metadata'
-              when Shoko::MalformedDictionaryInputError
-                'fatal.external_input.dictionary'
-              else
-                'fatal.external_input.unknown'
-              end
             end
 
             # The whole menu is mouseable: tracking stays on for the entire
@@ -598,16 +587,8 @@ module Shoko
             end
 
             def translator_language_options(kind)
-              languages = Array(@menu_state_reader.translator_languages).map { |item| normalize_language(item) }
+              languages = Array(@menu_state_reader.translator_languages).map { |item| Shoko::Core::Models::TranslationLanguage.normalized_entry(item) }
               kind == :source ? [{ code: 'auto', name: 'Auto Detect' }, *languages] : languages
-            end
-
-            def normalize_language(item)
-              normalized = Shoko::Shared::HashNormalizer.symbolize_keys(item) || {}
-              {
-                code: normalized[:code].to_s,
-                name: normalized[:name].to_s,
-              }
             end
 
             def translator_mouse_mode?

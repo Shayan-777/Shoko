@@ -10,16 +10,8 @@ require 'spec_helper'
 RSpec.describe 'Translator end-to-end flow' do
   let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
-  let(:config_storage) do
-    dir = @tmpdir
-    storage = Object.new
-    storage.define_singleton_method(:config_dir) { dir }
-    storage.define_singleton_method(:config_file) { File.join(dir, 'config.json') }
-    storage.define_singleton_method(:ensure_config_dir) { FileUtils.mkdir_p(dir) }
-    storage.define_singleton_method(:atomic_write) { |_path, _data| }
-    storage.define_singleton_method(:read_file) { |_path| nil }
-    storage
-  end
+  let(:config_dir) { @tmpdir }
+  let(:config_storage) { SpecSupport::FakeConfigStorage.new(config_dir) }
 
   around do |example|
     Dir.mktmpdir do |dir|

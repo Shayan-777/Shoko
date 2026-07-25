@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'catalog_list_rendering'
 require_relative '../base_component'
 require 'shoko/shared/terminal/text_sanitizer'
 require 'shoko/application/ports/inbound/menu_catalog'
@@ -24,7 +25,10 @@ module Shoko
           # bar; download progress rides an accent stroke under the status
           # line.
           class TranslatorPacksScreenComponent < BaseComponent
+            TextSanitizer = Shoko::Shared::Terminal::TextSanitizer
+
             include Ui::TextUtils
+            include CatalogListRendering
 
             Palette = StatusBar::Palette
 
@@ -83,17 +87,6 @@ module Shoko
 
             # ----- settings rows -----
 
-            def render_actions(list, frame)
-              row = frame.body_top
-              action_items.each_with_index do |item, index|
-                break if row > frame.body_bottom
-
-                render_action_row(list, frame, item: item, index: index, row: row)
-                row += 1
-              end
-              row + 1
-            end
-
             def render_action_row(list, frame, item:, index:, row:)
               selected = selected_index == index
               label_fg = selected ? Palette::LANDING_TITLE_FG : Palette::LANDING_TEXT_FG
@@ -142,9 +135,9 @@ module Shoko
               return if height <= 0
 
               items = filtered_results
-              return render_packs_empty(frame, top, height) if items.empty?
+              return render_catalog_empty(frame, top, height) if items.empty?
 
-              window = packs_window(items, height)
+              window = catalog_window(items, height)
               window[:items].each_with_index do |item, offset|
                 render_pack_row(list, frame, item: item, position: window[:start] + offset, row: top + offset)
               end
@@ -173,16 +166,6 @@ module Shoko
                 [format_pair(item), pair_fg],
                 ["   #{format_size(item[:size])}", Palette::LANDING_DIM_FG],
               ]
-            end
-
-            def render_packs_empty(frame, top, height)
-              frame.write_line(top + [height / 2, 0].max, [[empty_state_message, empty_state_fg]])
-            end
-
-            def packs_window(items, height)
-              selection = [selected_index - action_items.length, 0].max
-              start_index, visible = Ui::ListWindowing.slice_visible(items, height, selection)
-              { start: start_index, items: visible }
             end
 
             # ----- state + labels -----
@@ -247,7 +230,7 @@ module Shoko
               return message unless message.empty?
 
               count = filtered_results.length
-              query = safe_text(packs_query).strip
+              query = TextSanitizer.single_line(packs_query).strip
               return "#{count} language packs" if query.empty?
 
               "#{count} for “#{query}”"
@@ -314,12 +297,6 @@ module Shoko
 
             def refresh_value
               packs_status == :loading ? 'Loading…' : 'Fetch latest list'
-            end
-
-            def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(
-                text.to_s, preserve_newlines: false, preserve_tabs: false
-              )
             end
 
             attr_reader :menu_state_reader, :config_reader

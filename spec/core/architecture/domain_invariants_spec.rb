@@ -4,7 +4,16 @@ require 'spec_helper'
 
 # The small set of genuine app-specific invariants the constitution's §V
 # target shape allows alongside the rule specs: single-owner seams that no
-# generic layer rule covers.
+# generic layer rule covers, and that no unit test can express — each says
+# "no OTHER file may do this", which is a property of the tree, not of a
+# behavior.
+#
+# The bar for living here is exactly that. An invariant that CAN be stated as
+# behavior belongs in the owning unit spec instead: the former
+# "no backend-specific error strings in the core dictionary service" example
+# moved to dictionary_service_spec as a classification test, where it now
+# proves the typed failure code drives the result rather than merely proving
+# some strings are absent from a file.
 RSpec.describe 'Domain invariants' do
   let(:root) { File.expand_path('../../..', __dir__) }
   let(:lib_root) { File.join(root, 'lib', 'shoko') }
@@ -43,18 +52,4 @@ RSpec.describe 'Domain invariants' do
                          "#{offenders.map { |p| p.delete_prefix("#{root}/") }.join("\n")}"
   end
 
-  it 'forbids backend-specific error-string diagnosis in core dictionary service' do
-    content = non_comment_content(File.join(lib_root, 'core', 'services', 'dictionary_service.rb'))
-    forbidden = [
-      /database disk image is malformed/i,
-      /file is not a database/i,
-      /no such table/i,
-      /sqlite/i,
-      /permission denied/i,
-    ]
-
-    offenders = forbidden.select { |pattern| content.match?(pattern) }
-    expect(offenders).to eq([]),
-                         'Core dictionary service must not parse backend-specific error strings.'
-  end
 end

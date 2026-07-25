@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'ui/bounds_geometry'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/shared/terminal/text_metrics'
 
@@ -19,7 +20,7 @@ module Shoko
           def write(bounds, row, col, text)
             return unless writable_bounds?(bounds)
 
-            abs_row, abs_col = absolute_position(bounds, row, col)
+            abs_row, abs_col = Ui::BoundsGeometry.absolute_position(bounds, row, col)
             return unless within_bounds?(bounds, abs_row, abs_col)
 
             clipped = clipped_text(text, bounds, abs_col)
@@ -59,10 +60,6 @@ module Shoko
 
           def writable_bounds?(bounds)
             bounds.height.positive? && bounds.width.positive?
-          end
-
-          def absolute_position(bounds, row, col)
-            [bounds.y + row - 1, bounds.x + col - 1]
           end
 
           def within_bounds?(bounds, abs_row, abs_col)

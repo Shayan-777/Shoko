@@ -17,7 +17,8 @@ module Shoko
           ReaderViewSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
             fields: Shoko::Application::State::Schema::ReaderView::FIELDS,
             defaults: Shoko::Application::State::Schema::ReaderView::DEFAULTS,
-            partition: :reader
+            partition: :reader,
+            loading_mirror: true
           )
 
           # Override to_state_updates so loading_* writes are routed to :ui
@@ -45,11 +46,6 @@ module Shoko
                     LOADING_UPDATE_PATHS
                   )
                 )
-            end
-
-            def self.from_state(reader_state:, ui_state:)
-              support = Shoko::Application::State::SnapshotFactory
-              build(support.merged_loading_attributes(reader_state, ui_state))
             end
 
             def loading_active? = loading_active == true

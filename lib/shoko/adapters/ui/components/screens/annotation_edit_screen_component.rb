@@ -25,6 +25,8 @@ module Shoko
           # numbers ride a dim gutter inside the well; the caret is the same
           # blinking thin stripe the other editors use.
           class AnnotationEditScreenComponent < BaseComponent
+            TextSanitizer = Shoko::Shared::Terminal::TextSanitizer
+
             include Ui::TextUtils
             include AnnotationScreenRendering
             include Ui::CursorBlink
@@ -181,7 +183,7 @@ module Shoko
             def visible_quote_lines(view, frame)
               quote = view.text.to_s.strip
               quote = 'No selected text.' if quote.empty?
-              wrap_words(safe_text(quote), [frame.content_width - 4, 8].max).first(QUOTE_ROWS)
+              wrap_words(TextSanitizer.single_line(quote), [frame.content_width - 4, 8].max).first(QUOTE_ROWS)
             end
 
             # ----- the compose well -----
@@ -351,10 +353,6 @@ module Shoko
             end
 
             attr_reader :menu_state_reader, :menu_session_mutator
-
-            def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(text, preserve_newlines: false, preserve_tabs: false)
-            end
           end
         end
       end

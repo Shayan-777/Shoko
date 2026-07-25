@@ -8,6 +8,7 @@ require_relative '../../shared/version'
 require_relative '../base_adapter'
 require_relative 'article_content_extractor'
 require_relative 'bounded_http_body'
+require_relative 'redirect_resolver'
 
 module Shoko
   module Adapters
@@ -38,7 +39,7 @@ module Shoko
             raise FetchError, "Article request failed: #{response.code} #{response.message}"
           end
 
-          @extractor.extract(decoded_body(response))
+          @extractor.extract(BoundedHttpBody.decode(response, limit: @max_decompressed_bytes))
         rescue BoundedHttpBody::TooLarge, SocketError, SystemCallError, IOError, Timeout::Error,
                URI::InvalidURIError => e
           raise FetchError, e.message
@@ -54,7 +55,7 @@ module Shoko
             location = response['location'].to_s.strip
             raise FetchError, 'Article redirect is missing a location' if location.empty?
 
-            return perform_request(resolve_redirect(uri, location), redirects_left: redirects_left - 1)
+            return perform_request(RedirectResolver.resolve(uri, location), redirects_left: redirects_left - 1)
           end
 
           [response, uri]
@@ -90,21 +91,6 @@ module Shoko
           raise FetchError, 'Article URL host is missing' if uri.host.to_s.strip.empty?
 
           uri
-        end
-
-        def resolve_redirect(uri, location)
-          parsed = URI.parse(location)
-          return uri + parsed.to_s if parsed.relative?
-
-          parsed
-        rescue URI::InvalidURIError
-          uri + location
-        end
-
-        def decoded_body(response)
-          body = response.body.to_s
-          encoding = response['content-encoding'].to_s.downcase
-          BoundedHttpBody.decompress(body, encoding, limit: @max_decompressed_bytes)
         end
       end
     end

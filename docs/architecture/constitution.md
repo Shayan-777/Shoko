@@ -31,7 +31,8 @@ Two consequences:
 ```
 core  →  (nothing)              domain models, domain services, domain events. Pure.
 application → core              ports (inbound/outbound), use cases, services, workflows, state.
-adapters → application, core    all I/O: UI, input, storage, book sources, output, runtime.
+adapters → application*, core   all I/O: UI, input, storage, book sources, output, runtime.
+                                * only application's PUBLISHED SURFACE — see below
 composition → everything        the ONLY place that names concrete classes and wires them.
 shared → (nothing app-specific) tiny cross-cutting utilities.
 ```
@@ -40,6 +41,11 @@ shared → (nothing app-specific) tiny cross-cutting utilities.
 - `core` references `Adapters::`/`Application::`/`Composition::` **zero** times.
 - `application` references `Adapters::`/`Composition::` **zero** times; it talks to
   the outside world only through `Application::Ports`.
+- `adapters` reach the application layer **only through its published surface**:
+  the ports they implement (`Application::Ports::*`) and the request objects they
+  pass (`Application::UseCases::Requests::*`). Use cases, services, workflows, and
+  state are closed to them. This narrower permission — not a blanket layer edge —
+  is `LayerPolicy::PATH_EXCEPTIONS`, which every enforcement site consumes.
 - Only `composition` may name concrete adapter classes.
 
 This rule is already satisfied (see census). **There is no further "hexagonal
@@ -49,11 +55,23 @@ hardening" work to do.** Do not start any.
 
 ## II. Decomposition (the rules that stop the churn)
 
-### R1 — Hard zero include-once mixins.
-A module that is `include`d, `prepend`ed, or `extend`ed into **exactly one** host
-is **forbidden.** `extend` is the same fragmentation through the singleton class,
-not a loophole. Private behavior belongs as **private methods on its host**, full
-stop. (`extend self` — the module-function idiom — is not a mixin site.)
+### R1 — Hard zero one-host fragments.
+A unit of behavior fused into **exactly one** host is **forbidden**, through
+every door it can arrive by:
+
+1. **Mixin** — a module `include`d, `prepend`ed, or `extend`ed into exactly one
+   host. `extend` is the same fragmentation through the singleton class, not a
+   loophole. (`extend self` — the module-function idiom — is not a mixin site.)
+2. **Reopening** — a class receiving direct method definitions from two or more
+   files. That is the include-once mixin without the `include`.
+3. **Inheritance** — a superclass with exactly one subclass that is never used
+   on its own (never constructed, never named as a type). The base exists only
+   to be completed by the one subclass, which reaches into its ivars and
+   overrides its no-op hooks, and no caller ever sees the base type. A base
+   class earns its place by having a second subclass, or by being used in its
+   own right.
+
+Private behavior belongs as **private methods on its host**, full stop.
 
 The only way a unit of behavior earns its own file is by becoming a **collaborator
 object** — a class you instantiate/inject and *call*, never a module you mix in.
@@ -66,6 +84,18 @@ object** — a class you instantiate/inject and *call*, never a module you mix i
 
 If a chunk of a class meets none of these, it stays as private methods. A long,
 flat, cohesive class is **correct**, not debt.
+
+**R1 also runs in the positive direction, and it is enforced.** The first
+clause above — "used by two or more call sites" — is not merely a permission
+to extract; it is a **requirement** that one behavior have exactly one home.
+The same method body in two files is a violation regardless of what the copies
+are named. Satisfying it by leaving a one-line delegator in each file moves the
+duplication rather than removing it; give the behavior a real owner (a shared
+module or collaborator, the base class when siblings need it, or the type that
+already owns the concept). Enforcement:
+`no_duplicate_implementations` (`DuplicateImplementationScanner`), Ripper-backed
+and name-independent, with a significance floor below which repetition is
+coincidence rather than a shared concept. **No allowlist.**
 
 **Exempt from R1:** `Application::Ports::*` interface modules (they document a
 contract); genuine shared mixins included by **two or more** classes; the
@@ -118,9 +148,13 @@ internals.
   Never add a spec that pins a one-off decision.
 
 Target shape (~8–10 specs): `layer_dependency`, `no_include_once_mixin`,
-`naming_banlist`, `directory_depth`, `rescue_conventions`, `ports_contract`,
-`composition_is_only_concrete_wiring`, plus a small number of genuine
-domain-invariant specs.
+`no_duplicate_implementations`, `naming_banlist`, `directory_depth`,
+`rescue_conventions`, `ports_contract`, `composition_is_only_concrete_wiring`,
+plus a small number of genuine domain-invariant specs.
+
+An invariant earns a place in `domain_invariants` only if it states "no OTHER
+file may do this" — a property of the tree, which no unit test can express. An
+invariant that CAN be stated as behavior belongs in the owning unit spec.
 
 ---
 
@@ -180,6 +214,116 @@ Every resilient boundary:
 ---
 
 ## Amendments
+
+- **2026-07-26 — R1 closes its third door (inheritance) and gains its missing
+  positive half; the guardrail suite stops pinning moments.**
+  - **Inheritance-as-fragmentation is now a violation, enforced.** R1 had been
+    closed against `include`/`prepend`/`extend` (2026-07-18) and against class
+    reopening (2026-07-11), but a superclass with exactly one subclass — the
+    same fusion through `<` — was unchecked, and three lived in the tree.
+    `ReaderController`/`MouseableReader` was the worst: the composition root
+    only ever built the subclass, there was no base-class spec, the subclass
+    read the parent's ivars directly (`@coordinate_service_ref`,
+    `@annotation_service_ref`, …), and the parent carried a `clear_selection!`
+    no-op hook and an unreachable `read_input_keys` that existed solely for it.
+    The two are now one `ReaderController` (R2: ~1000 cohesive lines are not a
+    reason to split); `mouseable_reader/{input_sequence_filter,
+    inline_link_interaction}` moved to `reader_controller/` as the genuine R3
+    collaborators they are. `StateStore`/`ObserverStateStore` merged the same
+    way — production wired only the subclass, and the base was instantiated by
+    specs alone — as did `BaseAction`/`UpdateMessageAction`, an abstract base
+    with a `NotImplementedError` and a `payload` reader serving one three-line
+    action. Enforcement: `SoleSubclassScanner` (in `no_include_once_mixin`),
+    Ripper-derived and resolved through the same constant inventory the mixin
+    scanner uses. **No allowlist**: a base is exempt when it has a second
+    subclass or is used in its own right (constructed, or named in a `rescue` /
+    `is_a?` — the abstract-type case, which is why `DictionaryFailure` is not
+    an offender).
+  - **The `_ref` alias apparatus is gone.** `ReaderController` had kept
+    `ALIASED_READERS`, a hash driving `define_method(name) { public_send(
+    "#{name}_ref") }`, so nine dependencies each existed as an `@x_ref` ivar,
+    an `x_ref` reader, a metaprogrammed `x` alias, and — in the subclass — an
+    `@x` copy. Four names for one object, with a `public_send` on a constant
+    symbol on the read path. No name collision justified the suffix; it was
+    the residue of the `AliasReaders` mixin the 2026-07-18 pass removed. All
+    twelve ivars now carry their plain names behind one `attr_reader`. The
+    write-only `@render_registry` went with it (the field, the
+    `ReaderControllerServiceDependencies` member, the `References` member, and
+    the composition wiring that filled it), dropping the aggregate pin 46 → 45.
+  - **`Terminal::NullRuntimeConfig` stopped fighting itself.** It inherited the
+    shared null config, then `include`d the RuntimeConfig port — which shadowed
+    every inherited implementation with the port's `NotImplementedError`
+    versions — and then undid that with an
+    `instance_method(...).bind_call(self, ...)` loop over
+    `RuntimeConfig.instance_methods(false)`: the same reflection dance the
+    2026-07-12 amendment removed from `controller_composition`. The shared base
+    (which nothing else used) is deleted and the adapter defines its values
+    directly, where a class body legitimately overrides an included module.
+  - **R1's positive half is enforced.** "Used by two or more call sites" had a
+    scanner for its prohibition and none for its requirement, and the amendment
+    log records the price: four hand-run consolidation sweeps (2026-07-10
+    popup primitives, 2026-07-11 symbolize "actually finished", 2026-07-11
+    width-blind wraps, 2026-07-11 scrollbar/ensure-visible "stragglers"), each
+    announcing that the previous had missed cases. A Ripper-backed,
+    name-independent duplicate scan found 46 duplicated method bodies. All are
+    consolidated and the ratchet ships with an **empty allowlist**. The worst
+    were not near-misses: `AnnotationWorkflow` had copied `current_menu`,
+    `persist_menu_payload`, and `rollback_menu_payload` verbatim out of
+    `MenuStatePersistence` — a mixin three sibling workflows already
+    `include` — and four UI session adapters had copied `success_outcome`,
+    `failure_outcome`, and `log_error` out of `SessionOutcomeConstruction`, a
+    module two others already included. `SingleViewRenderer` and
+    `SplitViewRenderer` re-implemented `lines_fit_column?`/`image_line?`
+    directly above a comment reading "helpers provided by BaseViewRenderer".
+    `fatal_event_id_for` mapped the error taxonomy to event ids in three
+    termination paths, so adding a member would have left two reporting
+    `unknown`; it now lives on `FatalExternalInputError.event_id`, matched by
+    class so `BookParseError` still reports as a book failure. New shared
+    owners: `ThreadLocalScope` (four copies of a thread-local save/restore),
+    `TextBufferEdit`, `PolicyKey`, `DisplayMetadataFingerprint` (writer and
+    reader of the cache-invalidation key, which silently break if they drift),
+    `IndexRange`, `DictionaryLanguageSetting`, `Terminal::MouseButton`,
+    `BoundsGeometry`, `BackdropCellMap`, `CatalogListRendering`,
+    `SourcePath`, `CanonicalMetadata`, `Pdf::StreamOffset`,
+    `Zip::ExactIo`, `OPFPathResolution`, `Rss::RedirectResolver`,
+    `PageRestoreUpdates`, `InlineExecution`, `PortContract`,
+    `ProgressThrottle`, `AnnotationPreload`, `EditorTextRoutes`, plus
+    `HashNormalizer.indifferent_fetch`, `TextSanitizer.single_line` (seven
+    screens spelling out `sanitize`'s own defaults), `TextUtils.cursor_location`
+    (copied with its comment), `BoundedHttpBody.decode`,
+    `MenuSnapshot.from_stores`, `RuntimeConfig.validate!`,
+    `TranslationLanguage.normalized_entry`, and a `loading_mirror:` option on
+    `SnapshotFactory.define_snapshot`. Because the scanner ignores method
+    names, it also caught copies that had been renamed —
+    `validated_fb2_path`/`validated_rtf_path`,
+    `render_packs_empty`/`render_catalog_empty`, `packs_window`/
+    `catalog_window`, `absolute_cell`/`absolute_position`,
+    `dirname`/`source_dir`, `left_click_release?`/`released_primary_click?`,
+    `dynamic_restore_updates`/`pending_restore_updates`.
+  - **§V applied to the guardrails themselves.** The suite had drifted into the
+    moment-pinning §V forbids. Deleted: `layer_dependency`'s self-referential
+    example, which read `__FILE__` and asserted that file contained a string
+    appearing three lines above the assertion — it could not fail while it
+    existed; and `prepagination_process_isolation_spec`, an entire file
+    grepping one source file for four method names, whose real guarantee
+    (the warmup supervises the batch through `PrepaginationBatchRunner`) the
+    warmup's own spec already proves behaviorally. Generalized: the four
+    hardcoded `controller.*` method names became "the application layer calls
+    no method on a controller", and the two DisplayLine pins became one
+    renderer-types-stay-out-of-core example. Moved: the core dictionary
+    service's forbidden-error-strings list became a classification test in
+    `dictionary_service_spec`, which proves the typed failure code drives the
+    result instead of proving five strings are absent from a file.
+    `domain_invariants` keeps only true single-owner seams — §V sanctions
+    those — and now states that bar explicitly.
+  - **The adapters→application rule is written down.** §I's table says
+    `adapters → application`, while enforcement returned false for that edge
+    and re-permitted `application/ports/` and
+    `application/use_cases/requests/` by hand at four sites with three
+    different predicates. The real rule — **adapters reach the application
+    layer only through its published surface: the ports they implement and the
+    request objects they pass** — is now stated in §I and expressed once, as
+    `LayerPolicy::PATH_EXCEPTIONS`, which every site consumes.
 
 - **2026-07-12 — §IV executed on the reader composition tree; the engine
   binary leaves the repo.**

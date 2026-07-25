@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/hash_normalizer'
+require_relative 'ui/backdrop_cell_map'
 require_relative 'base_component'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/core/models/selection_anchor'
@@ -122,13 +123,13 @@ module Shoko
             @popup_position_service = options[:popup_position_service]
             @clipboard_service = options[:clipboard_service]
             @rendered_lines = options.fetch(:rendered_lines, {}) || {}
+            @backdrop_cells = Ui::BackdropCellMap.new(rendered_lines: @rendered_lines)
             @dictionary_enabled = options.fetch(:dictionary_enabled, false)
           end
 
           def selection_available?(selection_range)
             @selection_range = @coordinate_service.normalize_selection_range(selection_range, @rendered_lines)
-            @backdrop_rows_key = nil
-            @backdrop_rows = {}
+            @backdrop_cells.update_rendered_lines(@rendered_lines)
             !@selection_range.nil?
           end
 
@@ -273,7 +274,7 @@ module Shoko
           def backdrop_line_for_row(row_index)
             return '' if @width <= 0
 
-            cell_map = backdrop_cells_for_row(row_index)
+            cell_map = @backdrop_cells.cells_for_row(row_index)
             (@x...(@x + @width)).map do |column|
               value = cell_map[column]
               next ' ' if value == :continuation
@@ -355,63 +356,6 @@ module Shoko
             max_label_width = [@width - self.class::LEFT_TEXT_MARGIN - self.class::RIGHT_TEXT_PADDING, 0].max
             line_text = Shoko::Shared::Terminal::TextMetrics.truncate_to(item.to_s, max_label_width)
             (' ' * self.class::LEFT_TEXT_MARGIN) + line_text + (' ' * self.class::RIGHT_TEXT_PADDING)
-          end
-
-          def backdrop_cells_for_row(row)
-            cache = backdrop_row_cache
-            return cache[row] if cache.key?(row)
-
-            cache[row] = build_backdrop_cells(row)
-          end
-
-          def build_backdrop_cells(row)
-            geometries_for_row(row).each_with_object({}) do |geometry, cells|
-              merge_geometry_cells(cells, geometry)
-            end
-          end
-
-          def merge_geometry_cells(cells, geometry)
-            Array(geometry.cells).each do |cell|
-              merge_cell(cells, geometry, cell)
-            end
-          end
-
-          def merge_cell(cells, geometry, cell)
-            width = cell.display_width.to_i
-            return if width <= 0
-
-            absolute_column = geometry.column_origin.to_i + cell.screen_x.to_i
-            cluster = cell.cluster.to_s
-            cells[absolute_column] = cluster.empty? ? ' ' : cluster
-            mark_continuation_cells(cells, absolute_column, width)
-          end
-
-          def mark_continuation_cells(cells, absolute_column, width)
-            1.upto(width - 1) do |delta|
-              cells[absolute_column + delta] = :continuation
-            end
-          end
-
-          def backdrop_row_cache
-            key = @rendered_lines.object_id
-            return @backdrop_rows if @backdrop_rows_key == key
-
-            @backdrop_rows_key = key
-            @backdrop_rows = {}
-          end
-
-          def geometries_for_row(row)
-            return [] unless @rendered_lines.is_a?(Hash)
-
-            geometries = @rendered_lines.each_value.filter_map do |entry|
-              geometry = entry && entry[:geometry]
-              next unless geometry
-              next unless geometry.row.to_i == row.to_i
-
-              geometry
-            end
-
-            geometries.sort_by { |geometry| geometry.column_origin.to_i }
           end
         end
       end

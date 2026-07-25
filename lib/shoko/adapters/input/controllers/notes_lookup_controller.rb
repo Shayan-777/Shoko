@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/text_buffer_edit'
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_access'
 require 'shoko/shared/text_sanitizer'
@@ -29,6 +30,8 @@ module Shoko
         # persistence through the annotation service, and jumping/deleting through
         # the state controller.
         class NotesLookupController
+          TextBufferEdit = Shoko::Shared::TextBufferEdit
+
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
           include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
 
@@ -164,7 +167,7 @@ module Shoko
 
             text = @reader_state.notes_draft.to_s
             cursor = clamp_cursor(@reader_state.notes_cursor.to_i, text.length)
-            new_text, new_cursor = apply_edit(text, cursor, edit_op)
+            new_text, new_cursor = TextBufferEdit.apply(text, cursor, edit_op)
             @notes_ui_session.write_draft(text: new_text, cursor: new_cursor)
             :handled
           rescue Shoko::Error => e
@@ -370,34 +373,6 @@ module Shoko
           end
 
           # ----- compose: text editing -----
-
-          def apply_edit(text, cursor, edit_op)
-            case edit_op&.operation
-            when :insert    then insert_at(text, cursor, edit_op.text.to_s)
-            when :newline   then insert_at(text, cursor, "\n", literal: true)
-            when :backspace then backspace_at(text, cursor)
-            when :delete    then delete_at(text, cursor)
-            else [text, cursor]
-            end
-          end
-
-          def insert_at(text, cursor, char, literal: false)
-            return [text, cursor] unless literal || Shoko::Shared::TextSanitizer.printable_char?(char)
-
-            ["#{text[0...cursor]}#{char}#{text[cursor..]}", cursor + char.length]
-          end
-
-          def backspace_at(text, cursor)
-            return [text, cursor] if cursor <= 0
-
-            ["#{text[0...(cursor - 1)]}#{text[cursor..]}", cursor - 1]
-          end
-
-          def delete_at(text, cursor)
-            return [text, cursor] if cursor >= text.length
-
-            ["#{text[0...cursor]}#{text[(cursor + 1)..]}", cursor]
-          end
 
           def clamp_cursor(cursor, length)
             cursor.clamp(0, length)

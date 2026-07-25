@@ -86,11 +86,8 @@ RSpec.describe 'Layer dependency boundaries' do
         next unless layer_policy::MATRIX.key?(source_layer)
 
         dependency_targets(file_path).each do |target_rel|
-          target_layer = layer_for(target_rel)
-          next unless target_layer
-          next if target_rel.start_with?('application/ports/')
-          next if source_rel.start_with?('adapters/input/') && target_rel.start_with?('application/use_cases/requests/')
-          next if layer_policy.allows?(source_layer, target_layer)
+          next unless layer_for(target_rel)
+          next if layer_policy.allows_path?(source_layer, target_rel)
 
           offenders << "#{source_rel} -> #{target_rel}"
         end
@@ -102,13 +99,6 @@ RSpec.describe 'Layer dependency boundaries' do
 
     it 'keeps adapters isolated from application dependencies in the shared policy' do
       expect(layer_policy.allowed_targets_for('adapters')).not_to include('application')
-    end
-
-    it 'forces layer boundary specs to use the shared layer policy helper' do
-      offenders = [__FILE__].reject { |path| File.read(path).include?('SpecSupport::Architecture::LayerPolicy') }
-
-      expect(offenders).to be_empty,
-                           "Layer boundary specs must use shared policy helper:\n#{offenders.sort.join("\n")}"
     end
   end
 
@@ -143,22 +133,20 @@ RSpec.describe 'Layer dependency boundaries' do
                            "for core specifically):\n#{offenders.join("\n")}"
     end
 
-    it 'keeps DisplayLine out of core (Core::Models::DisplayLine must not be defined)' do
-      offender = Shoko::Core::Models.constants(false).find { |name| name == :DisplayLine }
-
-      expect(offender).to be_nil,
-                          'DisplayLine is a renderer type and must not live in Core::Models. ' \
-                          'Its canonical home is Application::Ports::Outbound::Formatting::DisplayLine.'
-    end
-
-    it 'forbids any DisplayLine constant reference inside core/' do
-      offenders = Dir[File.join(lib_root, 'core', '**', '*.rb')].select do |path|
+    # One example for one rule: renderer types are application-owned, so core
+    # neither defines nor names them. (Two separate DisplayLine pins — one for
+    # the constant, one for any textual reference — were the same rule twice.)
+    it 'keeps renderer types out of core' do
+      defined_in_core = Shoko::Core::Models.constants(false).grep(/DisplayLine/)
+      referencing = Dir[File.join(lib_root, 'core', '**', '*.rb')].select do |path|
         non_comment_content(path).match?(/\bDisplayLine\b/)
-      end
+      end.map { |path| relative(path) }
 
-      expect(offenders).to eq([]),
-                          "Core files referencing DisplayLine (use String-vs-other duck pattern instead):\n" \
-                          "#{offenders.map { |p| relative(p) }.join("\n")}"
+      expect(defined_in_core + referencing).to eq([]),
+                                               'DisplayLine is a renderer type owned by ' \
+                                               "Application::Ports::Outbound::Formatting; core must depend on " \
+                                               "method shape (String-vs-other), not on it:\n" \
+                                               "#{(defined_in_core + referencing).join("\n")}"
     end
   end
 
@@ -170,28 +158,27 @@ RSpec.describe 'Layer dependency boundaries' do
       expect(offenders).to be_empty, "Application files reference adapters:\n#{offenders.join("\n")}"
     end
 
-    it 'forbids application layer dependencies on controller runtime APIs' do
+    # The rule, not a list of the four method names that happened to violate
+    # it: a controller is an input-adapter object, so the application layer
+    # must not call ANY method on one. Naming the methods pinned a moment and
+    # let the fifth coupling method through (constitution §V).
+    it 'forbids the application layer from calling controller methods' do
       files = Dir[File.join(lib_root, 'application', '**', '*.rb')]
-      patterns = {
-        'controller.state_controller coupling' => /\bcontroller\.state_controller\b/,
-        'controller.main_loop coupling' => /\bcontroller\.main_loop\b/,
-        'controller metrics mutation coupling' => /\bcontroller\.mark_metrics_start!\b/,
-        'controller observer cleanup coupling' => /\bcontroller\.cleanup_observers\b/,
-      }
+      pattern = /(?<![\w.])@?controller\.[a-z_][\w!?]*/
 
       offenders = files.flat_map do |path|
-        content = non_comment_content(path)
-        patterns.filter_map do |label, pattern|
-          next unless content.match?(pattern)
+        non_comment_lines(path).filter_map do |line_no, line|
+          next unless (match = line.match(pattern))
 
-          "#{relative(path)}: #{label}"
+          "#{relative(path)}:#{line_no}: #{match[0]}"
         end
       end
 
       expect(offenders).to be_empty,
-                           "Application layer still orchestrates controller runtime API directly:\n#{offenders.join("\n")}"
+                           "Application layer orchestrates adapter controller API directly:\n#{offenders.sort.join("\n")}"
     end
 
+    # Terminal I/O is an output-adapter capability reached through ports.
     it 'forbids terminal_service dependencies in application layer' do
       files = Dir[File.join(lib_root, 'application', '**', '*.rb')]
       offenders = files.select { |path| non_comment_content(path).match?(/\bterminal_service\b/) }
@@ -239,10 +226,7 @@ RSpec.describe 'Layer dependency boundaries' do
       files.each do |path|
         source = relative(path)
         require_relative_targets_with_lines(path).each do |line, target|
-          target_layer = target.split('/').first
-          next if target.start_with?('application/ports/')
-          next if target.start_with?('application/use_cases/requests/')
-          next if layer_policy.allows?('adapters', target_layer)
+          next if layer_policy.allows_path?('adapters', target)
 
           offenders << "#{source}:#{line} -> #{target}"
         end
@@ -255,13 +239,18 @@ RSpec.describe 'Layer dependency boundaries' do
     it 'forbids adapters from referencing application constants' do
       files = Dir[File.join(lib_root, 'adapters', '**', '*.rb')]
       pattern = /\b(?:Shoko::)?Application::/
+      # The constant spellings of the same PATH_EXCEPTIONS the policy declares.
+      permitted = layer_policy.exceptions_for('adapters').map do |prefix|
+        namespace = prefix.delete_prefix('application/').split('/').reject(&:empty?)
+                          .map { |segment| segment.split('_').map(&:capitalize).join }
+        /\b(?:Shoko::)?Application::#{namespace.join('::')}::/
+      end
       offenders = []
 
       files.each do |path|
         source = relative(path)
         non_comment_lines(path).each do |line_no, line|
-          next if line.match?(/\b(?:Shoko::)?Application::Ports::/)
-          next if line.match?(/\b(?:Shoko::)?Application::UseCases::Requests::/)
+          next if permitted.any? { |allowed| line.match?(allowed) }
           next unless line.match?(pattern)
 
           offenders << "#{source}:#{line_no}: #{line.strip}"

@@ -184,7 +184,7 @@ RSpec.describe 'Constructor dependency budget' do
       Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerServiceDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeBootDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeStartupDependencies => 8,
-      Shoko::Adapters::Input::Controllers::Dependencies::MouseableReaderDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::ReaderMouseDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::StateDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::ServiceDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::UiDependencies => 8,
@@ -250,16 +250,16 @@ RSpec.describe 'Constructor dependency budget' do
       },
       # six records (warmup_services flattened to its 3 leaves) + direct
       # extras (render_state_writer, mouse_handler, runtime_components_factory)
-      'MouseableReader' => {
+      'ReaderController' => {
         actual: [
           deps::ReaderControllerCoreDependencies,
           deps::ReaderControllerStateDependencies,
           deps::ReaderControllerServiceDependencies,
           deps::ReaderRuntimeBootDependencies,
           deps::ReaderRuntimeStartupDependencies,
-          deps::MouseableReaderDependencies,
+          deps::ReaderMouseDependencies,
         ].sum(&flatten_leaves) + 3,
-        pinned: 46,
+        pinned: 45,
       },
       # state + controllers + services bundle
       'UIController' => {

@@ -56,30 +56,47 @@ module Shoko
         # @param defaults [Hash] default values keyed by field
         # @param partition [Symbol] top-level state partition (`:reader`,
         #   `:menu`, `:config`, `:ui`) this snapshot's updates flow into
+        # @param loading_mirror [Boolean] when true, `from_state` takes the
+        #   partition state AND the ui state and mirrors the shared
+        #   loading_active/message/progress fields into the snapshot. The
+        #   reader and reader-view snapshots both project that mirror; the
+        #   option lives here so the projection has one definition.
         # @return [Class] a Data subclass with the snapshot surface installed
-        def define_snapshot(fields:, defaults:, partition:)
+        def define_snapshot(fields:, defaults:, partition:, loading_mirror: false)
           frozen_fields = fields.dup.freeze
           frozen_defaults = Shoko::Shared::DeepStructure.deep_dup_frozen(defaults)
           klass = Data.define(*frozen_fields)
           klass.const_set(:FIELDS, frozen_fields)
           klass.const_set(:DEFAULTS, frozen_defaults)
           klass.const_set(:PARTITION, partition)
-          install_snapshot_surface(klass, partition: partition)
+          install_snapshot_surface(klass, partition: partition, loading_mirror: loading_mirror)
           klass
         end
 
-        def install_snapshot_surface(klass, partition:)
+        def install_snapshot_surface(klass, partition:, loading_mirror: false)
           klass.define_singleton_method(:build) do |attributes = {}|
             SnapshotFactory.build(klass, klass::DEFAULTS, attributes)
           end
-          klass.define_singleton_method(:from_state) do |state|
-            klass.build(state || {})
-          end
+          install_from_state(klass, loading_mirror: loading_mirror)
           klass.define_method(:with) do |**attributes|
             SnapshotFactory.with(self, attributes)
           end
           klass.define_method(:to_state_updates) do
             SnapshotFactory.root_state_updates(self, partition)
+          end
+        end
+
+        # A loading-mirror snapshot projects the shared ui loading fields
+        # alongside its own partition, so its constructor takes both.
+        def install_from_state(klass, loading_mirror:)
+          if loading_mirror
+            klass.define_singleton_method(:from_state) do |reader_state:, ui_state:|
+              klass.build(SnapshotFactory.merged_loading_attributes(reader_state, ui_state))
+            end
+          else
+            klass.define_singleton_method(:from_state) do |state|
+              klass.build(state || {})
+            end
           end
         end
       end

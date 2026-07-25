@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/thread_local_scope'
 require 'shoko/shared/terminal/text_metrics'
 require_relative '../models/line_cell'
 require_relative '../models/line_geometry'
@@ -18,12 +19,8 @@ module Shoko
             RUNTIME_CONFIG_KEY = :shoko_line_geometry_runtime_config
 
             class << self
-              def with_runtime_config(config:)
-                previous = Thread.current[RUNTIME_CONFIG_KEY]
-                Thread.current[RUNTIME_CONFIG_KEY] = config if config
-                yield
-              ensure
-                Thread.current[RUNTIME_CONFIG_KEY] = previous
+              def with_runtime_config(config:, &)
+                Shoko::Shared::ThreadLocalScope.with(key: RUNTIME_CONFIG_KEY, value: config, &)
               end
 
               def with_cell_cache(enabled:)

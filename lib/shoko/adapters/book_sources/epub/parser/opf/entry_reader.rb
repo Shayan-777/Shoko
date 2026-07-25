@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'path_resolution'
 require_relative '../xml_text_normalizer'
 
 module Shoko
@@ -10,7 +11,7 @@ module Shoko
         class OPFEntryReader
           def initialize(opf_path, zip: nil)
             @opf_path = opf_path
-            @opf_dir = dirname(opf_path)
+            @opf_dir = OPFPathResolution.dirname(opf_path)
             @zip = zip
           end
 
@@ -68,12 +69,6 @@ module Shoko
           end
 
           private
-
-          def dirname(path)
-            str = path.to_s
-            idx = str.rindex('/')
-            idx ? str[0...idx] : ''
-          end
 
           def normalize_joined_path(base_dir, href)
             path_source(base_dir, href).split('/').each_with_object([]) do |segment, parts|

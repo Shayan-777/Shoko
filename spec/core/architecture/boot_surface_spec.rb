@@ -126,7 +126,7 @@ RSpec.describe 'Reader builder dependency loading' do
 
     constants = JSON.parse(stdout)
     expect(constants).to eq(
-      'mouseable_reader' => 'constant',
+      'reader_controller' => 'constant',
       'ui_controller' => 'constant',
       'state_controller' => 'constant',
       'dictionary_controller' => 'constant',
@@ -145,7 +145,7 @@ RSpec.describe 'Reader builder dependency loading' do
       require 'shoko'
       require 'shoko/composition/container_factory/controller_composition/reader_builder'
       puts JSON.dump(
-        mouseable_reader: defined?(Shoko::Adapters::Input::Controllers::MouseableReader),
+        reader_controller: defined?(Shoko::Adapters::Input::Controllers::ReaderController),
         ui_controller: defined?(Shoko::Adapters::Input::Controllers::UIController),
         state_controller: defined?(Shoko::Adapters::Input::Controllers::StateController),
         dictionary_controller: defined?(Shoko::Adapters::Input::Controllers::DictionaryController),

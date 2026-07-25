@@ -20,25 +20,23 @@ module Shoko
           )
         end
 
+        # Accepts both the dictionary backend's column names (written_rep,
+        # sense_list, trans_list) and this object's own field names, under
+        # either String or Symbol keys.
         def self.from_hash(hash)
           return nil unless hash.is_a?(Hash)
 
+          fields = Shoko::Shared::HashNormalizer.symbolize_keys(hash) || {}
           new(
-            word: extract(hash, :written_rep) || extract(hash, :word),
-            language: extract(hash, :language),
-            lexentry: extract(hash, :lexentry),
-            senses: parse_list(extract(hash, :sense_list) || extract(hash, :sense)),
-            translations: parse_list(extract(hash, :trans_list) || extract(hash, :translations)),
-            score: extract(hash, :score, 0.0),
-            importance: extract(hash, :importance, 0.0)
+            word: fields[:written_rep] || fields[:word],
+            language: fields[:language],
+            lexentry: fields[:lexentry],
+            senses: parse_list(fields[:sense_list] || fields[:sense]),
+            translations: parse_list(fields[:trans_list] || fields[:translations]),
+            score: fields.fetch(:score, 0.0),
+            importance: fields.fetch(:importance, 0.0)
           )
         end
-
-        def self.extract(hash, key, default = nil)
-          normalized = Shoko::Shared::HashNormalizer.symbolize_keys(hash) || {}
-          normalized.key?(key) ? normalized[key] : default
-        end
-        private_class_method :extract
 
         def self.parse_list(value)
           return [] if value.nil?

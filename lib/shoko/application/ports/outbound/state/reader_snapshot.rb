@@ -36,7 +36,8 @@ module Shoko
           ReaderSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
             fields: reader_fields,
             defaults: reader_defaults,
-            partition: :reader
+            partition: :reader,
+            loading_mirror: true
           )
 
           ReaderSnapshot.class_eval do
@@ -46,11 +47,6 @@ module Shoko
               loading_message: %i[ui loading_message],
               loading_progress: %i[ui loading_progress],
             }.freeze
-
-            def self.from_state(reader_state:, ui_state:)
-              support = Shoko::Application::State::SnapshotFactory
-              build(support.merged_loading_attributes(reader_state, ui_state))
-            end
 
             def to_state_updates
               support = Shoko::Application::State::SnapshotFactory

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'policy_key'
+
 module Shoko
   module Shared
     # Shared normalization and validation rules for persisted theme identity.
@@ -23,7 +25,7 @@ module Shoko
       end
 
       def normalize(value)
-        key = normalize_key(value)
+        key = PolicyKey.normalize(value)
         return nil unless key
 
         canonical = ALIASES.fetch(key, key)
@@ -35,16 +37,6 @@ module Shoko
       def valid?(value)
         !normalize(value).nil?
       end
-
-      def normalize_key(value)
-        return nil if value.nil?
-
-        key = value.is_a?(Symbol) ? value : value.to_s.strip.downcase.to_sym
-        return nil if key == :''
-
-        key
-      end
-      private_class_method :normalize_key
     end
   end
 end
