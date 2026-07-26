@@ -34,6 +34,8 @@ module Shoko
               register_rss_reader_bindings
               register_rss_reader_feed_input_bindings
               register_rss_reader_filter_bindings
+              register_rss_reader_find_bindings
+              register_rss_reader_lookup_bindings
               register_annotations_bindings
               register_annotation_detail_bindings
               register_annotation_editor_bindings
@@ -495,6 +497,40 @@ module Shoko
             def bind_rss_reader_input_actions(bindings)
               bind_intent!(bindings, %w[a A], :rss_reader_open_add_feed)
               bind_intent!(bindings, ['/'], :rss_reader_open_filter)
+              bind_rss_reader_text_actions(bindings)
+            end
+
+            # Text interaction while reading, in the book reader's key language:
+            # f finds, n/N step the matches, and the selection actions answer to
+            # the same letters the reader's popup uses.
+            def bind_rss_reader_text_actions(bindings)
+              bind_intent!(bindings, %w[f F], :rss_reader_open_find)
+              bind_intent!(bindings, ['n'], :rss_reader_next_match)
+              bind_intent!(bindings, ['N'], :rss_reader_prev_match)
+              bind_intent!(bindings, %w[y Y], :rss_reader_copy_selection)
+              bind_intent!(bindings, %w[d D], :rss_reader_lookup_selection)
+              bind_intent!(bindings, %w[t T], :rss_reader_translate_selection)
+              bind_intent!(bindings, %w[m M], :rss_reader_annotate_selection)
+            end
+
+            def register_rss_reader_lookup_bindings
+              bindings = {}
+              add_nav_up_down(bindings, :rss_reader_move_up, :rss_reader_move_down)
+              keys = Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
+              bind_intent!(bindings, keys, :close_rss_reader_mode, payload: mode_change(:rss_reader))
+              dispatcher.register_mode(:rss_reader_lookup, bindings)
+            end
+
+            def register_rss_reader_find_bindings
+              bindings = {}
+              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_rss_find,
+                           payload: edit_op(:backspace))
+              bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_rss_find,
+                           payload: edit_op(:delete))
+              bindings[:__default__] = edit_op_text_binding(:edit_rss_find)
+              add_confirm_bindings(bindings, :rss_reader_submit_find)
+              bind_intent!(bindings, @key_classifier.action_keys(:cancel), :rss_reader_close_find)
+              dispatcher.register_mode(:rss_reader_find, bindings)
             end
 
             def bind_rss_reader_close(bindings)

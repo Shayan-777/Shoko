@@ -7,6 +7,7 @@ require_relative 'state_controller'
 require_relative 'input_controller'
 require_relative 'intent_runtime_bridge'
 require_relative 'translator_mouse_handler'
+require_relative 'rss_reading_mouse_handler'
 require_relative 'mouse_router'
 require_relative 'workflow_render_observer'
 require_relative 'input_mode_observer'
@@ -313,6 +314,7 @@ module Shoko
                 intent_handler: @intent_handler
               )
               @translator_mouse_handler = build_translator_mouse_handler
+              @rss_reading_mouse_handler = build_rss_reading_mouse_handler
               @menu_mouse_router = build_menu_mouse_router
               @dispatcher = @input_controller.dispatcher
             end
@@ -325,6 +327,15 @@ module Shoko
                 translator_screen: @main_menu_component.translator_screen,
                 clipboard_service: @clipboard_service,
                 notification_service: @notification_service
+              )
+            end
+
+            def build_rss_reading_mouse_handler
+              RssReadingMouseHandler.new(
+                menu_state_reader: @menu_state_reader,
+                menu_session_mutator: @menu_session_mutator,
+                intent_handler: @intent_handler,
+                rss_reader_screen: @main_menu_component.rss_reader_screen
               )
             end
 
@@ -461,6 +472,7 @@ module Shoko
               event = @mouse_handler.parse_mouse_event(token)
               return unless event
               return if translator_mouse_mode? && handle_translator_mouse_event(event)
+              return if rss_reading_mouse_mode? && handle_rss_reading_mouse_event(event)
 
               @menu_mouse_router&.handle(event)
             end
@@ -589,6 +601,20 @@ module Shoko
             def translator_language_options(kind)
               languages = Array(@menu_state_reader.translator_languages).map { |item| Shoko::Core::Models::TranslationLanguage.normalized_entry(item) }
               kind == :source ? [{ code: 'auto', name: 'Auto Detect' }, *languages] : languages
+            end
+
+            # The reading pane owns the pointer while an article is open, so a
+            # drag selects text instead of scrolling the list behind it.
+            def rss_reading_mouse_mode?
+              @menu_state_reader.mode == :rss_reader && @main_menu_component.rss_reader_screen.reading_pane_active?
+            end
+
+            # The pane draws inside the canvas, so pointer coordinates are
+            # rebased onto it exactly as the translator's are.
+            def handle_rss_reading_mouse_event(event)
+              bounds = translator_bounds
+              local = event.merge(x: event[:x] - (bounds.x - 1), y: event[:y] - (bounds.y - 1))
+              @rss_reading_mouse_handler&.handle(local, bounds: bounds) ? true : false
             end
 
             def translator_mouse_mode?

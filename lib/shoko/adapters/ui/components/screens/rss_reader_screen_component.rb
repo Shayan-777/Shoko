@@ -3,12 +3,18 @@
 require_relative '../base_component'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/shared/terminal/text_metrics'
+require 'shoko/shared/index_range'
+require 'shoko/shared/hash_normalizer'
 require_relative '../menu_design/canvas_frame'
 require_relative '../menu_design/canvas_list'
+require_relative '../menu_design/canvas_scrollbar'
 require_relative '../menu_design/icon_set'
 require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
 require_relative '../ui/text_utils'
+require_relative 'rss_article_layout'
+require_relative 'reading_span_highlighter'
+require_relative 'reading_find'
 require 'time'
 
 module Shoko
@@ -31,6 +37,25 @@ module Shoko
 
             ARTICLE_BLOCK_ROWS = 3 # title · summary · meta, like an in-book search result
             READING_MAX_WIDTH = 84
+            # Blank columns between the prose and the scrollbar, matching the
+            # canvas list. The column is reserved whether or not the bar is
+            # currently drawn, so the measure does not reflow as an article
+            # crosses the "needs scrolling" threshold mid-read.
+            READING_RIGHT_GAP = 2
+            # What separates one word from the next when right-clicking picks
+            # a word out of the prose.
+            WORD_BREAK = /[\s[[:punct:]]]/
+            # The actions offered over a selection, in the book reader's order.
+            CONTEXT_ACTIONS = [
+              { label: 'Copy', intent: :rss_reader_copy_selection },
+              { label: 'Look Up', intent: :rss_reader_lookup_selection },
+              { label: 'Translate', intent: :rss_reader_translate_selection },
+              { label: 'Annotate', intent: :rss_reader_annotate_selection },
+            ].freeze
+            CONTEXT_MENU_PAD = 2
+            # Characters kept either side of a selection so an annotation can
+            # be re-located in the article later.
+            ANCHOR_CONTEXT = 60
 
             def initialize(menu_state_reader: nil, menu_hit_registry: nil, menu_visual_profile: nil)
               super()
@@ -43,7 +68,106 @@ module Shoko
               :fill
             end
 
+            # ----- reading-pane text geometry -------------------------------
+            #
+            # The pane draws the article as numbered rows (ReadingLine), so a
+            # terminal position resolves to a character in the article's
+            # selectable stream and back again. These are what the mouse
+            # handler drives selection with; they mirror the geometry the
+            # renderer just used, so a hit always lands where the reader sees.
+
+            # @return [Integer, nil] character index, or nil off the prose
+            def reading_hit(column, row, bounds)
+              geometry = reading_geometry(bounds)
+              return nil unless geometry
+
+              line = visible_line_at(geometry, row)
+              return nil unless line&.selectable?
+
+              line.index + character_offset(line, column - geometry[:content_x])
+            end
+
+            # @return [Hash, nil] { start_index:, end_index: } over the stream
+            def reading_selection_from_points(start_column:, start_row:, end_column:, end_row:, bounds:)
+              first = reading_hit(start_column, start_row, bounds)
+              last = reading_hit(end_column, end_row, bounds)
+              return nil unless first && last
+
+              start_index, end_index = [first, last].minmax
+              return nil if start_index == end_index
+
+              { start_index: start_index, end_index: end_index }
+            end
+
+            # @return [String] the selected text, '' when nothing is selected
+            def reading_selection_text(selection, bounds)
+              geometry = reading_geometry(bounds)
+              return '' unless geometry && selection
+
+              start_index, end_index = Shoko::Shared::IndexRange.ordered(selection)
+              reading_stream(geometry[:lines])[start_index...end_index].to_s
+            end
+
+            # The selection as it is stored in state: its span plus the text it
+            # resolves to and the words either side.
+            #
+            # The span alone is meaningless outside this screen — it indexes a
+            # stream produced by *this* wrapping — so the text is resolved here,
+            # at selection time. Everything downstream (copy, lookup, translate,
+            # the annotation's anchor) then works from plain text and never
+            # needs to know how the article was laid out.
+            def reading_selection_payload(selection, bounds)
+              geometry = reading_geometry(bounds)
+              return nil unless geometry && selection
+
+              stream = reading_stream(geometry[:lines])
+              from, to = Shoko::Shared::IndexRange.ordered(selection)
+              text = stream[from...to].to_s
+              return nil if text.strip.empty?
+
+              {
+                start_index: from, end_index: to, text: text,
+                prefix: stream[[from - ANCHOR_CONTEXT, 0].max...from].to_s,
+                suffix: stream[to, ANCHOR_CONTEXT].to_s
+              }
+            end
+
+            # True when the pane is showing an article that can be interacted with.
+            def reading_pane_active?
+              reading? && selected_article_hash ? true : false
+            end
+
+            # The word under a stream index, so right-clicking outside the
+            # selection still has something to act on.
+            # @return [Hash, nil] { start_index:, end_index: }
+            def reading_word_at(index, bounds)
+              geometry = reading_geometry(bounds)
+              return nil unless geometry
+
+              stream = reading_stream(geometry[:lines])
+              return nil if index >= stream.length || WORD_BREAK.match?(stream[index].to_s)
+
+              from = index
+              from -= 1 while from.positive? && !WORD_BREAK.match?(stream[from - 1])
+              to = index
+              to += 1 while to < stream.length && !WORD_BREAK.match?(stream[to])
+              { start_index: from, end_index: to }
+            end
+
+            # @return [Hash, nil] the action under a position in the actions menu
+            def context_menu_hit(column, row, bounds)
+              box = context_menu_box(bounds)
+              return nil unless box
+
+              index = row - box[:row]
+              return nil unless index >= 0 && index < CONTEXT_ACTIONS.length
+              return nil unless column >= box[:column] && column < box[:column] + box[:width]
+
+              CONTEXT_ACTIONS[index]
+            end
+
             def do_render(surface, bounds)
+              @current_bounds = bounds
               frame = MenuDesign::CanvasFrame.new(surface, bounds)
               frame.paint
               frame.render_rule(title: 'RSS Reader', accent: accent, meta: rule_meta)
@@ -97,7 +221,9 @@ module Shoko
 
             def hint_text
               return 'type in the bar below · ENTER apply · ESC cancel' if overlay_mode?
-              return 'J/K scroll · SPACE page · H back · R read · M star · Z zen · ESC menu' if reading?
+              if reading?
+                return 'drag selects · right-click acts · Y copy · D look up · T translate · M note · F find · ESC menu'
+              end
               return 'ENTER open · A add · D remove · S sync · ESC menu' if focus?(:feeds)
 
               'ENTER read · H feeds · / filter · 1/2/3 scope · S sync · ESC menu'
@@ -198,42 +324,259 @@ module Shoko
               return render_note(frame, 'Select an article to read') unless article
 
               top = frame.body_top
-              height = [frame.body_bottom - top + 1, 1].max
-              width = [frame.content_width, READING_MAX_WIDTH].min
-              lines = reading_lines(article, width)
-              offset = current_scroll.clamp(0, [lines.length - height, 0].max)
+              lines = reading_lines(article, reading_width(frame))
+              height = reading_height(frame, top, lines.length)
+              offset = reading_offset(lines, height)
               write_reading_window(surface, bounds, frame, lines: lines, offset: offset, top: top, height: height)
+              MenuDesign::CanvasScrollbar.render(
+                surface: surface, bounds: bounds, frame: frame, top: top, height: height,
+                total: lines.length, visible: height, offset: offset
+              )
               render_reading_position(frame, lines.length, offset, height)
+              render_context_menu(surface, bounds, frame)
               register_reading_wheel(frame, top, height)
             end
 
+            # A small card of actions anchored where the reader right-clicked,
+            # kept inside the pane so it is never drawn off the edge.
+            def render_context_menu(surface, bounds, frame)
+              box = context_menu_box(bounds)
+              return unless box
+
+              CONTEXT_ACTIONS.each_with_index do |action, index|
+                label = " #{action[:label]}".ljust(box[:width])
+                surface.write(bounds, box[:row] + index, box[:column],
+                              frame.seg(label, Palette::LANDING_TITLE_FG, background: Palette::LIST_SELECTED_BG))
+              end
+            end
+
+            # @return [Hash, nil] :row, :column, :width of the actions card
+            def context_menu_box(bounds)
+              anchor = Shoko::Shared::HashNormalizer.symbolize_keys(menu_state_reader&.rss_context_menu)
+              return nil unless anchor
+
+              width = CONTEXT_ACTIONS.map { |action| action[:label].length }.max + CONTEXT_MENU_PAD
+              rows = CONTEXT_ACTIONS.length
+              {
+                row: anchor[:anchor_row].to_i.clamp(1, [bounds.height - rows, 1].max),
+                column: anchor[:anchor_column].to_i.clamp(1, [bounds.width - width, 1].max),
+                width: width,
+              }
+            end
+
+            # The position badge is a full-width line on the last body row, so a
+            # scrolling article's window stops one row short of it. Without
+            # that the badge covers both the final line of prose and the foot
+            # of the scrollbar. Reserving a row can only ever keep an article
+            # scrolling, never make it fit, so the decision cannot oscillate.
+            # The same measurements the last render used, recomputed from the
+            # bounds so a hit test cannot disagree with what is on screen.
+            def current_bounds
+              @current_bounds || Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 80, height: 24)
+            end
+
+            def reading_geometry(bounds)
+              return nil unless reading_pane_active?
+
+              frame = MenuDesign::CanvasFrame.new(nil, bounds)
+              lines = reading_lines(selected_article_hash, reading_width(frame))
+              top = frame.body_top
+              height = reading_height(frame, top, lines.length)
+              {
+                lines: lines, top: top, height: height, content_x: frame.content_x,
+                offset: reading_offset(lines, height)
+              }
+            end
+
+            def visible_line_at(geometry, row)
+              index = geometry[:offset] + (row - geometry[:top])
+              return nil unless index >= geometry[:offset] && index < geometry[:offset] + geometry[:height]
+
+              geometry[:lines][index]
+            end
+
+            # Maps a column within the content area onto a character of the
+            # row's prose, stepping by display width so wide glyphs count once.
+            def character_offset(line, local_column)
+              target = local_column - line.column
+              return 0 if target <= 0
+
+              width = 0
+              line.text.each_char.with_index do |char, index|
+                cell = [TextMetrics.display_width_for(char), 1].max
+                return index if target < width + cell
+
+                width += cell
+              end
+              line.text.length
+            end
+
+            # Rows joined the way they were numbered, so a stream index means
+            # the same character here as it does in a ReadingLine.
+            def reading_stream(lines)
+              lines.map(&:text).join("\n")
+            end
+
+            def reading_height(frame, top, total)
+              available = [frame.body_bottom - top + 1, 1].max
+              return available if total <= available
+
+              [available - 1, 1].max
+            end
+
+            # The stored scroll, except that a targeted find match pulls the
+            # window to itself so pressing n always shows the hit.
+            def reading_offset(lines, height)
+              scroll = current_scroll
+              found = find_matches(lines)
+              unless found.empty?
+                match = found[ReadingFind.wrap_index(find_index, found.length)]
+                scroll = ReadingFind.scroll_to(match, lines, scroll: scroll, visible: height) if match
+              end
+              scroll.clamp(0, [lines.length - height, 0].max)
+            end
+
+            def reading_width(frame)
+              reserved = MenuDesign::CanvasScrollbar::WIDTH + READING_RIGHT_GAP
+              (frame.content_width - reserved).clamp(1, READING_MAX_WIDTH)
+            end
+
             def write_reading_window(surface, bounds, frame, lines:, offset:, top:, height:)
-              (lines[offset, height] || []).each_with_index do |segments, index|
+              spans = reading_spans(lines)
+              (lines[offset, height] || []).each_with_index do |line, index|
+                segments = ReadingSpanHighlighter.call(line, spans)
                 surface.write(bounds, top + index, frame.content_x,
                               frame.compose(left: segments, right: []))
               end
             end
 
+            # What is painted over the prose: the live selection, plus every
+            # find match with the current one picked out.
+            def reading_spans(lines)
+              spans = []
+              selection = reading_selection
+              if selection
+                from, to = Shoko::Shared::IndexRange.ordered(selection)
+                spans << { range: from..to, style: ReadingSpanHighlighter::SELECTION }
+              end
+              spans.concat(annotation_spans(lines))
+              spans.concat(find_match_spans(lines))
+              spans
+            end
+
+            # Notes made on this article show where they were made. The quote
+            # is located in the current stream rather than stored as an offset,
+            # so a note survives the article being re-fetched or re-wrapped.
+            def annotation_spans(lines)
+              quotes = Array(menu_state_reader&.rss_annotations)
+              return [] if quotes.empty?
+
+              stream = reading_stream(lines)
+              quotes.filter_map do |record|
+                quote = Shoko::Shared::HashNormalizer.symbolize_keys(record)&.dig(:quote).to_s
+                next if quote.empty?
+
+                at = stream.index(quote)
+                next unless at
+
+                { range: at...(at + quote.length), style: ReadingSpanHighlighter::ANNOTATION }
+              end
+            end
+
+            def reading_selection
+              value = menu_state_reader&.rss_selection
+              Shoko::Shared::HashNormalizer.symbolize_keys(value)
+            end
+
+            # Every match underlined, the one the reader is on reversed too, so
+            # its position is obvious without losing sight of the others.
+            def find_match_spans(lines)
+              found = find_matches(lines)
+              return [] if found.empty?
+
+              current = ReadingFind.wrap_index(find_index, found.length)
+              found.each_with_index.map do |range, index|
+                style = index == current ? ReadingSpanHighlighter::CURRENT_MATCH : ReadingSpanHighlighter::MATCH
+                { range: range, style: style }
+              end
+            end
+
+            def find_matches(lines)
+              query = find_query
+              return @find_total = [] if query.empty?
+
+              found = ReadingFind.matches(reading_stream(lines), query)
+              @find_total = found.length
+              found
+            end
+
+            def find_query = menu_state_reader&.rss_find_query.to_s
+
+            def find_index = menu_state_reader&.rss_find_index.to_i
+
+            def find_active? = menu_state_reader&.rss_find_active == true
+
+            # Laying an article out costs milliseconds — every block is
+            # re-wrapped, and display width is measured per word — while
+            # scrolling only changes which slice of the result is shown. The
+            # rendered lines are therefore memoized per article and measure, so
+            # a scroll step is a window slice rather than a full relayout.
+            # Keyed on the content itself, so a re-synced article re-lays out.
             def reading_lines(article, width)
+              key = reading_lines_key(article, width)
+              return @reading_lines if @reading_lines_key == key
+
+              @reading_lines_key = key
+              @reading_lines = build_reading_lines(article, width)
+            end
+
+            def reading_lines_key(article, width)
               [
-                *wrap_words(article[:title].to_s, width).map { |line| [[line, Palette::LANDING_TITLE_FG]] },
-                [[reading_meta(article), Palette::LANDING_DIM_FG]],
-                [],
-                *wrap_words(article_body_text(article), width).map { |line| [[line, Palette::LANDING_TEXT_FG]] },
-                *reading_footer_lines(article),
+                article[:id],
+                width,
+                Array(article[:content_blocks]).length,
+                article[:content].to_s.length,
+                article[:summary].to_s.length,
               ]
             end
+
+            def build_reading_lines(article, width)
+              rows = [
+                *wrap_words(article[:title].to_s, width).map { |line| [[line, Palette::LANDING_TITLE_FG]] },
+                [[reading_meta(article), Palette::LANDING_DIM_FG]],
+              ]
+              RssArticleLayout.index_rows(
+                rows.map { |segments| { content: segments, text: segments.map(&:first).join, column: 0 } } +
+                article_body_rows(article, width) +
+                reading_footer_rows(article)
+              )
+            end
+
+            # Structured blocks when the article has them, so headings, lists,
+            # quotes, code and inline emphasis survive to the screen. Articles
+            # cached before blocks existed still render from their flat text.
+            def article_body_rows(article, width)
+              blocks = article[:content_blocks]
+              return [blank_row, *RssArticleLayout.new(width: width).rows(blocks)] if Array(blocks).any?
+
+              plain = wrap_words(article_body_text(article), width).map do |line|
+                { content: [[line, Palette::LANDING_TEXT_FG]], text: line, column: 0 }
+              end
+              [blank_row, *plain]
+            end
+
+            def blank_row = { prefix: [], content: [], text: '', column: 0 }
 
             def reading_meta(article)
               [article[:feed_title], article[:author], article[:published_label]]
                 .map(&:to_s).reject(&:empty?).join('  ·  ')
             end
 
-            def reading_footer_lines(article)
+            def reading_footer_rows(article)
               url = article[:url].to_s.strip.sub(%r{\Ahttps?://}, '')
               return [] if url.empty?
 
-              [[], [[url, Palette::LANDING_DIM_FG]]]
+              [blank_row, { content: [[url, Palette::LANDING_DIM_FG]], text: url, column: 0 }]
             end
 
             def render_reading_position(frame, total, offset, height)
@@ -334,7 +677,8 @@ module Shoko
             def zen_mode? = menu_state_reader&.rss_zen_mode == true
             def feed_input_mode? = menu_state_reader&.mode == :rss_reader_feed_input
             def filter_mode? = menu_state_reader&.mode == :rss_reader_filter
-            def overlay_mode? = feed_input_mode? || filter_mode?
+            def overlay_mode? = feed_input_mode? || filter_mode? || find_mode?
+            def find_mode? = menu_state_reader&.mode&.to_sym == :rss_reader_find
             def reading? = zen_mode? || focus?(:content)
 
             def current_feed_index
@@ -385,7 +729,35 @@ module Shoko
             end
 
             def status_message
+              return find_status_message if find_mode? || (find_active? && reading?)
+
               menu_state_reader&.rss_message.to_s
+            end
+
+            # The query as typed, with how many matches it has and which one is
+            # current, so n/N always has a visible reference.
+            def find_status_message
+              query = find_query
+              return 'find: ' if query.empty?
+
+              "find: #{query}#{find_counter}"
+            end
+
+            # Derived on demand rather than remembered from the body render:
+            # the status line is drawn BEFORE the article, so a remembered count
+            # would always be one frame stale.
+            def find_counter
+              total = current_find_matches.length
+              return '  ·  no matches' if total.zero?
+
+              "  ·  #{ReadingFind.wrap_index(find_index, total) + 1}/#{total}"
+            end
+
+            def current_find_matches
+              article = selected_article_hash
+              return [] unless article
+
+              find_matches(reading_lines(article, reading_width(MenuDesign::CanvasFrame.new(nil, current_bounds))))
             end
 
             def status_fg

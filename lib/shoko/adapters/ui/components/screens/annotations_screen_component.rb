@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'uri'
+
 require_relative '../base_component'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/text_sanitizer'
@@ -246,9 +248,32 @@ module Shoko
               saved.empty? ? '—' : saved
             end
 
+            # Notes are keyed by whatever they were made on: a book by its
+            # file path, an article by its URL. A URL has no useful basename
+            # (it is usually the slug or an id), so it is shown as its host
+            # and last readable segment instead of a bare filename.
             def compact_book_label(path)
-              base = File.basename(path.to_s, '.*')
+              text = path.to_s
+              return article_label(text) if text.match?(%r{\Ahttps?://})
+
+              base = File.basename(text, '.*')
               base.empty? ? 'book' : TextSanitizer.single_line(base)
+            end
+
+            def article_label(url)
+              uri = URI.parse(url)
+              host = uri.host.to_s.delete_prefix('www.')
+              slug = uri.path.to_s.split('/').reject(&:empty?).reverse
+                        .find { |part| part.match?(/[a-z]{4}/i) }
+              TextSanitizer.single_line([host, humanized_slug(slug)].compact.reject(&:empty?).join(' · '))
+            rescue URI::InvalidURIError
+              TextSanitizer.single_line(url)
+            end
+
+            def humanized_slug(slug)
+              return '' unless slug
+
+              slug.tr('-_', '  ').squeeze(' ').strip
             end
 
             def one_line(text, fallback: '')

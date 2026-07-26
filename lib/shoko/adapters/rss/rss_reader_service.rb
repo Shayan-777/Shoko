@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'digest'
+require_relative 'article_block_sanitizer'
+require 'shoko/core/models/content_block_payload'
 
 require_relative '../../core/models/rss_article'
 require_relative '../../core/models/rss_feed'
@@ -36,6 +38,7 @@ module Shoko
           @wall_clock = wall_clock
           @article_content_fetcher = article_content_fetcher
           @text_sanitizer = text_sanitizer
+          @block_sanitizer = ArticleBlockSanitizer.new(max_text_length: self.class::MAX_CONTENT_LENGTH)
         end
 
         def snapshot
@@ -151,19 +154,23 @@ module Shoko
           return nil unless title
 
           article_id_value = article_id(feed_id_value, payload)
-          existing = existing_index[article_id_value]
+          Shoko::Core::Models::RssArticle.new(
+            **article_record_attributes(
+              feed_id_value, payload, existing_index[article_id_value],
+              sanitized_article_data(article_id_value, title, payload)
+            )
+          )
+        end
+
+        def sanitized_article_data(article_id_value, title, payload)
           summary = sanitized_article_summary(payload)
-          content = sanitized_article_content(payload, summary)
-          article_data = {
+          {
             id: article_id_value,
             title: title,
             summary: summary,
-            content: content,
+            content: sanitized_article_content(payload, summary),
+            content_blocks: sanitized_article_blocks(payload),
           }
-
-          Shoko::Core::Models::RssArticle.new(
-            **article_record_attributes(feed_id_value, payload, existing, article_data)
-          )
         end
 
         def replace_feed_articles(all_articles, feed_id_value, replacement)
@@ -207,6 +214,7 @@ module Shoko
             title: article_data[:title],
             summary: article_data[:summary],
             content: article_data[:content],
+            content_blocks: article_data[:content_blocks],
             published_at: sanitize_time(payload[:published_at]) || existing&.published_at || timestamp,
             fetched_at: timestamp,
           }.merge(article_text_attributes(payload)).merge(article_state_attributes(existing))
@@ -226,6 +234,21 @@ module Shoko
         def sanitized_article_content(payload, summary)
           content_source = payload[:content].to_s.strip.empty? ? summary : payload[:content]
           sanitize_text(content_source, preserve_newlines: true, max_length: self.class::MAX_CONTENT_LENGTH)
+        end
+
+        # Blocks arrive as ContentBlocks from the parser (or as stored payloads
+        # when an article round-trips); both are sanitized, bounded, and stored
+        # in the plain wire shape.
+        def sanitized_article_blocks(payload)
+          blocks = payload[:content_blocks]
+          return [] if blocks.nil? || Array(blocks).empty?
+
+          parsed = Array(blocks).first.is_a?(Shoko::Core::Models::ContentBlock) ? blocks : blocks_from_payload(blocks)
+          Shoko::Core::Models::ContentBlockPayload.dump(@block_sanitizer.call(parsed))
+        end
+
+        def blocks_from_payload(blocks)
+          Shoko::Core::Models::ContentBlockPayload.load(blocks)
         end
 
         def article_identity(payload)
@@ -269,12 +292,13 @@ module Shoko
           article = payload.dup
           return article unless should_fetch_full_content?(article)
 
-          full_content = @article_content_fetcher.fetch(article[:url])
-          return article unless full_content_more_complete?(article, full_content)
+          fetched = @article_content_fetcher.fetch(article[:url])
+          return article unless full_content_more_complete?(article, fetched.text)
 
           article.merge(
-            content: full_content,
-            summary: derive_summary(article[:summary], full_content)
+            content: fetched.text,
+            content_blocks: fetched.blocks,
+            summary: derive_summary(article[:summary], fetched.text)
           )
         # Resilient boundary (R4): full-article hydration is a best-effort
         # enrichment that runs arbitrary third-party HTML through the fetcher,
@@ -512,6 +536,7 @@ module Shoko
             author: article.author,
             summary: article.summary,
             content: article.content.to_s.empty? ? article.summary : article.content,
+            content_blocks: article.content_blocks,
             url: article.url,
             published_at: article.published_at,
             published_label: published_label(article.published_at),

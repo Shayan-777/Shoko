@@ -56,6 +56,7 @@ module Shoko
             translation_service: :translation_service,
             download_service: :download_service,
             dictionary_catalog_service: :dictionary_catalog_service,
+            dictionary_service: :dictionary_service,
             translation_model_store: :translation_model_store,
             translation_model_catalog: :translation_model_catalog,
             cache_pointer_resolver: :cache_pointer_resolver,
@@ -106,6 +107,7 @@ module Shoko
             :instrumentation,
             :download_service,
             :dictionary_catalog_service,
+            :dictionary_service,
             :translation_model_store,
             :translation_model_catalog,
             :text_sanitizer,
@@ -401,13 +403,28 @@ module Shoko
           end
 
           def workflow_service_context(context)
+            content_service_context(context).merge(document_service_context(context))
+          end
+
+          # The services the menu's own workflows reach for: dictionaries,
+          # translation packs, notes, feeds, and the clipboard the reading
+          # pane copies to.
+          def content_service_context(context)
             {
               dictionary_catalog_service: context.dictionary_catalog_service,
+              dictionary_service: context.dictionary_service,
               dictionary_storage: context.dictionary_storage,
+              clipboard_service: context.clipboard_service,
               translation_model_store: context.translation_model_store,
               translation_model_catalog: context.translation_model_catalog,
               annotation_service: context.annotation_service,
               rss_reader_service: context.rss_reader_service,
+            }
+          end
+
+          # The services that open a book and get it ready to read.
+          def document_service_context(context)
+            {
               cache_pointer_resolver: context.cache_pointer_resolver,
               reader_document_locator: context.reader_document_locator,
               document_loader: context.document_loader,

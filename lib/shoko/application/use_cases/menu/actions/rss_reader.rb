@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/hash_normalizer'
+
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
 require_relative '../../support/text_editing'
@@ -22,6 +24,7 @@ module Shoko
             EDIT_OP_INTENTS = %i[
               edit_rss_feed_input
               edit_rss_filter
+              edit_rss_find
             ].freeze
             SUPPORTED_INTENTS = %i[
               rss_reader_focus_left
@@ -51,6 +54,17 @@ module Shoko
               edit_rss_filter
               rss_reader_submit_filter
               rss_reader_remove_feed
+              rss_reader_copy_selection
+              rss_reader_lookup_selection
+              rss_reader_translate_selection
+              rss_reader_annotate_selection
+              rss_reader_clear_selection
+              rss_reader_open_find
+              edit_rss_find
+              rss_reader_submit_find
+              rss_reader_next_match
+              rss_reader_prev_match
+              rss_reader_close_find
             ].freeze
 
             def initialize(menu_session_store:, rss_reader_workflow:, menu_transient_store:)
@@ -86,6 +100,16 @@ module Shoko
               rss_reader_open_filter
               rss_reader_submit_filter
               rss_reader_remove_feed
+              rss_reader_copy_selection
+              rss_reader_lookup_selection
+              rss_reader_translate_selection
+              rss_reader_annotate_selection
+              rss_reader_clear_selection
+              rss_reader_open_find
+              rss_reader_submit_find
+              rss_reader_next_match
+              rss_reader_prev_match
+              rss_reader_close_find
             ].freeze
 
             private
@@ -320,6 +344,8 @@ module Shoko
                           .merge(scope_routes)
                           .merge(article_routes)
                           .merge(input_routes)
+                          .merge(text_action_routes)
+                          .merge(find_routes)
                           .freeze
             end
 
@@ -380,6 +406,119 @@ module Shoko
                 end,
                 rss_reader_submit_add_feed: route(result: :handled) { submit_add_feed },
               }
+            end
+
+            # ----- text actions over the reading selection --------------------
+
+            def text_action_routes
+              {
+                rss_reader_clear_selection: route(result: :handled) { clear_reading_selection },
+                rss_reader_copy_selection: route(result: :handled) { copy_reading_selection },
+                rss_reader_lookup_selection: route(result: :handled) { lookup_reading_selection },
+                rss_reader_translate_selection: route(result: :handled) { translate_reading_selection },
+                rss_reader_annotate_selection: route(result: :handled) { annotate_reading_selection },
+              }
+            end
+
+            def find_routes
+              {
+                rss_reader_open_find: route(result: :handled) { open_find_mode },
+                edit_rss_find: route(payload: :edit_op, result: :handled) do |op|
+                  update_find_query(op.operation, op.text)
+                end,
+                rss_reader_submit_find: route(result: :handled) { submit_find },
+                rss_reader_next_match: route(result: :handled) { step_match(1) },
+                rss_reader_prev_match: route(result: :handled) { step_match(-1) },
+                rss_reader_close_find: route(result: :handled) { close_find_mode },
+              }
+            end
+
+            def clear_reading_selection
+              update_menu(rss_selection: nil, rss_context_menu: nil)
+            end
+
+            def copy_reading_selection
+              text = reading_selection_text
+              return dismiss_context_menu if text.empty?
+
+              @rss_reader_workflow.copy_rss_selection(text)
+              dismiss_context_menu
+            end
+
+            # The selection pre-fills the menu translator, exactly as the book
+            # reader's "Translate" pre-fills its translator card.
+            def translate_reading_selection
+              text = reading_selection_text
+              return dismiss_context_menu if text.empty?
+
+              update_menu(
+                translator_input_text: text,
+                translator_input_cursor: text.length,
+                translator_selection: nil,
+                translator_context_menu: nil,
+                rss_context_menu: nil,
+                mode: :translator
+              )
+            end
+
+            # The selection becomes the dictionary query and opens the lookup
+            # view, which reports back into rss_lookup_* state.
+            def lookup_reading_selection
+              text = reading_selection_text
+              return dismiss_context_menu if text.empty?
+
+              @rss_reader_workflow.look_up_rss_selection(text)
+              update_menu(rss_context_menu: nil)
+            end
+
+            def annotate_reading_selection
+              text = reading_selection_text
+              return dismiss_context_menu if text.empty?
+
+              selection = current_selection
+              @rss_reader_workflow.annotate_rss_selection(
+                text: text, prefix: selection[:prefix], suffix: selection[:suffix]
+              )
+              update_menu(rss_context_menu: nil, rss_selection: nil)
+            end
+
+            def dismiss_context_menu
+              update_menu(rss_context_menu: nil)
+            end
+
+            # The selection carries the text it resolved to when it was made,
+            # so this layer never needs to know how the article was wrapped.
+            def current_selection
+              Shoko::Shared::HashNormalizer.symbolize_keys(current_menu.rss_selection) || {}
+            end
+
+            def reading_selection_text = current_selection[:text].to_s
+
+            # ----- in-article find -------------------------------------------
+
+            def open_find_mode
+              query = current_menu.rss_find_query.to_s
+              update_menu(mode: :rss_reader_find, rss_find_active: true, rss_find_cursor: query.length)
+            end
+
+            def update_find_query(operation, text = nil)
+              next_text, next_cursor = apply_text_edit(
+                current_menu.rss_find_query, current_menu.rss_find_cursor, operation, text: text
+              )
+              update_menu(rss_find_query: next_text, rss_find_cursor: next_cursor, rss_find_index: 0)
+            end
+
+            def submit_find
+              update_menu(mode: :rss_reader, rss_focus: :content)
+            end
+
+            def close_find_mode
+              update_menu(mode: :rss_reader, rss_find_active: false, rss_find_query: '', rss_find_cursor: 0,
+                          rss_find_index: 0)
+            end
+
+            def step_match(delta)
+              update_menu(rss_find_index: current_menu.rss_find_index.to_i + delta)
             end
 
             def filter_input_routes

@@ -67,6 +67,8 @@ module Shoko
             rss_feed_input_cursor
             rss_filter_query
             rss_filter_cursor
+            rss_find_query
+            rss_find_cursor
             rss_zen_mode
             selected_annotation
             selected_annotation_book
@@ -120,6 +122,8 @@ module Shoko
             rss_feed_input_cursor: 0,
             rss_filter_query: '',
             rss_filter_cursor: 0,
+            rss_find_query: '',
+            rss_find_cursor: 0,
             rss_zen_mode: false,
             selected_annotation: nil,
             selected_annotation_book: nil,

@@ -4,6 +4,7 @@ require_relative '../status_bar/palette'
 require_relative '../ui/list_windowing'
 require_relative 'icon_set'
 require_relative 'canvas_frame'
+require_relative 'canvas_scrollbar'
 
 module Shoko
   module Adapters
@@ -24,8 +25,7 @@ module Shoko
           class CanvasList
             Palette = StatusBar::Palette
 
-            SCROLL_GLYPH = '█'
-            SCROLLBAR_WIDTH = 1
+            SCROLLBAR_WIDTH = CanvasScrollbar::WIDTH
             RIGHT_GAP = 2 # blank columns between a row's text and the scrollbar
 
             def initialize(surface, bounds, frame:, hits: nil)
@@ -85,19 +85,11 @@ module Shoko
               )
             end
 
-            # Slim right-edge scrollbar: lighter track, brand-blue thumb —
-            # the search list's signature, on the canvas surface.
             def render_scrollbar(top:, height:, total:, visible:, offset:)
-              return if total <= visible || height <= 0
-
-              thumb = Ui::ListWindowing.scrollbar_thumb(total: total, visible: visible, scroll: offset,
-                                                        track_rows: height)
-              col = @frame.content_x + @frame.content_width - 1
-              height.times do |index|
-                in_thumb = index >= thumb[:start] && index < thumb[:start] + thumb[:size]
-                color = in_thumb ? Palette::LIST_SCROLL_THUMB_FG : Palette::LIST_SCROLL_TRACK_FG
-                @surface.write(@bounds, top + index, col, @frame.seg(SCROLL_GLYPH, color))
-              end
+              CanvasScrollbar.render(
+                surface: @surface, bounds: @bounds, frame: @frame,
+                top: top, height: height, total: total, visible: visible, offset: offset
+              )
             end
 
             private

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'http_uri'
 require 'net/http'
 require 'uri'
 
@@ -113,7 +114,7 @@ module Shoko
 
           candidate = "https:#{candidate}" if candidate.start_with?('//')
           candidate = "https://#{candidate}" if candidate.match?(%r{\A[a-z0-9.-]+\.[a-z]{2,}([/:?#].*)?\z}i)
-          uri = URI.parse(candidate)
+          uri = HttpUri.parse(candidate)
           raise FetchError, 'Feed URL must use http or https' unless %w[http https].include?(uri.scheme)
           raise FetchError, 'Feed URL host is missing' if uri.host.to_s.strip.empty?
 

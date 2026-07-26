@@ -17,6 +17,7 @@ require_relative 'screens/translator_packs_screen_component'
 require_relative 'screens/download_books_screen_component'
 require_relative 'screens/translator_screen_component'
 require_relative 'screens/rss_reader_screen_component'
+require_relative 'screens/rss_lookup_screen_component'
 require_relative 'screens/annotations_screen_component'
 require_relative 'screens/annotation_edit_screen_component'
 require_relative 'screens/annotation_detail_screen_component'
@@ -42,6 +43,7 @@ module Shoko
             library: :library,
             annotations: :annotations, annotation_detail: :annotations, annotation_editor: :annotations,
             rss_reader: :rss_reader, rss_reader_feed_input: :rss_reader, rss_reader_filter: :rss_reader,
+            rss_reader_find: :rss_reader, rss_reader_lookup: :rss_reader,
             download: :download, download_search: :download, download_source_select: :download,
             translator: :translator, translator_source_dropdown: :translator, translator_target_dropdown: :translator,
             settings: :settings, dictionary: :settings, dictionary_search: :settings,
@@ -58,6 +60,7 @@ module Shoko
             download: :build_download_screen,
             translator: :build_translator_screen,
             rss_reader: :build_rss_reader_screen,
+            rss_lookup: :build_rss_lookup_screen,
             annotations: :build_annotations_screen,
             annotation_editor: :build_annotation_editor_screen,
             annotation_detail: :build_annotation_detail_screen,
@@ -81,16 +84,20 @@ module Shoko
             @observer_registry.add_observer(self, %i[menu mode])
           end
 
+          # Sub-modes (a search bar, a dropdown, the find bar) keep their
+          # parent screen on screen; the table says which screen owns each.
+          SCREEN_FOR_MODE = {
+            search: :browse,
+            dictionary_search: :dictionary,
+            translator_packs_search: :translator_packs,
+            download_search: :download, download: :download, download_source_select: :download,
+            translator_source_dropdown: :translator, translator_target_dropdown: :translator,
+            rss_reader_feed_input: :rss_reader, rss_reader_filter: :rss_reader,
+            rss_reader_find: :rss_reader, rss_reader_lookup: :rss_lookup
+          }.freeze
+
           def state_changed(_path, _old_value, new_value)
-            mapped = case new_value
-                     when :search then :browse
-                     when :dictionary_search then :dictionary
-                     when :translator_packs_search then :translator_packs
-                     when :download_search, :download, :download_source_select then :download
-                     when :translator_source_dropdown, :translator_target_dropdown then :translator
-                     when :rss_reader_feed_input, :rss_reader_filter then :rss_reader
-                     else new_value
-                     end
+            mapped = SCREEN_FOR_MODE.fetch(new_value, new_value)
             @current_screen = fetch_screen(mapped) || fetch_screen(:menu)
           end
 
@@ -339,6 +346,10 @@ module Shoko
               menu_hit_registry: deps.menu_hit_registry,
               menu_visual_profile: @menu_visual_profile
             )
+          end
+
+          def build_rss_lookup_screen
+            Screens::RssLookupScreenComponent.new(menu_state_reader: deps.menu_state_reader)
           end
 
           def build_rss_reader_screen

@@ -117,6 +117,105 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
     expect(repository.load[:articles].map(&:title)).to eq(['Top Story'])
   end
 
+  describe 'article structure' do
+    # The formatting is only useful if it survives the whole path: parsed from
+    # the feed's HTML, sanitized, stored, and projected to the reading pane.
+    it 'stores the structure of feed-supplied content alongside its flat text' do
+      allow(feed_fetcher).to receive(:fetch).and_return(
+        url: 'https://example.com/feed.xml',
+        title: 'Example Feed',
+        articles: [
+          {
+            guid: 'story-1',
+            title: 'Top Story',
+            summary: 'Excerpt',
+            content: "Section\n\nBody with emphasis.\n\nPoint",
+            content_blocks: Shoko::Adapters::Rss::ArticleBlockParser.new.parse(
+              '<h2>Section</h2><p>Body with <strong>emphasis</strong>.</p><ul><li>Point</li></ul>'
+            ),
+            url: 'https://example.com/story-1',
+            published_at: '2026-04-06T08:00:00Z',
+          },
+        ]
+      )
+
+      service.add_feed('https://example.com/feed.xml')
+      stored = repository.load[:articles].first
+      blocks = Shoko::Core::Models::ContentBlockPayload.load(stored.content_blocks)
+
+      expect(blocks.map(&:type)).to eq(%i[heading paragraph list_item])
+      expect(blocks.first.text).to eq('Section')
+      expect(blocks[1].segments.map(&:styles)).to include({ bold: true })
+      expect(stored.content).to include('Body with emphasis')
+    end
+
+    it 'projects the stored structure to the reading pane' do
+      allow(feed_fetcher).to receive(:fetch).and_return(
+        url: 'https://example.com/feed.xml',
+        title: 'Example Feed',
+        articles: [
+          {
+            guid: 'story-1', title: 'Top Story', summary: 'Excerpt',
+            content: 'Body.',
+            content_blocks: Shoko::Adapters::Rss::ArticleBlockParser.new.parse('<p>Body.</p>'),
+            url: 'https://example.com/story-1', published_at: '2026-04-06T08:00:00Z',
+          },
+        ]
+      )
+      result = service.add_feed('https://example.com/feed.xml')
+
+      projected = service.article_projection(
+        snapshot: result[:snapshot], selected_feed_key: result[:feed_key], scope: :all, query: nil
+      ).first
+
+      expect(projected[:content_blocks]).to be_an(Array)
+      expect(projected[:content_blocks].first[:type]).to eq('paragraph')
+    end
+
+    it 'prefers the fetched page structure over the feed excerpt structure' do
+      allow(feed_fetcher).to receive(:fetch).and_return(
+        url: 'https://example.com/feed.xml',
+        title: 'Example Feed',
+        articles: [
+          {
+            guid: 'story-1', title: 'Top Story', summary: 'Short excerpt', content: '',
+            url: 'https://example.com/story-1', published_at: '2026-04-06T08:00:00Z',
+          },
+        ]
+      )
+      full_html = "<h2>Full</h2><p>#{'word ' * 400}</p>"
+      allow(article_content_fetcher).to receive(:fetch).and_return(
+        Shoko::Adapters::Rss::ArticleContent.new(
+          text: 'word ' * 400,
+          blocks: Shoko::Adapters::Rss::ArticleBlockParser.new.parse(full_html)
+        )
+      )
+
+      service.add_feed('https://example.com/feed.xml')
+      stored = repository.load[:articles].first
+
+      expect(Shoko::Core::Models::ContentBlockPayload.load(stored.content_blocks).first.text).to eq('Full')
+    end
+
+    it 'leaves an article with no structure renderable from its flat text' do
+      allow(feed_fetcher).to receive(:fetch).and_return(
+        url: 'https://example.com/feed.xml',
+        title: 'Example Feed',
+        articles: [
+          {
+            guid: 'story-1', title: 'Top Story', summary: 'Plain text only', content: '',
+            url: 'https://example.com/story-1', published_at: '2026-04-06T08:00:00Z',
+          },
+        ]
+      )
+
+      service.add_feed('https://example.com/feed.xml')
+
+      expect(repository.load[:articles].first.content_blocks).to eq([])
+      expect(repository.load[:articles].first.content).to eq('Plain text only')
+    end
+  end
+
   it 'hydrates linked article pages when the feed only provides an excerpt' do
     payload = {
       url: 'https://example.com/feed.xml',
@@ -135,7 +234,9 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
     }
     allow(feed_fetcher).to receive(:fetch).and_return(payload)
     allow(article_content_fetcher).to receive(:fetch).with('https://example.com/story-1').and_return(
-      "Short excerpt from the feed.\n\nThis paragraph only exists on the linked article page."
+      Shoko::Adapters::Rss::ArticleContent.new(
+        text: "Short excerpt from the feed.\n\nThis paragraph only exists on the linked article page."
+      )
     )
 
     service.add_feed('https://example.com/feed.xml')

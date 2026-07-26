@@ -104,6 +104,17 @@ module Shoko
           edit_rss_filter
           rss_reader_submit_filter
           rss_reader_remove_feed
+          rss_reader_copy_selection
+          rss_reader_lookup_selection
+          rss_reader_translate_selection
+          rss_reader_annotate_selection
+          rss_reader_clear_selection
+          rss_reader_open_find
+          edit_rss_find
+          rss_reader_submit_find
+          rss_reader_next_match
+          rss_reader_prev_match
+          rss_reader_close_find
         ],
         annotations: %i[
           open_annotations_mode

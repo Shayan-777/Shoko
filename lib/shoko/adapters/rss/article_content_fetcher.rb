@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'http_uri'
 require 'net/http'
 require 'uri'
 
@@ -86,7 +87,7 @@ module Shoko
           candidate = value.to_s.strip
           raise FetchError, 'Article URL is required' if candidate.empty?
 
-          uri = URI.parse(candidate)
+          uri = HttpUri.parse(candidate)
           raise FetchError, 'Article URL must use http or https' unless %w[http https].include?(uri.scheme)
           raise FetchError, 'Article URL host is missing' if uri.host.to_s.strip.empty?
 

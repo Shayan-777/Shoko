@@ -3,6 +3,7 @@
 require 'time'
 
 require_relative '../../shared/text_sanitizer'
+require_relative 'article_block_parser'
 require_relative '../../shared/errors'
 require_relative '../book_sources/epub/parser/html_processor'
 require_relative '../book_sources/epub/parser/rexml_safe_parser'
@@ -78,6 +79,8 @@ module Shoko
             author: clean_inline_text(child_text(item, 'author', 'creator')),
             summary: clean_block_text(child_text(item, 'description', 'summary')),
             content: clean_block_text(child_text(item, 'content:encoded', 'encoded', 'content')),
+            content_blocks: parse_blocks(child_text(item, 'content:encoded', 'encoded', 'content'),
+                                         child_text(item, 'description', 'summary')),
             published_at: parse_time(child_text(item, 'pubDate', 'date', 'published'))
           )
         end
@@ -90,11 +93,12 @@ module Shoko
             author: clean_inline_text(atom_author(entry)),
             summary: clean_block_text(child_text(entry, 'summary')),
             content: clean_block_text(child_text(entry, 'content')),
+            content_blocks: parse_blocks(child_text(entry, 'content'), child_text(entry, 'summary')),
             published_at: parse_time(child_text(entry, 'published', 'updated'))
           )
         end
 
-        def build_article_payload(title:, url:, guid:, author:, summary:, content:, published_at:)
+        def build_article_payload(title:, url:, guid:, author:, summary:, content:, content_blocks:, published_at:)
           return nil if article_payload_empty?(title: title, url: url, summary: summary)
 
           {
@@ -104,6 +108,7 @@ module Shoko
             author: presence(author),
             summary: summary,
             content: content,
+            content_blocks: content_blocks,
             published_at: published_at,
           }
         end
@@ -192,6 +197,21 @@ module Shoko
                    node.text.to_s
                  end
           text.to_s
+        end
+
+        # The feed's own HTML is the only structure available for entries whose
+        # linked page is never fetched, so it is parsed rather than flattened.
+        # Falls back to the description when there is no full content element.
+        def parse_blocks(content_html, summary_html)
+          source = content_html.to_s.strip
+          source = summary_html.to_s if source.empty?
+          return [] if source.strip.empty?
+
+          block_parser.parse(source)
+        end
+
+        def block_parser
+          @block_parser ||= ArticleBlockParser.new
         end
 
         def clean_inline_text(value)

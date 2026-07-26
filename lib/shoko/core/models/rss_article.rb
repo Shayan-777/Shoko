@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/hash_normalizer'
+require_relative 'content_block_payload'
 
 module Shoko
   module Core
@@ -14,13 +15,15 @@ module Shoko
         :author,
         :summary,
         :content,
+        :content_blocks,
         :url,
         :published_at,
         :read,
         :starred,
         :fetched_at
       ) do
-        def initialize(id:, feed_id:, title:, guid: nil, author: nil, summary: nil, content: nil, url: nil,
+        def initialize(id:, feed_id:, title:, guid: nil, author: nil, summary: nil, content: nil,
+                       content_blocks: nil, url: nil,
                        published_at: nil, read: false, starred: false, fetched_at: nil)
           super(
             **normalized_attributes(
@@ -31,6 +34,7 @@ module Shoko
               author: author,
               summary: summary,
               content: content,
+              content_blocks: content_blocks,
               url: url,
               published_at: published_at,
               read: read,
@@ -40,22 +44,12 @@ module Shoko
           )
         end
 
+        # Every field is passed explicitly, including missing ones, so the
+        # constructor's own validation reports a missing id or title rather
+        # than Ruby reporting a missing keyword argument.
         def self.from_h(payload)
           data = normalize_hash(payload)
-          new(
-            id: data[:id],
-            feed_id: data[:feed_id],
-            guid: data[:guid],
-            title: data[:title],
-            author: data[:author],
-            summary: data[:summary],
-            content: data[:content],
-            url: data[:url],
-            published_at: data[:published_at],
-            read: data[:read],
-            starred: data[:starred],
-            fetched_at: data[:fetched_at]
-          )
+          new(**members.to_h { |field| [field, data[field]] })
         end
 
         def to_h
@@ -67,6 +61,7 @@ module Shoko
             author: author,
             summary: summary,
             content: content,
+            content_blocks: content_blocks,
             url: url,
             published_at: published_at,
             read: read,
@@ -115,12 +110,23 @@ module Shoko
             author: blank_to_nil(attributes[:author]),
             summary: blank_to_empty(attributes[:summary]),
             content: blank_to_empty(attributes[:content]),
+            content_blocks: normalized_blocks(attributes[:content_blocks]),
             url: blank_to_nil(attributes[:url]),
             published_at: blank_to_nil(attributes[:published_at]),
             read: attributes[:read] == true,
             starred: attributes[:starred] == true,
             fetched_at: blank_to_nil(attributes[:fetched_at]),
           }
+        end
+
+        # Stored as plain payloads so the article stays JSON-serializable and
+        # admissible into the frozen state tree. Normalizing through the
+        # model's own round trip means a cache written by an older build (no
+        # blocks) and one written by a newer build both load to a valid value.
+        def normalized_blocks(value)
+          return [].freeze if value.nil?
+
+          ContentBlockPayload.dump(ContentBlockPayload.load(value)).freeze
         end
 
         def required_text(value, message)

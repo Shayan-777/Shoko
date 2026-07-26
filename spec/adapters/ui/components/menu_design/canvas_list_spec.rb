@@ -64,7 +64,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::MenuDesign::CanvasList do
       bar = terminal.writes.select { |entry| entry[:col] == bar_col }
 
       expect(bar.length).to eq(4)
-      expect(bar.map { |entry| strip_ansi(entry[:text]) }.uniq).to eq([described_class::SCROLL_GLYPH])
+      expect(bar.map { |entry| strip_ansi(entry[:text]) }.uniq).to eq([Shoko::Adapters::Ui::Components::MenuDesign::CanvasScrollbar::GLYPH])
     end
 
     it 'stays silent when everything fits' do

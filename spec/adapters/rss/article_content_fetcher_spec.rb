@@ -35,6 +35,30 @@ RSpec.describe Shoko::Adapters::Rss::ArticleContentFetcher do
     expect(result).to eq("Full body\n")
   end
 
+  # German (and most non-English) feeds routinely link slugs containing
+  # umlauts. `URI.parse` rejects those outright, so hydration failed for the
+  # majority of entries and the reader fell back to the feed's short summary.
+  it 'fetches an article whose URL contains non-ASCII characters' do
+    html = '<html><body><article><p>Umlaut body</p></article></body></html>'
+    stub_request(:get, 'https://www.dw.com/de/klassenzimmer-einschl%C3%A4gt/a-78076700')
+      .to_return(status: 200, body: html)
+    allow(extractor).to receive(:extract).with(html).and_return('Umlaut body')
+
+    result = fetcher.fetch('https://www.dw.com/de/klassenzimmer-einschlägt/a-78076700')
+
+    expect(result).to eq('Umlaut body')
+  end
+
+  it 'follows a redirect to a location containing non-ASCII characters' do
+    html = '<html><body><article><p>Redirected</p></article></body></html>'
+    stub_request(:get, 'https://example.com/start')
+      .to_return(status: 302, headers: { 'Location' => '/de/gewässer' })
+    stub_request(:get, 'https://example.com/de/gew%C3%A4sser').to_return(status: 200, body: html)
+    allow(extractor).to receive(:extract).with(html).and_return('Redirected')
+
+    expect(fetcher.fetch('https://example.com/start')).to eq('Redirected')
+  end
+
   it 'follows redirects before extracting article content' do
     html = '<html><body><section class="body"><p>Redirected body</p></section></body></html>'
     stub_request(:get, 'https://example.com/start')

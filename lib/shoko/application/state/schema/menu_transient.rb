@@ -41,6 +41,15 @@ module Shoko
             rss_status
             rss_message
             rss_last_synced_at
+            rss_selection
+            rss_context_menu
+            rss_find_active
+            rss_find_index
+            rss_lookup_query
+            rss_lookup_result
+            rss_lookup_status
+            rss_lookup_message
+            rss_annotations
             annotations_all
             loading_active
             loading_progress
@@ -80,6 +89,17 @@ module Shoko
             rss_status: :empty,
             rss_message: 'Press A to add a feed URL',
             rss_last_synced_at: nil,
+            # Live reading-pane interaction: the current text selection, the
+            # right-click menu over it, and the in-article find.
+            rss_selection: nil,
+            rss_context_menu: nil,
+            rss_find_active: false,
+            rss_find_index: 0,
+            rss_lookup_query: '',
+            rss_lookup_result: nil,
+            rss_lookup_status: :idle,
+            rss_lookup_message: '',
+            rss_annotations: [].freeze,
             annotations_all: {}.freeze,
             loading_active: false,
             loading_progress: nil,

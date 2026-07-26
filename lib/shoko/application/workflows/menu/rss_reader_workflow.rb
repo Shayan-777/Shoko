@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'shoko/core/models/document_anchor'
+require 'shoko/core/models/annotation_draft'
+
 require_relative '../../use_cases/support/menu_session_access'
 require_relative '../../services/async_result_relay'
 
@@ -19,13 +22,61 @@ module Shoko
           ALL_FEEDS_KEY = '__all__'
 
           def initialize(rss_reader_service:, menu_session_store:, menu_transient_store:, async_relay: nil,
-                         logger: nil)
+                         clipboard: nil, dictionary_service: nil, annotation_service: nil, logger: nil)
             raise ArgumentError, 'rss_reader_service is required' if rss_reader_service.nil?
 
             assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
             @rss_reader_service = rss_reader_service
             @async_relay = async_relay || Shoko::Application::Services::AsyncResultRelay.new(logger: logger)
+            @clipboard = clipboard
+            @dictionary_service = dictionary_service
+            @annotation_service = annotation_service
             @logger = logger
+          end
+
+          # ----- text actions over the reading selection --------------------
+
+          # The clipboard reports its own outcome, so the reader is told what
+          # actually happened rather than being told it worked regardless.
+          def copy_rss_selection(text)
+            unless @clipboard&.available?
+              return update_menu(rss_message: 'Clipboard is unavailable', rss_status: :error)
+            end
+
+            copied = @clipboard.copy_with_feedback(text) { |message| @copy_feedback = message }
+            update_menu(rss_message: @copy_feedback.to_s.strip, rss_status: copied ? :ready : :error)
+          rescue Shoko::Error => e
+            log_error('rss_reader.copy_failed', e)
+            update_menu(rss_message: e.message, rss_status: :error)
+          end
+
+          # Looks the selection up off the UI thread and reports the result
+          # into the lookup view's state.
+          def look_up_rss_selection(text)
+            query = text.to_s.strip
+            return if query.empty?
+
+            update_menu(mode: :rss_reader_lookup, rss_lookup_query: query,
+                        rss_lookup_status: :loading, rss_lookup_message: 'Looking up…', rss_lookup_result: nil)
+            @async_relay.submit { perform_lookup(query) }
+          end
+
+          # Anchors an annotation to the article by its URL, with the quote and
+          # its surrounding words, so the note survives the article being
+          # re-fetched and re-wrapped.
+          def annotate_rss_selection(text:, prefix: nil, suffix: nil)
+            article = selected_article
+            return update_menu(rss_message: 'No article selected', rss_status: :error) unless article
+            return unless @annotation_service
+
+            @annotation_service.add(annotation_key(article), annotation_draft(text, prefix, suffix))
+            update_menu(
+              rss_message: 'Annotation saved', rss_status: :ready,
+              rss_annotations: annotations_for(current_menu.rss_articles, article[:id])
+            )
+          rescue Shoko::Error, ArgumentError => e
+            log_error('rss_reader.annotate_failed', e)
+            update_menu(rss_message: e.message, rss_status: :error)
           end
 
           # Applies any results the worker produced; called from the menu loop
@@ -85,6 +136,86 @@ module Shoko
             end
           end
           private :perform_feed_sync
+
+          # Worker-side dictionary lookup; the result applies on the UI thread.
+          def perform_lookup(query)
+            result = @dictionary_service&.lookup(query)
+            @async_relay.enqueue do
+              update_menu(
+                rss_lookup_result: lookup_payload(result),
+                rss_lookup_status: result.nil? || result.entries.empty? ? :empty : :ready,
+                rss_lookup_message: result&.error_message.to_s
+              )
+            end
+          rescue Shoko::Error => e
+            @async_relay.enqueue do
+              log_error('rss_reader.lookup_failed', e)
+              update_menu(rss_lookup_status: :error, rss_lookup_message: e.message)
+            end
+          end
+          private :perform_lookup
+
+          # Flattened to plain data so it is admissible into the state tree.
+          def lookup_payload(result)
+            return nil unless result
+
+            {
+              query: result.query.to_s,
+              entries: Array(result.entries).map do |entry|
+                {
+                  word: entry.word.to_s,
+                  senses: Array(entry.senses).map(&:to_s),
+                  translations: Array(entry.translations).map(&:to_s),
+                }
+              end,
+            }
+          end
+          private :lookup_payload
+
+          # The quotes of the notes made on the open article, so the reading
+          # pane can show where they are. Plain data: the pane locates each
+          # quote in its own stream, exactly as find does.
+          def annotations_for(articles, article_id)
+            article = Array(articles).find { |candidate| candidate[:id].to_s == article_id.to_s }
+            return [] unless article && @annotation_service
+
+            @annotation_service.list_for_book(annotation_key(article)).filter_map do |record|
+              quote = record.dig(:anchor, :quote).to_s
+              next if quote.empty?
+
+              { quote: quote, note: record[:note].to_s }
+            end
+          rescue Shoko::Error => e
+            log_error('rss_reader.annotations_load_failed', e)
+            []
+          end
+          private :annotations_for
+
+          def selected_article
+            id = current_menu.rss_selected_article_id.to_s
+            Array(current_menu.rss_articles).find { |article| article[:id].to_s == id }
+          end
+          private :selected_article
+
+          # Annotations are keyed by the article's URL, so they group under the
+          # article in the annotations list the way a book's group under it.
+          def annotation_key(article)
+            url = article[:url].to_s.strip
+            url.empty? ? "rss:#{article[:id]}" : url
+          end
+          private :annotation_key
+
+          def annotation_draft(text, prefix, suffix)
+            Shoko::Core::Models::AnnotationDraft.new(
+              text: text,
+              note: '',
+              anchor: Shoko::Core::Models::DocumentAnchor.new(
+                quote: text, prefix: prefix, suffix: suffix, position: nil
+              ),
+              chapter_index: 0
+            )
+          end
+          private :annotation_draft
 
           def perform_feed_add(url)
             result = @rss_reader_service.add_feed(url)
@@ -168,7 +299,10 @@ module Shoko
             }
             view_state = { status: status, message: message, reset_content: reset_content }
 
-            update_menu(snapshot_payload(snapshot, projections, view_state))
+            update_menu(
+              snapshot_payload(snapshot, projections, view_state)
+                .merge(rss_annotations: annotations_for(articles, selected_article_id))
+            )
           end
 
           def default_status

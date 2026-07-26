@@ -145,7 +145,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
     def body_rows = (menu_design::CanvasFrame::BODY_TOP..(height - 2))
 
     def rows_showing_the_bar
-      body_rows.select { |row| grid[row][bar_col - 1] == menu_design::CanvasList::SCROLL_GLYPH }
+      body_rows.select { |row| grid[row][bar_col - 1] == menu_design::CanvasScrollbar::GLYPH }
     end
 
     # Just the block's text column — no metadata column, no scrollbar.

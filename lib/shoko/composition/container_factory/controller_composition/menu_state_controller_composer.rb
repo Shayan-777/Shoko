@@ -38,6 +38,8 @@ module Shoko
             :translation_model_catalog,
             :annotation_service,
             :rss_reader_service,
+            :clipboard_service,
+            :dictionary_service,
             :cache_pointer_resolver,
             :reader_document_locator,
             :document_loader,
@@ -231,6 +233,9 @@ module Shoko
                 menu_session_store: context.menu_session_store,
                 menu_transient_store: context.menu_transient_store,
                 async_relay: relay,
+                clipboard: context.clipboard_service,
+                dictionary_service: context.dictionary_service,
+                annotation_service: context.annotation_service,
                 logger: context.logger
               )
             end

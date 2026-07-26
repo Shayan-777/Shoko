@@ -2,6 +2,8 @@
 
 require 'uri'
 
+require_relative 'http_uri'
+
 module Shoko
   module Adapters
     module Rss
@@ -17,7 +19,7 @@ module Shoko
         # @param location [String] raw Location header value
         # @return [URI] absolute target URI
         def resolve(uri, location)
-          parsed = URI.parse(location)
+          parsed = HttpUri.parse(location)
           return uri + parsed.to_s if parsed.relative?
 
           parsed

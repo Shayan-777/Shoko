@@ -9,7 +9,10 @@ plugins:
   - rubocop-performance
 
 AllCops:
-  TargetRubyVersion: 4.0
+  # Must match the gemspec's required_ruby_version and what CI runs: a higher
+  # target makes cops suggest methods the supported runtime does not have
+  # (Style/ReverseFind proposed Array#rfind, which is not in 3.4).
+  TargetRubyVersion: 3.4
   NewCops: enable
   SuggestExtensions: false
   Include:

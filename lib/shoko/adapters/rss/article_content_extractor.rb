@@ -2,6 +2,8 @@
 
 require_relative '../base_adapter'
 require_relative '../book_sources/epub/parser/html_processor'
+require_relative 'article_block_parser'
+require_relative 'article_content'
 
 module Shoko
   module Adapters
@@ -25,12 +27,18 @@ module Shoko
         # the body fallback yields the post instead of navigation and sitemap links.
         BOILERPLATE_TAGS = %w[script style noscript template nav header footer aside form].freeze
 
+        def initialize(block_parser: ArticleBlockParser.new, logger: nil)
+          super(logger: logger)
+          @block_parser = block_parser
+        end
+
+        # @return [ArticleContent] readable text plus the structure behind it
         def extract(html)
           source = html.to_s
-          return '' if source.strip.empty?
+          return ArticleContent.new if source.strip.empty?
 
           fragment = select_best_fragment(strip_boilerplate(source))
-          normalize_text(fragment)
+          ArticleContent.new(text: normalize_text(fragment), blocks: @block_parser.parse(fragment))
         end
 
         private

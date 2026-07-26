@@ -161,6 +161,18 @@ module Shoko
               @rss_reader_workflow.set_article_starred(article_id, starred: starred)
             end
 
+            def copy_rss_selection(text)
+              @rss_reader_workflow.copy_rss_selection(text)
+            end
+
+            def look_up_rss_selection(text)
+              @rss_reader_workflow.look_up_rss_selection(text)
+            end
+
+            def annotate_rss_selection(text:, prefix: nil, suffix: nil)
+              @rss_reader_workflow.annotate_rss_selection(text: text, prefix: prefix, suffix: suffix)
+            end
+
             private
 
             def assign_dependencies(dependencies)

@@ -32,7 +32,7 @@ RSpec.describe Shoko::Adapters::Rss::ArticleContentExtractor do
       </html>
     HTML
 
-    text = extractor.extract(html)
+    text = extractor.extract(html).text
 
     expect(text).to include('Intro paragraph from the feed excerpt.')
     expect(text).to include('This paragraph only exists on the linked article page.')
@@ -53,7 +53,7 @@ RSpec.describe Shoko::Adapters::Rss::ArticleContentExtractor do
       </html>
     HTML
 
-    text = extractor.extract(html)
+    text = extractor.extract(html).text
 
     expect(text).to include('Title')
     expect(text).to include('Paragraph one.')
@@ -75,7 +75,7 @@ RSpec.describe Shoko::Adapters::Rss::ArticleContentExtractor do
       </html>
     HTML
 
-    text = extractor.extract(html)
+    text = extractor.extract(html).text
 
     expect(text).to include('Copy Fail kernel vulnerabilities')
     expect(text).to include('The Linux kernel has been facing privilege escalation vulnerabilities.')

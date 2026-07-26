@@ -111,7 +111,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
   def payload_for(intent)
     case intent
     when :edit_browse_search, :edit_menu_dictionary_query, :edit_download_query,
-         :edit_translator_input, :edit_rss_feed_input, :edit_rss_filter,
+         :edit_translator_input, :edit_rss_feed_input, :edit_rss_filter, :edit_rss_find,
          :edit_annotation_text, :edit_translator_packs_query
       Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: 'x')
     when :move_menu_selection_up, :move_browse_selection_up, :move_library_selection_up,
