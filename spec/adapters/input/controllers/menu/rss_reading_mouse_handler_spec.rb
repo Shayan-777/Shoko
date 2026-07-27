@@ -114,8 +114,15 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::RssReadingMouseHandler
 
       expect(menu_session_mutator).to have_received(:update_menu).with(
         hash_including(rss_selection: selection(4, 9),
-                       rss_context_menu: { anchor_column: 12, anchor_row: 7 })
+                       rss_context_menu: { anchor_column: 13, anchor_row: 8 })
       )
+    end
+
+    it 'converts parsed zero-based coordinates to the canvas coordinate system' do
+      allow(menu_state_reader).to receive(:rss_selection).and_return(selection(4, 9))
+      handler.handle(right_press(x: 12, y: 7), bounds: bounds)
+
+      expect(screen).to have_received(:reading_hit).with(13, 8, bounds)
     end
 
     # Right-clicking a bare word should still give the actions something to act on.

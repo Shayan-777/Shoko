@@ -89,6 +89,15 @@ module Shoko
             @async_relay.busy?
           end
 
+          def load_article_for_reader(article_id, &on_ready)
+            raise ArgumentError, 'on_ready block is required' unless on_ready
+
+            update_menu(rss_status: :loading, rss_message: 'Loading article...')
+            started = @async_relay.submit { perform_article_load(article_id, on_ready) }
+            update_menu(rss_status: :error, rss_message: 'Article loading is unavailable') unless started
+            started
+          end
+
           def open_reader
             refresh_view(status: default_status, message: nil)
           end
@@ -136,6 +145,24 @@ module Shoko
             end
           end
           private :perform_feed_sync
+
+          def perform_article_load(article_id, on_ready)
+            article = @rss_reader_service.hydrate_article(article_id)
+            @async_relay.enqueue do
+              if article
+                update_menu(rss_status: :ready, rss_message: nil)
+                on_ready.call(article)
+              else
+                update_menu(rss_status: :error, rss_message: 'Article is no longer available')
+              end
+            end
+          rescue Shoko::Error => e
+            @async_relay.enqueue do
+              log_error('rss_reader.article_load_failed', e)
+              update_menu(rss_status: :error, rss_message: e.message)
+            end
+          end
+          private :perform_article_load
 
           # Worker-side dictionary lookup; the result applies on the UI thread.
           def perform_lookup(query)
@@ -379,7 +406,9 @@ module Shoko
               rss_status: view_state[:status],
               rss_message: view_state[:message] ||
                 default_message(snapshot, projections[:feeds], projections[:articles]),
-            }.then { |payload| view_state[:reset_content] ? payload.merge(rss_content_scroll: 0) : payload }
+            }.then do |payload|
+              view_state[:reset_content] ? payload.merge(rss_content_scroll: 0, rss_open_article: nil) : payload
+            end
           end
 
           def filter_active?

@@ -24,9 +24,11 @@ module Shoko
               needle = query.to_s
               return [] if needle.strip.empty?
 
+              haystack = stream.to_s.downcase
+              normalized_needle = needle.downcase
               found = []
               cursor = 0
-              while (at = stream.downcase.index(needle.downcase, cursor))
+              while (at = haystack.index(normalized_needle, cursor))
                 found << (at...(at + needle.length))
                 cursor = at + 1
               end

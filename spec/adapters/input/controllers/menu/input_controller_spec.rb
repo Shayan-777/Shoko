@@ -107,6 +107,18 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
     expect(handler).to have_received(:handle_menu_intent).with(:rss_reader_sync, nil)
   end
 
+  it 'keeps RSS list actions distinct from uppercase reading-selection actions' do
+    allow(menu_state_reader).to receive(:mode).and_return(:rss_reader)
+    controller.activate(:rss_reader)
+
+    controller.handle_keys(%w[d D m M])
+
+    expect(handler).to have_received(:handle_menu_intent).with(:rss_reader_remove_feed, nil)
+    expect(handler).to have_received(:handle_menu_intent).with(:rss_reader_lookup_selection, nil)
+    expect(handler).to have_received(:handle_menu_intent).with(:rss_reader_mark_starred, nil)
+    expect(handler).to have_received(:handle_menu_intent).with(:rss_reader_annotate_selection, nil)
+  end
+
   it 'uses rss filter text mode with a semantic close target' do
     allow(menu_state_reader).to receive(:mode).and_return(:rss_reader_filter)
     controller.activate(:rss_reader_filter)

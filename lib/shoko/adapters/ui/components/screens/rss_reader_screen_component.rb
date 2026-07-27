@@ -96,6 +96,11 @@ module Shoko
               start_index, end_index = [first, last].minmax
               return nil if start_index == end_index
 
+              # Mouse positions name cells, not the boundary before a cell.
+              # Include the grapheme under the far endpoint just as the book
+              # reader's trailing selection anchor does.
+              geometry = reading_geometry(bounds)
+              end_index = next_grapheme_index(reading_stream(geometry[:lines]), end_index)
               { start_index: start_index, end_index: end_index }
             end
 
@@ -402,11 +407,14 @@ module Shoko
               return 0 if target <= 0
 
               width = 0
-              line.text.each_char.with_index do |char, index|
-                cell = [TextMetrics.display_width_for(char), 1].max
+              character_index = 0
+              line.text.each_grapheme_cluster do |cluster|
+                cell = [TextMetrics.visible_length(cluster), 1].max
+                index = character_index
                 return index if target < width + cell
 
                 width += cell
+                character_index += cluster.length
               end
               line.text.length
             end
@@ -415,6 +423,11 @@ module Shoko
             # the same character here as it does in a ReadingLine.
             def reading_stream(lines)
               lines.map(&:text).join("\n")
+            end
+
+            def next_grapheme_index(stream, index)
+              cluster = stream[index..]&.each_grapheme_cluster&.first
+              index + (cluster&.length || 0)
             end
 
             def reading_height(frame, top, total)
@@ -505,7 +518,13 @@ module Shoko
               query = find_query
               return @find_total = [] if query.empty?
 
-              found = ReadingFind.matches(reading_stream(lines), query)
+              key = [lines.object_id, query.downcase]
+              found = if @find_matches_key == key
+                        @find_matches
+                      else
+                        @find_matches_key = key
+                        @find_matches = ReadingFind.matches(reading_stream(lines), query)
+                      end
               @find_total = found.length
               found
             end
@@ -534,9 +553,12 @@ module Shoko
               [
                 article[:id],
                 width,
-                Array(article[:content_blocks]).length,
-                article[:content].to_s.length,
-                article[:summary].to_s.length,
+                article[:title].to_s.hash,
+                article[:author].to_s.hash,
+                article[:published_label].to_s.hash,
+                Array(article[:content_blocks]).hash,
+                article[:content].to_s.hash,
+                article[:summary].to_s.hash,
               ]
             end
 
@@ -672,7 +694,15 @@ module Shoko
 
             def feed_entries = Array(menu_state_reader&.rss_feeds)
             def article_entries = Array(menu_state_reader&.rss_articles)
-            def selected_article_hash = article_entries[current_article_index]
+
+            def selected_article_hash
+              opened = Shoko::Shared::HashNormalizer.symbolize_keys(menu_state_reader&.rss_open_article)
+              selected_id = menu_state_reader&.rss_selected_article_id.to_s
+              return opened if opened && opened[:id].to_s == selected_id
+
+              article_entries[current_article_index]
+            end
+
             def current_scroll = (menu_state_reader&.rss_content_scroll || 0).to_i
             def zen_mode? = menu_state_reader&.rss_zen_mode == true
             def feed_input_mode? = menu_state_reader&.mode == :rss_reader_feed_input

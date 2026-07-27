@@ -3,6 +3,7 @@
 require 'shoko/shared/index_range'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/mouse_button'
+require 'shoko/shared/terminal/coordinates'
 
 module Shoko
   module Adapters
@@ -56,9 +57,17 @@ module Shoko
               !event[:released] && button.allbits?(32) && button.nobits?(0b11)
             end
 
-            def column_of(event) = event[:x].to_i
+            def column_of(event)
+              terminal_position(event)[:x]
+            end
 
-            def row_of(event) = event[:y].to_i
+            def row_of(event)
+              terminal_position(event)[:y]
+            end
+
+            def terminal_position(event)
+              Shoko::Shared::Terminal::Coordinates.mouse_to_terminal(event[:x], event[:y])
+            end
 
             def hit_for(event, bounds)
               @rss_reader_screen.reading_hit(column_of(event), row_of(event), bounds)

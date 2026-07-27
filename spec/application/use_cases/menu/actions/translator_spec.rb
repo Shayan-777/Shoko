@@ -82,6 +82,15 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
     )
   end
 
+  it 'returns to the RSS article when translation was opened from an RSS selection' do
+    menu_session_store.save(menu_session_store.load.with(translator_return_mode: :rss_reader))
+
+    action.call(:close_translator_mode)
+
+    expect(reload.mode).to eq(:rss_reader)
+    expect(reload.translator_return_mode).to be_nil
+  end
+
   it 'inserts typed text into the input buffer' do
     payload = Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: 'H')
 

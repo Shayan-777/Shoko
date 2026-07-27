@@ -38,6 +38,7 @@ module Shoko
             translator_packs_progress
             rss_feeds
             rss_articles
+            rss_open_article
             rss_status
             rss_message
             rss_last_synced_at
@@ -86,6 +87,7 @@ module Shoko
             translator_packs_progress: 0.0,
             rss_feeds: [].freeze,
             rss_articles: [].freeze,
+            rss_open_article: nil,
             rss_status: :empty,
             rss_message: 'Press A to add a feed URL',
             rss_last_synced_at: nil,

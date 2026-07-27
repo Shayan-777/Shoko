@@ -117,7 +117,16 @@ module Shoko
             def move_focus(delta)
               current_index = FOCUS_ORDER.index(normalized_focus) || 0
               next_index = (current_index + delta) % FOCUS_ORDER.length
-              update_menu(rss_focus: FOCUS_ORDER[next_index])
+              next_focus = FOCUS_ORDER[next_index]
+              if next_focus == :content
+                article = selected_article
+                return unless article
+
+                open_article_view(article)
+              else
+                update_menu(rss_focus: next_focus, rss_open_article: nil,
+                            rss_selection: nil, rss_context_menu: nil)
+              end
             end
 
             def activate_selection
@@ -128,11 +137,47 @@ module Shoko
                 article = selected_article
                 return unless article
 
-                update_menu(rss_focus: :content, rss_content_scroll: 0)
-                update_selected_article_read(true) unless article[:read] == true
+                open_article_view(article)
               when :content
-                update_menu(rss_focus: :feeds)
+                update_menu(rss_focus: :feeds, rss_open_article: nil,
+                            rss_selection: nil, rss_context_menu: nil)
               end
+            end
+
+            def open_article_view(article, extra: {})
+              article_id = article[:id].to_s
+              show_article_fallback(article, extra)
+              @rss_reader_workflow.load_rss_article_for_reader(article_id) do |full_article|
+                apply_loaded_article(article, full_article)
+              end
+            end
+
+            # Enter the existing RSS reading canvas immediately using the feed
+            # summary. Network latency must never delay navigation itself.
+            def show_article_fallback(article, extra)
+              update_menu({
+                rss_open_article: fallback_article(article),
+                rss_focus: :content,
+                rss_content_scroll: 0,
+                rss_selection: nil,
+                rss_context_menu: nil,
+              }.merge(extra))
+            end
+
+            def fallback_article(article)
+              article.merge(
+                content: article[:content].to_s.empty? ? article[:summary].to_s : article[:content],
+                content_blocks: Array(article[:content_blocks])
+              )
+            end
+
+            def apply_loaded_article(article, full_article)
+              return unless current_menu.mode == :rss_reader
+              return unless current_menu.rss_selected_article_id.to_s == article[:id].to_s
+              return unless current_menu.rss_focus == :content
+
+              update_selected_article_read(true) unless article[:read] == true
+              update_menu(rss_open_article: full_article)
             end
 
             def normalized_focus
@@ -220,7 +265,7 @@ module Shoko
             def select_article(article_id)
               return if article_id.to_s.strip.empty?
 
-              update_menu(rss_selected_article_id: article_id.to_s, rss_content_scroll: 0)
+              update_menu(rss_selected_article_id: article_id.to_s, rss_content_scroll: 0, rss_open_article: nil)
             end
 
             def scroll_content(delta)
@@ -235,17 +280,18 @@ module Shoko
 
             def toggle_zen_mode
               next_zen_mode = current_menu.rss_zen_mode != true
-              payload = { rss_zen_mode: next_zen_mode }
-
               if next_zen_mode
                 article = selected_article || rss_articles.first
-                payload[:rss_focus] = :content
-                payload[:rss_selected_article_id] = article[:id] if article
-              elsif normalized_focus == :content
-                payload[:rss_focus] = :articles
-              end
+                return update_menu(rss_zen_mode: true) unless article
 
-              update_menu(payload)
+                update_menu(rss_selected_article_id: article[:id])
+                open_article_view(article, extra: { rss_zen_mode: true })
+              else
+                payload = { rss_zen_mode: false, rss_open_article: nil,
+                            rss_selection: nil, rss_context_menu: nil }
+                payload[:rss_focus] = :articles if normalized_focus == :content
+                update_menu(payload)
+              end
             end
 
             def update_selected_article_read(read)
@@ -456,6 +502,7 @@ module Shoko
                 translator_input_cursor: text.length,
                 translator_selection: nil,
                 translator_context_menu: nil,
+                translator_return_mode: :rss_reader,
                 rss_context_menu: nil,
                 mode: :translator
               )

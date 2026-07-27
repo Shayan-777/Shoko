@@ -489,7 +489,7 @@ module Shoko
             def bind_rss_reader_article_actions(bindings)
               bind_intent!(bindings, ['r'], :rss_reader_mark_read)
               bind_intent!(bindings, %w[u U], :rss_reader_mark_unread)
-              bind_intent!(bindings, %w[m M], :rss_reader_mark_starred)
+              bind_intent!(bindings, ['m'], :rss_reader_mark_starred)
               bind_intent!(bindings, %w[v V], :rss_reader_unstar)
               bind_intent!(bindings, ['d'], :rss_reader_remove_feed)
             end
@@ -508,9 +508,9 @@ module Shoko
               bind_intent!(bindings, ['n'], :rss_reader_next_match)
               bind_intent!(bindings, ['N'], :rss_reader_prev_match)
               bind_intent!(bindings, %w[y Y], :rss_reader_copy_selection)
-              bind_intent!(bindings, %w[d D], :rss_reader_lookup_selection)
+              bind_intent!(bindings, ['D'], :rss_reader_lookup_selection)
               bind_intent!(bindings, %w[t T], :rss_reader_translate_selection)
-              bind_intent!(bindings, %w[m M], :rss_reader_annotate_selection)
+              bind_intent!(bindings, ['M'], :rss_reader_annotate_selection)
             end
 
             def register_rss_reader_lookup_bindings

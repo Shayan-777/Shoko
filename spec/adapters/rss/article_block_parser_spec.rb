@@ -89,7 +89,7 @@ RSpec.describe Shoko::Adapters::Rss::ArticleBlockParser do
       link = blocks.first.segments.find { |s| s.styles[:link] }
 
       expect(link.text).to eq('here')
-      expect(link.styles[:href]).to eq('https://example.com/x')
+      expect(link.styles[:link]).to eq('https://example.com/x')
     end
 
     it 'nests styles' do
@@ -103,7 +103,15 @@ RSpec.describe Shoko::Adapters::Rss::ArticleBlockParser do
     it 'tolerates a link with no href' do
       blocks = parse('<p><a>bare</a></p>')
 
-      expect(blocks.first.segments.map(&:styles)).to eq([{ link: true }])
+      expect(blocks.first.segments.map(&:styles)).to eq([{}])
+    end
+
+    it 'does not leak nested styles after a mismatched closing tag' do
+      blocks = parse('<p><strong><em>both</strong> plain</em></p>')
+
+      expect(blocks.first.segments.map(&:styles)).to eq(
+        [{ bold: true, italic: true }, {}]
+      )
     end
   end
 

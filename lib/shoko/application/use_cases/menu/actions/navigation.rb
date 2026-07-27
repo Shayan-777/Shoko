@@ -168,7 +168,8 @@ module Shoko
                 mode: :translator,
                 translator_focus: :input,
                 translator_selection: nil,
-                translator_context_menu: nil
+                translator_context_menu: nil,
+                translator_return_mode: nil
               )
               @translator_workflow.fetch_translation_languages
               :handled

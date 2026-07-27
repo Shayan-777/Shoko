@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 class MenuTransientStoreAdapterTestState
-  attr_reader :current_state_calls
+  attr_reader :current_state_calls, :last_updates
 
   def initialize(menu: {})
     @current_state = {
@@ -26,6 +26,7 @@ class MenuTransientStoreAdapterTestState
   end
 
   def update(updates)
+    @last_updates = updates
     next_state = @current_state.transform_values { |value| value.is_a?(Hash) ? value.dup : value }
     updates.each do |path, value|
       root, field = path
@@ -79,5 +80,20 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuTransientStoreAdapter
     second = store.load
 
     expect(second).to equal(first)
+  end
+
+  it 'writes only changed fields instead of replaying a large RSS payload' do
+    articles = Array.new(250) { |index| { id: index.to_s, summary: 'x' * 12_000 } }
+    state = MenuTransientStoreAdapterTestState.new(menu: { rss_articles: articles, rss_message: 'Ready' })
+    store = described_class.new(state)
+
+    first = store.load
+    store.save(first.with(rss_message: 'Moved'))
+    second = store.load
+
+    expect(state.last_updates).to eq({ %i[menu rss_message] => 'Moved' })
+    expect(store.rss_articles).to equal(articles)
+    expect(second.rss_articles).to equal(first.rss_articles)
+    expect(second.rss_message).to eq('Moved')
   end
 end

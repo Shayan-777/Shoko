@@ -22,19 +22,17 @@ module Shoko
             @state = state
             @snapshot_root = nil
             @snapshot = nil
+            @snapshot_sources = nil
           end
 
           def load
             root = @state.peek
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
-            snapshot = Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.from_state(
-              BranchSnapshot.duplicate_fields(
-                root[:menu] || {},
-                Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot::FIELDS
-              )
-            )
+            source = root[:menu] || {}
+            snapshot = build_snapshot(source)
             @snapshot_root = root
+            @snapshot_sources = source
             @snapshot = snapshot
             snapshot
           end
@@ -45,7 +43,8 @@ module Shoko
                     'snapshot must be Application::Ports::Outbound::State::MenuTransientSnapshot'
             end
 
-            @state.update(snapshot.to_state_updates)
+            updates = changed_state_updates(load, snapshot)
+            @state.update(updates) unless updates.empty?
             snapshot
           end
 
@@ -65,6 +64,33 @@ module Shoko
 
           def dictionary_entries
             Array(dictionary_results)
+          end
+
+          private
+
+          def build_snapshot(source)
+            previous_values = @snapshot&.to_h
+            values = Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot::FIELDS.to_h do |field|
+              [field, snapshot_field(source, previous_values, field)]
+            end
+            Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.from_state(values)
+          end
+
+          def snapshot_field(source, previous_values, field)
+            source_value = source[field]
+            return previous_values.fetch(field) if @snapshot_sources && @snapshot_sources[field].equal?(source_value)
+
+            BranchSnapshot.duplicate_branch(source_value)
+          end
+
+          def changed_state_updates(previous, current)
+            previous_fields = previous.to_h
+            current.to_h.each_with_object({}) do |(field, value), updates|
+              old_value = previous_fields.fetch(field)
+              next if old_value.equal?(value) || old_value == value
+
+              updates[[:menu, field]] = value
+            end
           end
         end
       end

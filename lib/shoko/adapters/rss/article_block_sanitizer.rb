@@ -16,8 +16,7 @@ module Shoko
       # so one enormous page cannot bloat the cache or the state tree.
       #
       # The ceiling is applied across the whole article, not per block, and it
-      # truncates on a block boundary — half a rendered paragraph is worse than
-      # a short article.
+      # truncates the final segment on a grapheme boundary.
       class ArticleBlockSanitizer
         ContentBlock = Shoko::Core::Models::ContentBlock
         TextSegment = Shoko::Core::Models::TextSegment
@@ -36,7 +35,7 @@ module Shoko
           Array(blocks).each_with_object([]) do |block, kept|
             break kept if budget <= 0
 
-            sanitized = sanitize_block(block)
+            sanitized = sanitize_block(block, budget)
             next unless sanitized
 
             budget -= sanitized.text.length
@@ -46,8 +45,8 @@ module Shoko
 
         private
 
-        def sanitize_block(block)
-          segments = sanitize_segments(block.segments)
+        def sanitize_block(block, budget)
+          segments = sanitize_segments(block.segments, budget)
           return nil if segments.empty? && !TEXTLESS_TYPES.include?(block.type)
 
           ContentBlock.new(
@@ -58,15 +57,34 @@ module Shoko
           )
         end
 
-        def sanitize_segments(segments)
+        def sanitize_segments(segments, budget)
+          remaining = budget
           Array(segments).filter_map do |segment|
+            next if remaining <= 0
+
             # Newlines are structure here — a block IS a line — so any newline
             # inside a segment is markup noise, not content.
             text = @text_sanitizer.sanitize(segment.text.to_s, preserve_newlines: false, preserve_tabs: false)
             next if text.empty?
 
-            TextSegment.new(text: text, styles: sanitize_values(segment.styles))
+            bounded = truncate_graphemes(text, remaining)
+            next if bounded.empty?
+
+            remaining -= bounded.length
+            TextSegment.new(text: bounded, styles: sanitize_values(segment.styles))
           end
+        end
+
+        def truncate_graphemes(text, limit)
+          return text if text.length <= limit
+
+          output = +''
+          text.each_grapheme_cluster do |cluster|
+            break if output.length + cluster.length > limit
+
+            output << cluster
+          end
+          output
         end
 
         def sanitize_metadata(metadata)

@@ -15,6 +15,10 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
       @snapshot
     end
 
+    def load_article(article_id)
+      @snapshot[:articles].find { |article| article.id == article_id.to_s }
+    end
+
     def save(feeds:, articles:)
       @snapshot = { schema_version: 1, feeds: feeds, articles: articles }
     end
@@ -149,7 +153,7 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
       expect(stored.content).to include('Body with emphasis')
     end
 
-    it 'projects the stored structure to the reading pane' do
+    it 'keeps bodies out of list state and exposes them only to the reader boundary' do
       allow(feed_fetcher).to receive(:fetch).and_return(
         url: 'https://example.com/feed.xml',
         title: 'Example Feed',
@@ -168,8 +172,11 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
         snapshot: result[:snapshot], selected_feed_key: result[:feed_key], scope: :all, query: nil
       ).first
 
-      expect(projected[:content_blocks]).to be_an(Array)
-      expect(projected[:content_blocks].first[:type]).to eq('paragraph')
+      expect(projected).not_to have_key(:content)
+      expect(projected).not_to have_key(:content_blocks)
+
+      reader_article = service.reader_article_projection(projected[:id], snapshot: result[:snapshot])
+      expect(reader_article[:content_blocks].first[:type]).to eq('paragraph')
     end
 
     it 'prefers the fetched page structure over the feed excerpt structure' do
@@ -191,7 +198,9 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
         )
       )
 
-      service.add_feed('https://example.com/feed.xml')
+      result = service.add_feed('https://example.com/feed.xml')
+      article_id = result[:snapshot][:articles].first.id
+      service.hydrate_article(article_id)
       stored = repository.load[:articles].first
 
       expect(Shoko::Core::Models::ContentBlockPayload.load(stored.content_blocks).first.text).to eq('Full')
@@ -239,7 +248,10 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
       )
     )
 
-    service.add_feed('https://example.com/feed.xml')
+    result = service.add_feed('https://example.com/feed.xml')
+    expect(article_content_fetcher).not_to have_received(:fetch)
+
+    service.hydrate_article(result[:snapshot][:articles].first.id)
 
     stored_article = repository.load[:articles].first
     expect(stored_article.content).to include('This paragraph only exists on the linked article page.')

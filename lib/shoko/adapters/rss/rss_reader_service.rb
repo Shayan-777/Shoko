@@ -78,6 +78,27 @@ module Shoko
           end
         end
 
+        def reader_article_projection(article_id, snapshot: self.snapshot)
+          article = Array(snapshot[:articles]).find { |candidate| candidate.id == article_id.to_s }
+          return nil unless article
+
+          reader_projection_entry(article, snapshot)
+        end
+
+        def hydrate_article(article_id)
+          target_id = article_id.to_s
+          initial = snapshot
+          article = article_for_hydration(target_id, initial)
+          return nil unless article
+
+          hydrated = hydrate_article_payload(hydration_payload_for(article))
+          candidate = merge_hydrated_body(article, hydrated)
+          return reader_projection_entry(article, initial) unless body_changed?(article, candidate)
+
+          merged = persist_hydrated_article(target_id, hydrated)
+          reader_article_projection(target_id, snapshot: merged)
+        end
+
         def normalize_feed_key(feeds:, preferred_key:)
           keys = Array(feeds).map { |feed| feed[:key].to_s }
           preferred = preferred_key.to_s.strip
@@ -110,7 +131,7 @@ module Shoko
         def add_feed(url)
           fetched = fetched_feed_payload(url)
           feed = build_feed_record(url: fetched[:url], fetched: fetched)
-          article_payloads = hydrate_article_payloads(fetched[:articles])
+          article_payloads = Array(fetched[:articles])
 
           added_count = 0
           merged = @repository.update do |current|
@@ -131,6 +152,37 @@ module Shoko
         end
 
         private
+
+        def article_for_hydration(article_id, snapshot)
+          article = Array(snapshot[:articles]).find { |candidate| candidate.id == article_id }
+          return nil unless article
+
+          @repository.load_article(article_id) || article
+        end
+
+        def hydration_payload_for(article)
+          payload = article.to_h
+          # Storage keeps summary as a renderable content fallback. Treat that
+          # exact fallback as no dedicated body when considering enrichment.
+          payload[:content] = '' if article.content == article.summary
+          payload
+        end
+
+        def persist_hydrated_article(article_id, hydrated)
+          @repository.update do |current|
+            articles = Array(current[:articles]).map do |article|
+              article.id == article_id ? merge_hydrated_body(article, hydrated) : article
+            end
+            { feeds: current[:feeds], articles: articles }
+          end
+        end
+
+        def reader_projection_entry(article, snapshot)
+          article_projection_entry(article, feed_title_index(snapshot)[article.feed_id]).merge(
+            content: article.content.to_s.empty? ? article.summary : article.content,
+            content_blocks: article.content_blocks
+          )
+        end
 
         def update_article(article_id)
           target_id = article_id.to_s
@@ -284,8 +336,20 @@ module Shoko
         end
 
         # Full-article hydration helpers for the RSS reader service.
-        def hydrate_article_payloads(parsed_articles)
-          Array(parsed_articles).map { |payload| hydrate_article_payload(payload) }
+        def merge_hydrated_body(article, hydrated)
+          summary = sanitized_article_summary(hydrated)
+          article.with(
+            summary: summary,
+            content: sanitized_article_content(hydrated, summary),
+            content_blocks: sanitized_article_blocks(hydrated),
+            fetched_at: timestamp
+          )
+        end
+
+        def body_changed?(left, right)
+          left.summary != right.summary ||
+            left.content != right.content ||
+            left.content_blocks != right.content_blocks
         end
 
         def hydrate_article_payload(payload)
@@ -535,8 +599,6 @@ module Shoko
             title: article.title,
             author: article.author,
             summary: article.summary,
-            content: article.content.to_s.empty? ? article.summary : article.content,
-            content_blocks: article.content_blocks,
             url: article.url,
             published_at: article.published_at,
             published_label: published_label(article.published_at),
@@ -640,6 +702,7 @@ module Shoko
 
         def empty_sync_result(snapshot)
           sync_result(
+            schema_version: snapshot[:schema_version],
             feeds: snapshot[:feeds],
             articles: snapshot[:articles],
             checked: 0,
@@ -649,8 +712,8 @@ module Shoko
           )
         end
 
-        # Network phase: fetch (and hydrate) one feed with no repository
-        # access, so the repository lock is never held across a fetch.
+        # Network phase fetches feed metadata only. Linked article pages are
+        # hydrated lazily, one at a time, when the user opens an article.
         def fetch_feed_result(feed)
           fetched = @feed_fetcher.fetch(feed.url, etag: feed.etag, last_modified: feed.last_modified)
           return { feed_id: feed.id, status: :not_modified, fetched: fetched } if fetched[:not_modified]
@@ -659,7 +722,7 @@ module Shoko
             feed_id: feed.id,
             status: :synced,
             fetched: fetched,
-            article_payloads: hydrate_article_payloads(fetched[:articles]),
+            article_payloads: Array(fetched[:articles]),
           }
         rescue FeedFetcher::FetchError, FeedParser::ParseError => e
           { feed_id: feed.id, status: :error, error: e }
@@ -679,6 +742,7 @@ module Shoko
           end
 
           sync_result(
+            schema_version: merged[:schema_version],
             feeds: merged[:feeds], articles: merged[:articles],
             checked: fetch_results.length, updated: stats[:updated],
             added: stats[:added], errors: stats[:errors]
@@ -735,10 +799,10 @@ module Shoko
           feed.with(sync_error: message)
         end
 
-        def sync_result(feeds:, articles:, checked:, updated:, added:, errors:)
+        def sync_result(schema_version:, feeds:, articles:, checked:, updated:, added:, errors:)
           {
             snapshot: {
-              schema_version: 1,
+              schema_version: schema_version,
               feeds: feeds,
               articles: articles,
             },

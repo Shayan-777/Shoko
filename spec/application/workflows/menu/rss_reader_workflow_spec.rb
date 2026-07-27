@@ -168,6 +168,23 @@ RSpec.describe Shoko::Application::Workflows::Menu::RssReaderWorkflow do
       expect(menu_transient_store.load.rss_feeds).to eq(feeds)
       expect(workflow.network_pending?).to be(false)
     end
+
+    it 'hydrates only the opened article off-thread and returns it on drain' do
+      article = { id: 'article-1', title: 'Story', content: 'Full body' }
+      allow(service).to receive(:hydrate_article).with('article-1').and_return(article)
+      delivered = nil
+
+      workflow.load_article_for_reader('article-1') { |value| delivered = value }
+
+      expect(menu_transient_store.load.rss_status).to eq(:loading)
+      expect(delivered).to be_nil
+
+      deferred_executor.run_all
+      workflow.process_pending_events
+
+      expect(delivered).to eq(article)
+      expect(menu_transient_store.load.rss_status).to eq(:ready)
+    end
   end
   describe 'text actions over a reading selection' do
     let(:clipboard) do

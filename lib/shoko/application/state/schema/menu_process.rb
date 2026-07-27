@@ -58,6 +58,7 @@ module Shoko
             translator_target_lang
             translator_focus
             translator_dropdown_selected
+            translator_return_mode
             rss_focus
             rss_scope
             rss_selected_feed_key
@@ -113,6 +114,7 @@ module Shoko
             translator_target_lang: 'en',
             translator_focus: :input,
             translator_dropdown_selected: 0,
+            translator_return_mode: nil,
             rss_focus: :feeds,
             rss_scope: :all,
             rss_selected_feed_key: '__all__',

@@ -64,6 +64,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader, 'text act
       expect(menu.translator_input_text).to eq('Drohne')
       expect(menu.translator_input_cursor).to eq(6)
       expect(menu.mode).to eq(:translator)
+      expect(menu.translator_return_mode).to eq(:rss_reader)
     end
 
     it 'clears any stale translator selection so the new text is not partly highlighted' do

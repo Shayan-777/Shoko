@@ -52,12 +52,13 @@ RSpec.describe Shoko::Adapters::Rss::ArticleBlockSanitizer do
   end
 
   describe 'the total text ceiling' do
-    it 'truncates on a block boundary rather than mid-paragraph' do
+    it 'enforces the hard ceiling and truncates the last block safely' do
       blocks = [block('a' * 30), block('b' * 30), block('c' * 30)]
 
       result = sanitizer.call(blocks)
 
-      expect(result.map(&:text)).to eq(['a' * 30, 'b' * 30])
+      expect(result.map(&:text)).to eq(['a' * 30, 'b' * 10])
+      expect(result.sum { |block| block.text.length }).to eq(40)
     end
 
     it 'always keeps at least the first block' do

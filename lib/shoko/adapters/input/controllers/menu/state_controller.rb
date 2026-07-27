@@ -161,6 +161,10 @@ module Shoko
               @rss_reader_workflow.set_article_starred(article_id, starred: starred)
             end
 
+            def load_rss_article_for_reader(article_id, &)
+              @rss_reader_workflow.load_article_for_reader(article_id, &)
+            end
+
             def copy_rss_selection(text)
               @rss_reader_workflow.copy_rss_selection(text)
             end

@@ -2,6 +2,7 @@
 
 require_relative '../../core/models/selection_anchor'
 require 'shoko/shared/hash_normalizer'
+require 'shoko/shared/terminal/coordinates'
 
 module Shoko
   module Application
@@ -14,18 +15,12 @@ module Shoko
 
         # Convert mouse coordinates (0-based) to terminal coordinates (1-based)
         def mouse_to_terminal(mouse_x, mouse_y)
-          {
-            x: mouse_x + 1,
-            y: mouse_y + 1,
-          }
+          Shoko::Shared::Terminal::Coordinates.mouse_to_terminal(mouse_x, mouse_y)
         end
 
         # Convert terminal coordinates (1-based) to mouse coordinates (0-based)
         def terminal_to_mouse(terminal_x, terminal_y)
-          {
-            x: [terminal_x - 1, 0].max,
-            y: [terminal_y - 1, 0].max,
-          }
+          Shoko::Shared::Terminal::Coordinates.terminal_to_mouse(terminal_x, terminal_y)
         end
 
         # Normalize selection range ensuring start <= end. Accepts either

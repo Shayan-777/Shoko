@@ -95,11 +95,13 @@ module Shoko
             end
 
             def close_translator_mode
+              return_mode = current_menu.translator_return_mode || :menu
               update_menu(
-                mode: :menu,
+                mode: return_mode,
                 translator_focus: :input,
                 translator_selection: nil,
-                translator_context_menu: nil
+                translator_context_menu: nil,
+                translator_return_mode: nil
               )
             end
 

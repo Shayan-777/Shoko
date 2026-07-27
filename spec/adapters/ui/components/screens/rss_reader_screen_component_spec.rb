@@ -45,6 +45,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
           starred: true
         }
       ],
+      rss_open_article: nil,
       rss_status: :ready,
       rss_message: 'Synced 2 feeds, 2 unread',
       rss_last_synced_at: '2026-04-06T08:00:00Z'
@@ -88,6 +89,18 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
 
     expect(text).to include('Morning Edition')
     expect(text).to include('City hall story with more detail.')
+  end
+
+  it 'renders the lazily loaded body without changing the RSS reading view' do
+    allow(menu_state_reader).to receive_messages(
+      rss_focus: :content,
+      rss_open_article: menu_state_reader.rss_articles.first.merge(
+        content: 'The asynchronously loaded full article body.'
+      )
+    )
+
+    expect(text_for(mode: :dark, width: 100, height: 28))
+      .to include('The asynchronously loaded full article body.')
   end
 
   it 'renders the reading view in zen mode' do
@@ -290,7 +303,19 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
       column, row = position_of(html, 'Absatz')
 
       selection = screen.reading_selection_from_points(
-        start_column: column, start_row: row, end_column: column + 6, end_row: row, bounds: bounds
+        start_column: column, start_row: row, end_column: column + 5, end_row: row, bounds: bounds
+      )
+
+      expect(screen.reading_selection_text(selection, bounds)).to eq('Absatz')
+    end
+
+    it 'keeps the character under both endpoints when dragging backwards' do
+      html = '<p>Erster Absatz hier.</p>'
+      screen = open_article(html)
+      column, row = position_of(html, 'Absatz')
+
+      selection = screen.reading_selection_from_points(
+        start_column: column + 5, start_row: row, end_column: column, end_row: row, bounds: bounds
       )
 
       expect(screen.reading_selection_text(selection, bounds)).to eq('Absatz')

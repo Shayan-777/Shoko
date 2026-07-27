@@ -65,8 +65,10 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
           { key: 'feed-2', title: 'Feed Two', count: 2, unread_count: 1, sync_error: nil }
         ],
         rss_articles: [
-          { id: 'article-1', title: 'Alpha', read: false, starred: false, published_label: '2026-04-06 09:00' },
-          { id: 'article-2', title: 'Beta', read: true, starred: false, published_label: '2026-04-05 08:00' }
+          { id: 'article-1', title: 'Alpha', summary: 'First summary',
+            read: false, starred: false, published_label: '2026-04-06 09:00' },
+          { id: 'article-2', title: 'Beta', summary: 'Second summary',
+            read: true, starred: false, published_label: '2026-04-05 08:00' }
         ],
         rss_status: :ready,
         rss_message: 'Ready'
@@ -81,7 +83,8 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
       set_rss_article_read: nil,
       set_rss_article_starred: nil,
       remove_rss_feed: nil,
-      add_rss_feed: nil
+      add_rss_feed: nil,
+      load_rss_article_for_reader: nil
     )
   end
 
@@ -91,6 +94,13 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
       rss_reader_workflow: rss_reader_workflow,
       menu_transient_store: menu_transient_store
     )
+  end
+
+  before do
+    allow(rss_reader_workflow).to receive(:load_rss_article_for_reader) do |article_id, &on_ready|
+      article = menu_transient_store.load.rss_articles.find { |item| item[:id] == article_id }
+      on_ready&.call(article.merge(content: article[:title], content_blocks: []))
+    end
   end
 
   it 'moves between feeds by refreshing the projection with the next feed key' do
@@ -113,6 +123,61 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
 
     expect(menu_session_store.load.rss_selected_article_id).to eq('article-2')
     expect(menu_session_store.load.rss_content_scroll).to eq(0)
+  end
+
+  it 'loads one article then opens it in the existing RSS reading view' do
+    full_article = { id: 'article-1', title: 'Alpha', content: 'Full body', content_blocks: [] }
+    allow(rss_reader_workflow).to receive(:load_rss_article_for_reader)
+      .with('article-1').and_yield(full_article)
+    menu_session_store.save(menu_session_store.load.with(rss_focus: :articles))
+
+    action.call(:rss_reader_activate_selection)
+
+    menu = Shoko::Application::Ports::Outbound::State::MenuSnapshot.build(
+      menu_session_store.load.to_h.merge(menu_transient_store.load.to_h)
+    )
+    expect(menu.rss_focus).to eq(:content)
+    expect(menu.rss_open_article).to eq(full_article)
+    expect(rss_reader_workflow).to have_received(:set_rss_article_read).with('article-1', read: true)
+  end
+
+  it 'ignores a late article body after the selection has moved elsewhere' do
+    callback = nil
+    allow(rss_reader_workflow).to receive(:load_rss_article_for_reader) { |_id, &block| callback = block }
+    menu_session_store.save(menu_session_store.load.with(rss_focus: :articles))
+
+    action.call(:rss_reader_activate_selection)
+    menu_session_store.save(menu_session_store.load.with(rss_selected_article_id: 'article-2', rss_focus: :articles))
+    menu_transient_store.save(menu_transient_store.load.with(rss_open_article: nil))
+    callback.call(id: 'article-1', title: 'Alpha', content: 'Late body')
+
+    expect(menu_session_store.load.rss_focus).to eq(:articles)
+    expect(menu_transient_store.load.rss_open_article).to be_nil
+  end
+
+  it 'shows the feed summary immediately while the full article loads' do
+    allow(rss_reader_workflow).to receive(:load_rss_article_for_reader)
+    menu_session_store.save(menu_session_store.load.with(rss_focus: :articles))
+
+    action.call(:rss_reader_activate_selection)
+
+    expect(menu_session_store.load.rss_focus).to eq(:content)
+    expect(menu_transient_store.load.rss_open_article).to include(
+      id: 'article-1', content: 'First summary', content_blocks: []
+    )
+  end
+
+  it 'does not reopen an article after the user leaves its reading pane' do
+    callback = nil
+    allow(rss_reader_workflow).to receive(:load_rss_article_for_reader) { |_id, &block| callback = block }
+    menu_session_store.save(menu_session_store.load.with(rss_focus: :articles))
+
+    action.call(:rss_reader_activate_selection)
+    action.call(:rss_reader_activate_selection)
+    callback.call(id: 'article-1', title: 'Alpha', content: 'Late body')
+
+    expect(menu_session_store.load.rss_focus).to eq(:feeds)
+    expect(menu_transient_store.load.rss_open_article).to be_nil
   end
 
   it 'updates the filter query live and refreshes the reader projection' do

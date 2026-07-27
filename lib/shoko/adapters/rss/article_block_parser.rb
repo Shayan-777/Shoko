@@ -81,7 +81,7 @@ module Shoko
           @heading_level = nil
           @quote_depth = 0
           @preformatted = 0
-          @dropped = 0
+          @dropped_tags = []
         end
 
         def scan(html)
@@ -101,17 +101,18 @@ module Shoko
           name = token[%r{\A</?\s*([a-zA-Z][a-zA-Z0-9]*)}, 1]&.downcase
           return unless name
 
-          return handle_dropped(name, closing) if DROPPED_TAGS.include?(name)
-          return if @dropped.positive?
+          return handle_dropped(name, closing, token) if DROPPED_TAGS.include?(name)
+          return unless @dropped_tags.empty?
 
           dispatch_tag(name, token, closing)
         end
 
-        def handle_dropped(_name, closing)
+        def handle_dropped(name, closing, token)
           if closing
-            @dropped -= 1 if @dropped.positive?
-          else
-            @dropped += 1
+            index = @dropped_tags.rindex(name)
+            @dropped_tags.slice!(index..) if index
+          elsif !token.match?(%r{/\s*>\z})
+            @dropped_tags << name
           end
         end
 
@@ -213,9 +214,10 @@ module Shoko
 
         def handle_inline(name, token, closing)
           if closing
-            @styles.pop
+            index = @styles.rindex { |entry| entry.first == name }
+            @styles.slice!(index..) if index
           else
-            @styles.push(inline_styles_for(name, token))
+            @styles.push([name, inline_styles_for(name, token)])
           end
         end
 
@@ -226,13 +228,13 @@ module Shoko
 
           href = token[/\bhref\s*=\s*"([^"]*)"/i, 1] || token[/\bhref\s*=\s*'([^']*)'/i, 1]
           href = href.to_s.strip
-          href.empty? ? { link: true } : { link: true, href: href }
+          href.empty? ? {} : { link: href }
         end
 
         # ----- text -----
 
         def handle_text(token)
-          return if @dropped.positive?
+          return unless @dropped_tags.empty?
 
           text = HTMLProcessor.decode_entities(token)
           @preformatted.positive? ? append_preformatted(text) : append_prose(text)
@@ -260,7 +262,7 @@ module Shoko
         end
 
         def current_styles
-          @styles.reduce({}) { |merged, styles| merged.merge(styles) }
+          @styles.reduce({}) { |merged, (_name, styles)| merged.merge(styles) }
         end
 
         # ----- blocks -----
