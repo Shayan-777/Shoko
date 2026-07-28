@@ -7,6 +7,7 @@ require_relative '../base_adapter'
 require_relative '../../core/models/translation_language'
 require_relative '../../core/models/translation_result'
 require_relative '../../application/ports/outbound/translation_repository'
+require_relative '../../shared/language_directory'
 
 module Shoko
   module Adapters
@@ -27,7 +28,16 @@ module Shoko
 
         def available_languages
           response = get_json('/languages')
-          Array(response).map { |item| build_language(item) }.sort_by { |language| language.name.downcase }
+          languages = Array(response).map { |item| build_language(item) }.sort_by { |language| language.name.downcase }
+          targets = languages.map(&:code)
+          [
+            Shoko::Core::Models::TranslationLanguage.new(
+              code: Shoko::Shared::LanguageDirectory::AUTO,
+              name: Shoko::Shared::LanguageDirectory::AUTO_NAME,
+              targets: targets
+            ),
+            *languages,
+          ]
         rescue JSON::ParserError => e
           raise RepositoryError.new("Invalid languages response: #{e.message}", code: :invalid_response)
         end

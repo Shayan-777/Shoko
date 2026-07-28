@@ -31,7 +31,12 @@ RSpec.describe Shoko::Adapters::Translation::LocalTranslateAdapter do
 
   def stub_engine_echo(prefix)
     allow(engine_client).to receive(:ensure_loaded)
-    allow(engine_client).to receive(:translate) { |slot, text| "#{prefix}[#{slot}:#{text}]" }
+    allow(engine_client).to receive(:translate_with_metadata) do |slot, text|
+      Shoko::Adapters::Translation::EngineClient::TranslationResponse.new(
+        text: "#{prefix}[#{slot}:#{text}]",
+        finish_reason: 'eos'
+      )
+    end
   end
 
   describe '#available_languages' do
@@ -69,14 +74,22 @@ RSpec.describe Shoko::Adapters::Translation::LocalTranslateAdapter do
       stub_packs(pack('et', 'en'))
       stub_engine_echo('X')
       result = adapter.translate("Üks. Kaks.\n\nKolm.", source_lang: 'et', target_lang: 'en')
-      expect(result.translated_text).to eq("X[et-en:Üks.] X[et-en:Kaks.]\nX[et-en:Kolm.]")
+      expect(result.translated_text).to eq("X[et-en:Üks.] X[et-en:Kaks.]\n\nX[et-en:Kolm.]")
     end
 
-    it 'resolves auto source when exactly one installed pack reaches the target' do
+    it 'preserves leading and trailing whitespace around translated text' do
       stub_packs(pack('et', 'en'))
       stub_engine_echo('X')
-      result = adapter.translate('Tere!', source_lang: 'auto', target_lang: 'en')
-      expect(result.detected_source_lang).to eq('et')
+
+      result = adapter.translate("  Tere!  \n", source_lang: 'et', target_lang: 'en')
+
+      expect(result.translated_text).to eq("  X[et-en:Tere!]  \n")
+    end
+
+    it 'rejects auto source because the local engine cannot detect languages' do
+      stub_packs(pack('et', 'en'))
+      expect { adapter.translate('Tere!', source_lang: 'auto', target_lang: 'en') }
+        .to raise_error(RepositoryError) { |e| expect(e.code).to eq(:source_required) }
     end
 
     it 'rejects auto source when the route is ambiguous' do
@@ -100,7 +113,7 @@ RSpec.describe Shoko::Adapters::Translation::LocalTranslateAdapter do
     it 'translates engine failures into repository errors' do
       stub_packs(pack('et', 'en'))
       allow(engine_client).to receive(:ensure_loaded)
-      allow(engine_client).to receive(:translate)
+      allow(engine_client).to receive(:translate_with_metadata)
         .and_raise(Shoko::Adapters::Translation::EngineClient::EngineError.new('boom', code: :engine_failed))
       expect { adapter.translate('Tere!', source_lang: 'et', target_lang: 'en') }
         .to raise_error(RepositoryError) { |e| expect(e.code).to eq(:engine_failed) }
@@ -110,11 +123,14 @@ RSpec.describe Shoko::Adapters::Translation::LocalTranslateAdapter do
       stub_packs(pack('et', 'en'))
       allow(engine_client).to receive(:ensure_loaded)
       calls = 0
-      allow(engine_client).to receive(:translate) do |_slot, text|
+      allow(engine_client).to receive(:translate_with_metadata) do |_slot, text|
         calls += 1
         raise Shoko::Adapters::Translation::EngineClient::EngineError.new('died', code: :engine_died) if calls == 1
 
-        "OK[#{text}]"
+        Shoko::Adapters::Translation::EngineClient::TranslationResponse.new(
+          text: "OK[#{text}]",
+          finish_reason: 'eos'
+        )
       end
       result = adapter.translate('Tere!', source_lang: 'et', target_lang: 'en')
       expect(result.translated_text).to eq('OK[Tere!]')

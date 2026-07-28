@@ -17,13 +17,17 @@ module Shoko
         TRANSLATOR_HOME_KEYS = ["\e[H", "\e[1~", "\eOH", "\x01"].freeze # Home / Ctrl+A
         TRANSLATOR_END_KEYS = ["\e[F", "\e[4~", "\eOF", "\x05"].freeze  # End / Ctrl+E
         TRANSLATOR_DELETE_KEYS = ["\e[3~"].freeze # forward Delete
-        # Newline (write a list, etc.) while Enter stays "translate". Shift+Enter is
-        # only distinct on terminals that report modified keys (the CSI-27 / CSI-u
-        # forms, modifier 2); Alt+Enter (ESC+CR/LF, or modifier 3) is the reliable
-        # fallback that every terminal sends — matching the menu translator.
-        TRANSLATOR_NEWLINE_KEYS = [
-          "\e[27;2;13~", "\e[13;2u", # Shift+Enter
-          "\e\r", "\e\n", "\e[27;3;13~", "\e[13;3u" # Alt+Enter
+        # Both translator surfaces use the same editing convention: Enter (and
+        # Shift+Enter where distinguishable) inserts a newline; Alt/Ctrl+Enter
+        # submits. Alt is the broadly supported terminal fallback.
+        TRANSLATOR_SHIFT_ENTER_KEYS = ["\e[27;2;13~", "\e[13;2u"].freeze
+        NOTES_NEWLINE_KEYS = [
+          *TRANSLATOR_SHIFT_ENTER_KEYS,
+          "\e\r", "\e\n", "\e[27;3;13~", "\e[13;3u"
+        ].freeze
+        TRANSLATOR_SUBMIT_KEYS = [
+          "\e\r", "\e\n", "\e[27;3;13~", "\e[13;3u",
+          "\e[27;5;13~", "\e[13;5u"
         ].freeze
 
         def initialize(reader_state_reader:, ui_controller: nil,
@@ -376,15 +380,17 @@ module Shoko
         # text-input mode: only the arrow-key escape sequences move the caret/selection
         # (not the h/j/k/l letter aliases), keeping every printable key free to type.
         # ←/→/Home/End move the caret (or flip the picker side); ↑/↓ scroll the
-        # translation (or move the picker selection); Enter translates; Tab cycles the
-        # language picker; Shift+Tab swaps the pair; Delete forward-deletes.
+        # translation (or move the picker selection); Enter inserts/chooses,
+        # Alt/Ctrl+Enter translates, Tab cycles the language picker, Shift+Tab
+        # swaps the pair, and Delete forward-deletes.
         def register_translator_bindings
           bindings = {}
           bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_translator)
           bind_translator_caret_keys(bindings)
           bind_intent!(bindings, ["\t"], :translator_cycle_picker)
           bind_intent!(bindings, ["\e[Z"], :translator_swap_languages)
-          bind_intent!(bindings, TRANSLATOR_NEWLINE_KEYS, :edit_translator, payload: edit_op(:newline))
+          bind_intent!(bindings, TRANSLATOR_SHIFT_ENTER_KEYS, :edit_translator, payload: edit_op(:newline))
+          bind_intent!(bindings, TRANSLATOR_SUBMIT_KEYS, :translator_submit)
           bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :translator_confirm)
           bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_translator,
                        payload: edit_op(:backspace))
@@ -434,7 +440,7 @@ module Shoko
           bindings = {}
           bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_notes)
           bind_notes_compose_caret_keys(bindings)
-          bind_intent!(bindings, TRANSLATOR_NEWLINE_KEYS, :edit_note, payload: edit_op(:newline))
+          bind_intent!(bindings, NOTES_NEWLINE_KEYS, :edit_note, payload: edit_op(:newline))
           bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :notes_confirm)
           bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_note,
                        payload: edit_op(:backspace))

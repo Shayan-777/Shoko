@@ -37,8 +37,18 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorWorkflow do
 
   let(:translation_service) { instance_double(Shoko::Core::Services::TranslationService) }
   let(:menu_session_store) { TranslatorWorkflowSpecMenuSessionStore.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build) }
+  let(:initial_languages) do
+    [
+      { code: 'auto', name: 'Detect language', targets: ['en'] },
+      { code: 'en', name: 'English', targets: [] },
+    ]
+  end
   let(:menu_transient_store) do
-    TranslatorWorkflowSpecMenuTransientStore.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)
+    TranslatorWorkflowSpecMenuTransientStore.new(
+      Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build(
+        translator_languages: initial_languages
+      )
+    )
   end
 
   subject(:workflow) do
@@ -57,7 +67,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorWorkflow do
       ]
     )
 
-    workflow.fetch_languages
+    workflow.fetch_languages(force: true)
     snapshot = menu_transient_store.load
 
     expect(snapshot.translator_languages).to eq(
@@ -80,6 +90,9 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorWorkflow do
   end
 
   it 'stores translated text and detection metadata' do
+    menu_session_store.save(
+      menu_session_store.load.with(translator_input_text: 'Hallo Welt')
+    )
     allow(translation_service).to receive(:translate).and_return(
       Shoko::Core::Models::TranslationResult.new(
         query: 'Hallo Welt',
@@ -119,6 +132,9 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorWorkflow do
     end
 
     it 'shows the working status immediately; the result lands on drain' do
+      menu_session_store.save(
+        menu_session_store.load.with(translator_input_text: 'Hallo Welt')
+      )
       allow(translation_service).to receive(:translate).and_return(
         Shoko::Core::Models::TranslationResult.new(
           query: 'Hallo Welt',
@@ -140,6 +156,27 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorWorkflow do
       expect(menu_transient_store.load.translator_status).to eq(:done)
       expect(menu_transient_store.load.translator_output_text).to eq('Hello world')
       expect(workflow.network_pending?).to be(false)
+    end
+
+    it 'ignores a completed result when the source changed in the meantime' do
+      menu_session_store.save(
+        menu_session_store.load.with(translator_input_text: 'Hallo Welt')
+      )
+      allow(translation_service).to receive(:translate).and_return(
+        Shoko::Core::Models::TranslationResult.new(
+          query: 'Hallo Welt', translated_text: 'Hello world',
+          source_lang: 'auto', target_lang: 'en'
+        )
+      )
+
+      workflow.translate_text(text: 'Hallo Welt', source_lang: 'auto', target_lang: 'en')
+      menu_session_store.save(
+        menu_session_store.load.with(translator_input_text: 'changed')
+      )
+      deferred_executor.run_all
+      workflow.process_pending_events
+
+      expect(menu_transient_store.load.translator_output_text).to eq('')
     end
   end
 end

@@ -10,17 +10,24 @@ module Shoko
         :source_lang,
         :target_lang,
         :detected_source_lang,
-        :error_message
+        :error_message,
+        :error_code,
+        :route,
+        :finish_reason
       ) do
         def initialize(query:, translated_text:, source_lang:, target_lang:,
-                       detected_source_lang: nil, error_message: nil)
+                       detected_source_lang: nil, error_message: nil, error_code: nil,
+                       route: [], finish_reason: 'eos')
           super(
             query: query.to_s.freeze,
             translated_text: translated_text.to_s.freeze,
             source_lang: source_lang.to_s.freeze,
             target_lang: target_lang.to_s.freeze,
             detected_source_lang: detected_source_lang&.to_s&.freeze,
-            error_message: error_message&.to_s&.freeze
+            error_message: error_message&.to_s&.freeze,
+            error_code: error_code&.to_sym,
+            route: Array(route).map(&:to_s).freeze,
+            finish_reason: finish_reason.to_s.freeze
           )
         end
 
@@ -30,6 +37,10 @@ module Shoko
 
         def error?
           !success?
+        end
+
+        def truncated?
+          finish_reason == 'max_tokens'
         end
       end
     end

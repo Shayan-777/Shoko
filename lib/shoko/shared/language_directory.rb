@@ -94,9 +94,9 @@ module Shoko
       # moves/confirms the selection, so their indices never diverge. The source
       # side leads with the "Detect language" (auto) entry; both sides match the
       # query against either the code or the name (case-insensitive).
-      def candidates_for(languages, side:, query:)
+      def candidates_for(languages, side:, query:, source_code: nil)
         base = Array(languages).filter_map { |lang| normalize(lang) }
-        base = [{ code: AUTO, name: AUTO_NAME }] + base if side.to_s == 'source'
+        base = candidates_for_side(base, side: side, source_code: source_code)
         needle = query.to_s.strip.downcase
         return base if needle.empty?
 
@@ -108,17 +108,40 @@ module Shoko
       # Coerce a backend language object or a (symbol-keyed) language hash into a
       # canonical { code:, name: } hash.
       def normalize(lang)
-        code, name =
+        code, name, targets =
           if lang.is_a?(Hash)
-            [lang[:code], lang[:name]]
+            normalized = lang.transform_keys { |key| key.to_s.to_sym }
+            [normalized[:code], normalized[:name], normalized[:targets]]
           elsif lang.respond_to?(:code)
-            [lang.code, lang.respond_to?(:name) ? lang.name : nil]
+            [lang.code, lang.respond_to?(:name) ? lang.name : nil,
+             lang.respond_to?(:targets) ? lang.targets : nil]
           end
         code = code.to_s.strip
         return nil if code.empty?
 
         display = name.to_s.strip
-        { code: code, name: display.empty? ? name_for(code) : display }
+        {
+          code: code,
+          name: display.empty? ? name_for(code) : display,
+          targets: Array(targets).map(&:to_s),
+        }
+      end
+
+      def candidates_for_side(languages, side:, source_code:)
+        capabilities_known = languages.any? { |lang| lang[:targets].any? }
+        if side.to_s == 'source'
+          return languages.reject { |lang| lang[:code] == AUTO } unless capabilities_known
+
+          return languages.select { |lang| lang[:targets].any? }
+        end
+
+        source = languages.find { |lang| lang[:code] == source_code.to_s }
+        allowed = Array(source&.dig(:targets))
+        return languages.reject { |lang| lang[:code] == AUTO } unless capabilities_known
+
+        languages.select do |lang|
+          lang[:code] != AUTO && allowed.include?(lang[:code])
+        end
       end
     end
   end

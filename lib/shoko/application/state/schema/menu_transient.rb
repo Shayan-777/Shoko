@@ -36,6 +36,7 @@ module Shoko
             translator_packs_status
             translator_packs_message
             translator_packs_progress
+            translator_packs_pending_remove
             rss_feeds
             rss_articles
             rss_open_article
@@ -85,6 +86,7 @@ module Shoko
             translator_packs_status: :idle,
             translator_packs_message: '',
             translator_packs_progress: 0.0,
+            translator_packs_pending_remove: nil,
             rss_feeds: [].freeze,
             rss_articles: [].freeze,
             rss_open_article: nil,

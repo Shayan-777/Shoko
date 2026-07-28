@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/core/services/translator_pack_filter'
+
 require_relative 'catalog_list_rendering'
 require_relative '../base_component'
 require 'shoko/shared/terminal/text_sanitizer'
@@ -151,8 +153,7 @@ module Shoko
               list.row(
                 row: row,
                 left: pack_row_segments(item, selected),
-                right: [[item[:installed] ? 'installed' : 'download',
-                         item[:installed] ? Palette::TRANS_ACCENT_FG : Palette::LANDING_DIM_FG]],
+                right: [[pack_action_label(item), pack_action_color(item)]],
                 selected: selected,
                 action: { type: :list_row, list: :translator_packs, index: absolute },
                 width: frame.content_width
@@ -164,8 +165,27 @@ module Shoko
               [
                 [item[:installed] ? '● ' : '○ ', item[:installed] ? Palette::TRANS_ACCENT_FG : Palette::FAINT_FG],
                 [format_pair(item), pair_fg],
-                ["   #{format_size(item[:size])}", Palette::LANDING_DIM_FG],
+                ["   #{pack_version_and_size(item)}", Palette::LANDING_DIM_FG],
               ]
+            end
+
+            def pack_version_and_size(item)
+              version = if item[:update_available] && !item[:installed_version].to_s.empty?
+                          "v#{item[:installed_version]} → v#{item[:version]}"
+                        else
+                          "v#{item[:version]}"
+                        end
+              item[:size].to_i.positive? ? "#{version} · #{format_size(item[:size])}" : version
+            end
+
+            def pack_action_label(item)
+              return 'update' if item[:update_available]
+
+              item[:installed] ? 'installed' : 'download'
+            end
+
+            def pack_action_color(item)
+              item[:installed] ? Palette::TRANS_ACCENT_FG : Palette::LANDING_DIM_FG
             end
 
             # ----- state + labels -----
@@ -175,14 +195,7 @@ module Shoko
             end
 
             def filtered_results
-              query = packs_query.downcase
-              return packs_results if query.empty?
-
-              packs_results.select do |item|
-                pair = "#{item[:from]}-#{item[:to]}".downcase
-                names = "#{language_name(item[:from])} #{language_name(item[:to])}".downcase
-                pair.include?(query) || names.include?(query)
-              end
+              Shoko::Core::Services::TranslatorPackFilter.call(packs_results, packs_query)
             end
 
             def format_pair(item)

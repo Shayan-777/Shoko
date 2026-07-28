@@ -1,6 +1,7 @@
 #include "marian_bin.h"
 
 #include <inttypes.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,8 @@
 
 #define SK_TYPE_INTGEMM8 0x4101u
 #define SK_TYPE_FLOAT32 0x404u
+#define SK_MAX_MODEL_BYTES ((uintmax_t)2 * 1024 * 1024 * 1024)
+#define SK_MAX_CONFIG_BYTES ((uint64_t)1024 * 1024)
 
 typedef struct {
   uint64_t name_len;
@@ -44,7 +47,7 @@ static unsigned char *read_whole_file(const char *path, size_t *size_out,
     return NULL;
   }
   long size = ftell(f);
-  if (size <= 0) {
+  if (size <= 0 || (uintmax_t)size > SK_MAX_MODEL_BYTES) {
     fclose(f);
     set_err(err, errsz, "empty model file");
     return NULL;
@@ -88,6 +91,17 @@ static int collapse_shape(const int32_t *dims, uint64_t ndims, int *rows,
 
 static int is_wemb_name(const char *name) {
   return strstr(name, "Wemb") != NULL;
+}
+
+static int payload_matches(const unsigned char *data, uint64_t stored,
+                           uint64_t payload) {
+  if (stored == payload) return 1;
+  if (payload > UINT64_MAX - 255) return 0;
+  uint64_t aligned = (payload + 255) & ~UINT64_C(255);
+  if (stored != aligned) return 0;
+  for (uint64_t i = payload; i < stored; i++)
+    if (data[i] != 0) return 0;
+  return 1;
 }
 
 sk_model_file *sk_model_file_load(const char *path, char *err, size_t errsz) {
@@ -147,7 +161,19 @@ sk_model_file *sk_model_file_load(const char *path, char *err, size_t errsz) {
     char *name = malloc(headers[i].name_len);
     if (!name) goto fail_oom;
     memcpy(name, buf + off, headers[i].name_len);
-    name[headers[i].name_len - 1] = '\0';
+    if (name[headers[i].name_len - 1] != '\0' ||
+        memchr(name, '\0', (size_t)headers[i].name_len - 1) != NULL) {
+      free(name);
+      set_err(err, errsz, "invalid tensor name in model file");
+      goto fail;
+    }
+    for (uint64_t previous = 0; previous < i; previous++) {
+      if (strcmp(mf->tensors[previous].name, name) == 0) {
+        free(name);
+        set_err(err, errsz, "duplicate tensor name in model file");
+        goto fail;
+      }
+    }
     mf->tensors[i].name = name;
     off += headers[i].name_len;
   }
@@ -173,6 +199,10 @@ sk_model_file *sk_model_file_load(const char *path, char *err, size_t errsz) {
     off += h->data_len;
 
     if (strcmp(t->name, "special:model.yml") == 0) {
+      if (h->data_len > SK_MAX_CONFIG_BYTES) {
+        set_err(err, errsz, "embedded model config is too large");
+        goto fail;
+      }
       mf->config_yml = malloc(h->data_len + 1);
       if (!mf->config_yml) goto fail_oom;
       memcpy(mf->config_yml, data, h->data_len);
@@ -188,25 +218,36 @@ sk_model_file *sk_model_file_load(const char *path, char *err, size_t errsz) {
     uint64_t n = (uint64_t)rows * (uint64_t)cols;
 
     if (h->type == SK_TYPE_FLOAT32) {
-      if (h->data_len < n * 4) goto fail_truncated;
-      t->data = malloc(n * sizeof(float));
-      if (!t->data) goto fail_oom;
-      memcpy(t->data, data, n * sizeof(float));
-      t->rows = rows;
-      t->cols = cols;
-    } else if (h->type == SK_TYPE_INTGEMM8) {
-      if (h->data_len < n + 4) goto fail_truncated;
-      float quant_mult;
-      memcpy(&quant_mult, data + n, sizeof(float));
-      if (!(quant_mult > 0.0f)) {
-        set_err(err, errsz, "invalid quantization multiplier in model file");
+      if (!payload_matches(data, h->data_len, n * 4)) {
+        set_err(err, errsz, "float tensor payload has the wrong size");
         goto fail;
       }
       t->data = malloc(n * sizeof(float));
       if (!t->data) goto fail_oom;
-      const float inv = 1.0f / quant_mult;
-      const int8_t *q = (const int8_t *)data;
-      for (uint64_t j = 0; j < n; j++) t->data[j] = (float)q[j] * inv;
+      memcpy(t->data, data, n * sizeof(float));
+      for (uint64_t value = 0; value < n; value++) {
+        if (!isfinite(t->data[value])) {
+          set_err(err, errsz, "float tensor contains a non-finite value");
+          goto fail;
+        }
+      }
+      t->rows = rows;
+      t->cols = cols;
+    } else if (h->type == SK_TYPE_INTGEMM8) {
+      if (!payload_matches(data, h->data_len, n + 4)) {
+        set_err(err, errsz, "quantized tensor payload has the wrong size");
+        goto fail;
+      }
+      float quant_mult;
+      memcpy(&quant_mult, data + n, sizeof(float));
+      if (!(quant_mult > 0.0f) || !isfinite(quant_mult)) {
+        set_err(err, errsz, "invalid quantization multiplier in model file");
+        goto fail;
+      }
+      t->qdata = malloc(n);
+      if (!t->qdata) goto fail_oom;
+      memcpy(t->qdata, data, n);
+      t->qscale = quant_mult;
       /* Gemm weights are stored transposed on disk (except Wemb): record the
        * stored layout dims so consumers read the memory as it is. */
       if (is_wemb_name(t->name) || rows == 1 || cols == 1) {
@@ -253,6 +294,7 @@ void sk_model_file_free(sk_model_file *mf) {
     for (int i = 0; i < mf->count; i++) {
       free(mf->tensors[i].name);
       free(mf->tensors[i].data);
+      free(mf->tensors[i].qdata);
     }
     free(mf->tensors);
   }

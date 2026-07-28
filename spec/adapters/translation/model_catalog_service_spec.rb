@@ -50,6 +50,27 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
       expect(pack.total_size).to eq(120)
     end
 
+    it 'orders multi-digit prerelease suffixes naturally' do
+      stub_records([
+                     record(from: 'et', to: 'en', version: '1.0a2', type: 'model', name: 'm2.bin', location: 'm2.bin'),
+                     record(from: 'et', to: 'en', version: '1.0a2', type: 'vocab', name: 'v2.spm', location: 'v2.spm'),
+                     record(from: 'et', to: 'en', version: '1.0a10', type: 'model', name: 'm10.bin', location: 'm10.bin'),
+                     record(from: 'et', to: 'en', version: '1.0a10', type: 'vocab', name: 'v10.spm', location: 'v10.spm'),
+                   ])
+
+      expect(service.list_remote.first.version).to eq('1.0a10')
+    end
+
+    it 'rejects attachments that escape the configured CDN origin' do
+      stub_records([
+                     record(from: 'et', to: 'en', version: '1.0', type: 'model',
+                            name: 'm.bin', location: 'https://example.invalid/m.bin'),
+                     record(from: 'et', to: 'en', version: '1.0', type: 'vocab', name: 'v.spm', location: 'v.spm'),
+                   ])
+
+      expect { service.list_remote }.to raise_error(described_class::CatalogError, /outside/)
+    end
+
     it 'falls back to an older shared-vocab release when the newest is split-vocab' do
       stub_records([
                      record(from: 'en', to: 'ko', version: '2.1', type: 'model', name: 'm21.bin', location: 'm21.bin'),
@@ -139,7 +160,7 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
     end
 
     it 'rejects a checksum mismatch and leaves no final file behind' do
-      stub_request(:get, "#{cdn}m.bin").to_return(status: 200, body: 'tampered')
+      stub_request(:get, "#{cdn}m.bin").to_return(status: 200, body: 'tamper-byte')
       stub_request(:get, "#{cdn}v.spm").to_return(status: 200, body: 'vocab-bytes')
 
       pack = build_pack('model-bytes', 'vocab-bytes')
@@ -169,7 +190,24 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
       expect(Dir.glob(File.join(@store.pack_dir('et', 'en'), '*.part'))).to eq([])
     end
 
-    it 'clamps a huge catalog-declared size to the absolute ceiling' do
+    it 'rejects a truncated response even when the received bytes match their own checksum' do
+      pack = build_pack('model-bytes', 'vocab-bytes')
+      stub_request(:get, "#{cdn}m.bin").to_return(status: 200, body: 'short')
+
+      expect { service.download(pack, @store) }
+        .to raise_error(described_class::CatalogError, /size mismatch/)
+      expect(@store.find('et', 'en')).to be_nil
+    end
+
+    it 'rejects missing checksum metadata before writing a payload' do
+      pack = build_pack('model-bytes', 'vocab-bytes', model_hash: '')
+
+      expect { service.download(pack, @store) }
+        .to raise_error(described_class::CatalogError, /invalid checksum/)
+      expect(a_request(:get, "#{cdn}m.bin")).not_to have_been_made
+    end
+
+    it 'rejects a catalog-declared size above the absolute ceiling' do
       stub_const("#{described_class}::MAX_FILE_BYTES", 4)
       # The catalog declares 1000 bytes; the absolute ceiling must win.
       pack = described_class::RemotePack.new(
@@ -181,7 +219,7 @@ RSpec.describe Shoko::Adapters::Translation::ModelCatalogService do
       stub_request(:get, "#{cdn}v.spm").to_return(status: 200, body: 'eight-by')
 
       expect { service.download(pack, @store) }
-        .to raise_error(described_class::CatalogError, /exceeded declared size \(4 bytes\)/)
+        .to raise_error(described_class::CatalogError, /invalid size/)
     end
 
 

@@ -7,6 +7,7 @@ require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
 require_relative '../../support/text_editing'
+require 'shoko/core/services/translator_pack_filter'
 
 module Shoko
   module Application
@@ -118,10 +119,10 @@ module Shoko
                 translator_packs_selected: 0,
                 translator_packs_query: '',
                 translator_packs_cursor: 0,
-                translator_packs_results: [],
                 translator_packs_status: :idle,
                 translator_packs_message: '',
                 translator_packs_progress: 0.0,
+                translator_packs_pending_remove: nil,
               }
             end
 
@@ -142,13 +143,7 @@ module Shoko
             def filtered_results
               menu = current_menu
               query = menu.translator_packs_query.to_s.downcase
-              results = Array(menu.translator_packs_results)
-              return results if query.empty?
-
-              results.select do |item|
-                pair = "#{item[:from]}-#{item[:to]}".downcase
-                pair.include?(query)
-              end
+              Shoko::Core::Services::TranslatorPackFilter.call(menu.translator_packs_results, query)
             end
 
             def action_count
@@ -158,21 +153,50 @@ module Shoko
             def move_selection(delta)
               current = (current_menu.translator_packs_selected || 0).to_i
               max_index = [action_count + filtered_results.length - 1, 0].max
-              update_menu(translator_packs_selected: (current + delta).clamp(0, max_index))
+              update_menu(
+                translator_packs_selected: (current + delta).clamp(0, max_index),
+                translator_packs_pending_remove: nil
+              )
               :handled
             end
 
             def activate_selection
+              return :handled if pack_operation_busy?
+
               index = (current_menu.translator_packs_selected || 0).to_i
 
               if index < action_count
                 handle_action(index)
               else
                 entry = filtered_results[index - action_count]
-                @translator_packs_workflow.download_pack(entry) if entry
+                activate_pack(entry) if entry
               end
 
               :handled
+            end
+
+            def pack_operation_busy?
+              %i[loading downloading].include?((current_menu.translator_packs_status || :idle).to_sym)
+            end
+
+            def activate_pack(entry)
+              pair = "#{entry[:from]}-#{entry[:to]}"
+              return confirm_pack_removal(entry, pair) if entry[:installed] && !entry[:update_available]
+
+              update_menu(translator_packs_pending_remove: nil)
+              @translator_packs_workflow.download_pack(entry)
+            end
+
+            def confirm_pack_removal(entry, pair)
+              if current_menu.translator_packs_pending_remove.to_s == pair
+                update_menu(translator_packs_pending_remove: nil)
+                @translator_packs_workflow.download_pack(entry)
+              else
+                update_menu(
+                  translator_packs_pending_remove: pair,
+                  translator_packs_message: "Press Enter again to remove #{entry[:from]} → #{entry[:to]}"
+                )
+              end
             end
 
             def handle_action(index)

@@ -5,6 +5,7 @@ require 'fileutils'
 require 'json'
 require_relative '../base_adapter'
 require_relative '../../shared/errors'
+require_relative '../../core/services/version_order'
 
 module Shoko
   module Adapters
@@ -52,14 +53,14 @@ module Shoko
         # Downloads a pack's files into the store and writes the manifest.
         # Yields (received_bytes, total_bytes) across both files.
         def download(pack, model_store, &)
-          dir = model_store.create_pack_dir(pack.from, pack.to)
-          download_pack_files(pack, dir, &)
-          model_store.write_manifest(
+          model_store.install(
             pack.from, pack.to,
             version: pack.version,
             model_file: pack.model.name,
             vocab_file: pack.vocab.name
-          )
+          ) do |dir|
+            download_pack_files(pack, dir, &)
+          end
         end
 
         private
@@ -106,7 +107,9 @@ module Shoko
 
             [version, model, vocab]
           end
-          version, model, vocab = candidates.max_by { |candidate| version_key(candidate[0]) }
+          version, model, vocab = candidates.max do |left, right|
+            Shoko::Core::Services::VersionOrder.compare(left[0], right[0])
+          end
           return nil unless version
 
           RemotePack.new(
@@ -123,31 +126,36 @@ module Shoko
           attachment = record[:attachment]
           RemoteFile.new(
             name: record[:name].to_s,
-            url: URI.join(@attachment_base_url, attachment[:location].to_s).to_s,
+            url: attachment_url(attachment[:location]),
             size: attachment[:size].to_i,
             sha256: attachment[:hash].to_s
           )
         end
 
-        # Releases sort above their own alphas: "1.0a1" < "1.0" < "2.1".
-        def version_key(version)
-          match = version.match(/\A(\d+)\.(\d+)([a-z].*)?\z/)
-          return [0, 0, 0] unless match
+        def attachment_url(location)
+          base = parse_http_uri(@attachment_base_url)
+          resolved = parse_http_uri(URI.join(base.to_s, location.to_s).to_s)
+          same_origin = resolved.scheme == base.scheme &&
+                        resolved.host == base.host &&
+                        resolved.port == base.port
+          raise CatalogError, 'Catalog attachment points outside the configured CDN' unless same_origin
 
-          [match[1].to_i, match[2].to_i, match[3] ? 0 : 1]
+          resolved.to_s
+        rescue URI::InvalidURIError => e
+          raise CatalogError, "Invalid attachment URL: #{e.message}"
         end
 
         # --- downloads --------------------------------------------------------
 
         def download_file(file, dest_path, &)
-          return if File.file?(dest_path) && digest_matches?(dest_path, file.sha256)
-
+          validate_remote_file!(file)
           part_path = "#{dest_path}.part"
           digest = Digest::SHA256.new
-          stream_to_file(file.url, part_path, digest, max_bytes: max_bytes_for(file), &)
-          unless file.sha256.empty? || digest.hexdigest == file.sha256
-            raise CatalogError, "Checksum mismatch for #{file.name}"
+          received = stream_to_file(file.url, part_path, digest, max_bytes: max_bytes_for(file), &)
+          if received != file.size
+            raise CatalogError, "Download size mismatch for #{file.name}: expected #{file.size}, got #{received}"
           end
+          raise CatalogError, "Checksum mismatch for #{file.name}" unless digest.hexdigest.casecmp?(file.sha256)
 
           File.rename(part_path, dest_path)
         ensure
@@ -163,26 +171,36 @@ module Shoko
           file.size.positive? ? [file.size, MAX_FILE_BYTES].min : MAX_FILE_BYTES
         end
 
-        def digest_matches?(path, sha256)
-          return false if sha256.empty?
+        def validate_remote_file!(file)
+          name = file.name.to_s
+          unless !name.empty? && File.basename(name) == name && !%w[. ..].include?(name)
+            raise CatalogError, 'Catalog contains an invalid attachment name'
+          end
+          unless file.size.to_i.positive? && file.size.to_i <= MAX_FILE_BYTES
+            raise CatalogError, "Catalog contains an invalid size for #{name}"
+          end
+          return if file.sha256.to_s.match?(/\A[0-9a-fA-F]{64}\z/)
 
-          Digest::SHA256.file(path).hexdigest == sha256
+          raise CatalogError, "Catalog contains an invalid checksum for #{name}"
         end
 
         def stream_to_file(url, part_path, digest, max_bytes:, redirects_left: 2, &)
           uri = parse_http_uri(url)
+          received = nil
           with_http(uri) do |http|
             http.request(Net::HTTP::Get.new(uri)) do |response|
               if response.is_a?(Net::HTTPRedirection) && redirects_left.positive?
-                redirect = URI.join(uri.to_s, response['location']).to_s
-                next stream_to_file(redirect, part_path, digest, max_bytes: max_bytes,
-                                                                 redirects_left: redirects_left - 1, &)
+                redirect = redirect_uri(uri, response['location'])
+                received = stream_to_file(redirect.to_s, part_path, digest, max_bytes: max_bytes,
+                                                                            redirects_left: redirects_left - 1, &)
+                next
               end
               raise CatalogError, "Download failed (#{response.code})" unless response.is_a?(Net::HTTPSuccess)
 
-              write_body(response, part_path, digest, max_bytes: max_bytes, &)
+              received = write_body(response, part_path, digest, max_bytes: max_bytes, &)
             end
           end
+          received
         end
 
         def write_body(response, part_path, digest, max_bytes:)
@@ -198,6 +216,20 @@ module Shoko
               yield(received) if block_given?
             end
           end
+          received
+        end
+
+        def redirect_uri(origin, location)
+          raise CatalogError, 'Download redirect has no location' if location.to_s.empty?
+
+          redirect = parse_http_uri(URI.join(origin.to_s, location.to_s).to_s)
+          if origin.scheme == 'https' && redirect.scheme != 'https'
+            raise CatalogError, 'Download redirect attempted to downgrade HTTPS'
+          end
+
+          redirect
+        rescue URI::InvalidURIError => e
+          raise CatalogError, "Invalid redirect URL: #{e.message}"
         end
 
         def http_get_body(url)

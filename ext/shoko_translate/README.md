@@ -24,15 +24,19 @@ fields only.
 
 | request | response |
 |---|---|
-| `{"op":"ping"}` | `{"ok":true,"version":"..."}` |
-| `{"op":"load","slot":S,"model":PATH,"vocab":PATH}` | `{"ok":true}` |
-| `{"op":"translate","slot":S,"text":T}` | `{"ok":true,"text":T'}` |
+| `{"op":"ping"}` | `{"ok":true,"version":"...","max_slots":4}` |
+| `{"op":"load","slot":S,"model":PATH,"vocab":PATH}` | `{"ok":true}` (plus `evicted` when applicable) |
+| `{"op":"translate","slot":S,"text":T}` | `{"ok":true,"text":T',"finish_reason":"eos"}` |
 | `{"op":"unload","slot":S}` | `{"ok":true}` |
 
-Errors come back as `{"ok":false,"error":"..."}`; the process never exits
-on bad input. Up to 4 models stay resident (LRU-evicted). `text` must be a
-single sentence-ish segment, NFKC-normalized, ≤ 16 KB — Shoko's adapter
-handles splitting and normalization.
+Errors come back as `{"ok":false,"code":"...","error":"..."}`; the process
+never exits on bad input. Requests are strict UTF-8 JSON: unknown fields,
+duplicate fields, non-string values, invalid escapes, and lines over 1 MiB
+are rejected without changing engine state. Up to 4 models stay resident
+(LRU-evicted). `text` must be a single sentence-ish segment,
+NFKC-normalized, ≤ 16 KB — Shoko's adapter handles splitting and
+normalization. A translation that exhausts its decoder budget reports
+`"finish_reason":"max_tokens"`.
 
 ## Model format notes
 
@@ -42,7 +46,8 @@ embedded in the file (`special:model.yml`). Two facts worth knowing because
 they are documented nowhere outside the Marian source:
 
 - each int8 tensor's dequantization scale is a float stored directly after
-  its payload (`w = int8 / scale`),
+  its payload (`w = int8 / scale`), and tensor records may then be
+  zero-padded to a 256-byte boundary,
 - every gemm weight is stored **transposed** on disk — except `Wemb`
   (see `expression_graph_packable.h` in marian-dev: "Do not transpose the
   Wemb matrix. Hacky temporary solution").
@@ -61,6 +66,13 @@ pins known-good translations.
 ## Testing
 
 ```sh
-make
+make test
+
+# Optional real-model compatibility/golden test:
 test/golden.sh /path/to/model.eten.intgemm.alphas.bin /path/to/vocab.eten.spm
 ```
+
+`make test` covers the strict JSON-lines protocol, SentencePiece protobuf
+loading/Viterbi/byte fallback, and Marian float/int8 tensor loading. The
+optional golden test is deliberately separate because model files are not
+stored in this repository.

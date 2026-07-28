@@ -12,6 +12,7 @@ require_relative 'mouse_router'
 require_relative 'workflow_render_observer'
 require_relative 'input_mode_observer'
 require 'shoko/shared/hash_normalizer'
+require 'shoko/shared/language_directory'
 
 module Shoko
   module Adapters
@@ -554,6 +555,7 @@ module Shoko
                 mode: dropdown_mode,
                 translator_focus: kind,
                 translator_dropdown_selected: translator_language_index(kind),
+                translator_dropdown_query: '',
                 translator_selection: nil,
                 translator_context_menu: nil
               )
@@ -570,6 +572,7 @@ module Shoko
                 mode: :translator,
                 translator_focus: action[:kind],
                 translator_dropdown_selected: action[:index],
+                translator_dropdown_query: '',
                 translator_selection: nil,
                 translator_context_menu: nil,
                 field => action[:code],
@@ -600,7 +603,12 @@ module Shoko
 
             def translator_language_options(kind)
               languages = Array(@menu_state_reader.translator_languages).map { |item| Shoko::Core::Models::TranslationLanguage.normalized_entry(item) }
-              kind == :source ? [{ code: 'auto', name: 'Auto Detect' }, *languages] : languages
+              Shoko::Shared::LanguageDirectory.candidates_for(
+                languages,
+                side: kind,
+                source_code: selected_translator_language_code(:source),
+                query: @menu_state_reader.translator_dropdown_query.to_s
+              )
             end
 
             # The reading pane owns the pointer while an article is open, so a

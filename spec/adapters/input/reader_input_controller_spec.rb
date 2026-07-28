@@ -55,4 +55,26 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
 
     expect(handler).to have_received(:handle_reader_intent).with(:annotation_editor_confirm, nil)
   end
+
+  it 'uses Enter for a translator newline and Alt/Ctrl+Enter for submission' do
+    controller.activate_for_mode(:translator)
+
+    controller.handle_key("\r")
+    controller.handle_key("\e\r")
+    controller.handle_key("\e[13;5u")
+
+    expect(handler).to have_received(:handle_reader_intent).with(:translator_confirm, nil)
+    expect(handler).to have_received(:handle_reader_intent).with(:translator_submit, nil).twice
+  end
+
+  it 'maps modified Shift+Enter to an explicit translator newline edit' do
+    controller.activate_for_mode(:translator)
+
+    controller.handle_key("\e[13;2u")
+
+    expect(handler).to have_received(:handle_reader_intent).with(
+      :edit_translator,
+      have_attributes(operation: :newline)
+    )
+  end
 end

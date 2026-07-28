@@ -42,7 +42,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
       :translator_target_lang,
       :translator_languages,
       :translator_selection,
-      :translator_context_menu
+      :translator_context_menu,
+      :translator_output_scroll,
+      :translator_dropdown_query
     )
   end
   let(:dependencies_class) { Struct.new(:menu_state_reader, :menu_hit_registry) }
@@ -60,15 +62,18 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
       'auto',
       'en',
       [
-        { code: 'en', name: 'English' },
-        { code: 'de', name: 'German' },
-        { code: 'fr', name: 'French' },
-        { code: 'es', name: 'Spanish' },
-        { code: 'it', name: 'Italian' },
-        { code: 'nl', name: 'Dutch' },
+        { code: 'auto', name: 'Auto Detect', targets: %w[en de fr es it nl] },
+        { code: 'en', name: 'English', targets: %w[de fr es it nl] },
+        { code: 'de', name: 'German', targets: ['en'] },
+        { code: 'fr', name: 'French', targets: ['en'] },
+        { code: 'es', name: 'Spanish', targets: ['en'] },
+        { code: 'it', name: 'Italian', targets: ['en'] },
+        { code: 'nl', name: 'Dutch', targets: ['en'] },
       ],
       nil,
-      nil
+      nil,
+      0,
+      ''
     )
   end
   let(:dependencies) { dependencies_class.new(menu_state_reader) }
@@ -169,6 +174,19 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
     expect(wheel_component.send(:dropdown_window, :source)[:start]).to eq(1)
     menu_state_reader.translator_dropdown_selected = 1
     expect(wheel_component.send(:dropdown_window, :source)[:start]).to eq(1)
+  end
+
+  it 'shows the live language filter and picker-specific controls' do
+    menu_state_reader.mode = :translator_target_dropdown
+    menu_state_reader.translator_dropdown_query = 'ger'
+
+    component.render(surface, bounds)
+    rendered = strip_ansi(terminal.writes.map { |write| write[:text] }.join("\n"))
+
+    expect(rendered).to include('filter: ger▏')
+    expect(rendered).to include('TAB switch side')
+    expect(rendered).to include('German')
+    expect(rendered).not_to include('Spanish')
   end
 
   it 'maps wrapped body coordinates into source and target selection ranges' do
@@ -281,5 +299,17 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
         end
       end
     end
+  end
+
+  it 'scrolls a long result when the result pane has focus' do
+    mutator = double('MenuSessionMutator', update_menu: nil)
+    menu_state_reader.translator_focus = :target
+    menu_state_reader.translator_output_text = (1..60).map { |number| "line #{number}" }.join("\n")
+    scrolling = described_class.new(menu_state_reader: menu_state_reader, menu_session_mutator: mutator)
+    scrolling.render(surface, bounds)
+
+    scrolling.handle_move_down
+
+    expect(mutator).to have_received(:update_menu).with(translator_output_scroll: 1)
   end
 end

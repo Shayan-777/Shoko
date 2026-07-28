@@ -6,7 +6,10 @@ module Shoko
   module Core
     module Models
       # Typed translator language-pack row used by the menu packs workflow.
-      TranslatorPackEntry = Data.define(:from, :to, :version, :size, :installed, :payload) do
+      TranslatorPackEntry = Data.define(
+        :from, :to, :version, :size, :installed, :installed_version,
+        :update_available, :payload
+      ) do
         class << self
           def from_h(hash)
             raise ArgumentError, "TranslatorPackEntry payload must be a Hash, got #{hash.class}" unless hash.is_a?(Hash)
@@ -19,6 +22,8 @@ module Shoko
               version: normalized[:version].to_s,
               size: normalized[:size].to_i,
               installed: normalized[:installed] == true,
+              installed_version: normalized[:installed_version].to_s,
+              update_available: normalized[:update_available] == true,
               payload: normalized.freeze
             )
           end
@@ -43,7 +48,12 @@ module Shoko
         end
 
         def to_h
-          payload.merge(from: from, to: to, version: version, size: size, installed: installed == true)
+          payload.merge(
+            from: from, to: to, version: version, size: size,
+            installed: installed == true,
+            installed_version: installed_version,
+            update_available: update_available == true
+          )
         end
       end
     end

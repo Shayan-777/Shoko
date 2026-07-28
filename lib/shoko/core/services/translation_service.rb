@@ -2,6 +2,7 @@
 
 require_relative 'base_service'
 require_relative '../models/translation_result'
+require_relative '../errors/translation_failure'
 
 module Shoko
   module Core
@@ -21,9 +22,9 @@ module Shoko
           return [] unless @translation_repository
 
           @translation_repository.available_languages
-        rescue Shoko::Error => e
+        rescue Shoko::Core::Errors::TranslationFailure => e
           logger.debug('translation.available_languages_failed', code: repository_error_code(e), error: e.message)
-          []
+          raise
         end
 
         def translate(text, source_lang: DEFAULT_SOURCE_LANG, target_lang: DEFAULT_TARGET_LANG)
@@ -36,15 +37,16 @@ module Shoko
           end
 
           @translation_repository.translate(query, source_lang: source, target_lang: target)
-        rescue Shoko::Error => e
+        rescue Shoko::Core::Errors::TranslationFailure => e
           logger.error('translation.translate_failed', code: repository_error_code(e), error: e.message)
-          error_result(query, source: source, target: target, message: e.message)
+          error_result(query, source: source, target: target, message: e.message,
+                              code: repository_error_code(e))
         end
 
         private
 
-        def repository_error_code(_error)
-          :internal
+        def repository_error_code(error)
+          error.code
         end
 
         def normalized_source_lang(value)
@@ -66,13 +68,14 @@ module Shoko
           )
         end
 
-        def error_result(query, source:, target:, message:)
+        def error_result(query, source:, target:, message:, code: :internal)
           Shoko::Core::Models::TranslationResult.new(
             query: query,
             translated_text: '',
             source_lang: source,
             target_lang: target,
-            error_message: message
+            error_message: message,
+            error_code: code
           )
         end
       end

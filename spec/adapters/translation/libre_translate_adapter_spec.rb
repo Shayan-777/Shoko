@@ -47,8 +47,10 @@ RSpec.describe Shoko::Adapters::Translation::LibreTranslateAdapter do
 
     languages = adapter.available_languages
 
-    expect(languages.map(&:name)).to eq(%w[English German])
-    expect(languages.first.targets).to eq(['de'])
+    expect(languages.map(&:name)).to eq(['Detect language', 'English', 'German'])
+    expect(languages.first.code).to eq('auto')
+    expect(languages.first.targets).to contain_exactly('de', 'en')
+    expect(languages[1].targets).to eq(['de'])
   end
 
   it 'returns translated text with detected language metadata' do

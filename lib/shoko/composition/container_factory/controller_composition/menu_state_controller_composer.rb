@@ -87,6 +87,7 @@ module Shoko
             {
               download: build_async_relay(context, 'menu-download-worker'),
               translator: build_async_relay(context, 'menu-translator-worker'),
+              translator_packs: build_async_relay(context, 'menu-translator-packs-worker'),
               rss: build_async_relay(context, 'menu-rss-worker'),
             }
           end
@@ -118,7 +119,9 @@ module Shoko
               download_workflow: build_download_workflow(context: context, workflow_ports: workflow_ports,
                                                          relay: relays[:download]),
               dictionary_workflow: build_dictionary_workflow(context: context),
-              translator_packs_workflow: build_translator_packs_workflow(context: context),
+              translator_packs_workflow: build_translator_packs_workflow(
+                context: context, relay: relays[:translator_packs]
+              ),
               translator_workflow: build_translator_workflow(context: context, relay: relays[:translator]),
               rss_reader_workflow: build_rss_reader_workflow(context: context, relay: relays[:rss]),
               annotation_workflow: build_annotation_workflow(context: context, workflow_ports: workflow_ports),
@@ -179,7 +182,7 @@ module Shoko
           end
           private_class_method :build_dictionary_workflow
 
-          def build_translator_packs_workflow(context:)
+          def build_translator_packs_workflow(context:, relay:)
             Shoko::Shared::LazyProxy.new do
               require 'shoko/application/workflows/menu/translator_packs_workflow'
               Shoko::Application::Workflows::Menu::TranslatorPacksWorkflow.new(
@@ -187,6 +190,7 @@ module Shoko
                 model_store: context.translation_model_store,
                 menu_session_store: context.menu_session_store,
                 menu_transient_store: context.menu_transient_store,
+                async_relay: relay,
                 logger: context.logger
               )
             end

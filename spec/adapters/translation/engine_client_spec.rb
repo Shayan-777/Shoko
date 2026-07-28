@@ -37,7 +37,11 @@ RSpec.describe Shoko::Adapters::Translation::EngineClient do
           ).to_json)
         when 'translate'
           exit!(1) if req['text'] == 'CRASH'
-          puts({ ok: true, text: "T[#{req['text']}]" }.to_json)
+          puts({
+            ok: true,
+            text: "T[#{req['text']}]",
+            finish_reason: req['text'] == 'CUT' ? 'max_tokens' : 'eos'
+          }.to_json)
         else
           puts({ ok: false, error: 'unknown op' }.to_json)
         end
@@ -52,6 +56,15 @@ RSpec.describe Shoko::Adapters::Translation::EngineClient do
   it 'loads a model and translates through it' do
     client.ensure_loaded('eten', model_path: '/m.bin', vocab_path: '/v.spm')
     expect(client.translate('eten', 'Tere!')).to eq('T[Tere!]')
+  end
+
+  it 'surfaces decoder truncation metadata' do
+    client.ensure_loaded('eten', model_path: '/m.bin', vocab_path: '/v.spm')
+
+    response = client.translate_with_metadata('eten', 'CUT')
+
+    expect(response.text).to eq('T[CUT]')
+    expect(response).to be_truncated
   end
 
   it 'raises a typed error when the engine rejects a load' do
@@ -78,6 +91,64 @@ RSpec.describe Shoko::Adapters::Translation::EngineClient do
 
     client.ensure_loaded('eten', model_path: '/m.bin', vocab_path: '/v.spm')
     expect(client.translate('eten', 'again')).to eq('T[again]')
+  end
+
+  it 'rejects malformed success responses and retires that process' do
+    malformed = described_class.new(
+      engine_path: write_fake_engine("while $stdin.gets\n  puts({ ok: true }.to_json)\nend")
+    )
+
+    expect do
+      malformed.ensure_loaded('eten', model_path: '/m.bin', vocab_path: '/v.spm')
+      malformed.translate('eten', 'hello')
+    end.to raise_error(described_class::EngineError) { |error|
+      expect(error.code).to eq(:engine_protocol)
+    }
+    expect(malformed.running?).to be(false)
+  ensure
+    malformed&.shutdown
+  end
+
+  it 'times out and forcibly retires an unresponsive process' do
+    stub_const("#{described_class}::READ_TIMEOUT_SECONDS", 0.05)
+    stalled = described_class.new(
+      engine_path: write_fake_engine("while $stdin.gets\n  sleep 60\nend")
+    )
+
+    expect do
+      stalled.ensure_loaded('eten', model_path: '/m.bin', vocab_path: '/v.spm')
+    end.to raise_error(described_class::EngineError) { |error|
+      expect(error.code).to eq(:engine_timeout)
+    }
+    expect(stalled.running?).to be(false)
+  ensure
+    stalled&.shutdown
+  end
+
+  it 'forgets a slot reported as evicted by the engine' do
+    evicting = described_class.new(
+      engine_path: write_fake_engine(<<~'RUBY')
+        loads = 0
+        while (line = $stdin.gets)
+          req = JSON.parse(line)
+          if req['op'] == 'load'
+            loads += 1
+            response = { ok: true }
+            response[:evicted] = 'first' if loads == 2
+            puts(response.to_json)
+          else
+            puts({ ok: true, text: req['text'], finish_reason: 'eos' }.to_json)
+          end
+        end
+      RUBY
+    )
+    evicting.ensure_loaded('first', model_path: '/a.bin', vocab_path: '/a.spm')
+    evicting.ensure_loaded('second', model_path: '/b.bin', vocab_path: '/b.spm')
+
+    expect { evicting.translate('first', 'hello') }
+      .to raise_error(described_class::EngineError, /not loaded/)
+  ensure
+    evicting&.shutdown
   end
 
   it 'shuts the child process down cleanly' do

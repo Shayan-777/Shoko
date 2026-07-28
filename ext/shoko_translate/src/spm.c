@@ -16,6 +16,8 @@
 #define SK_PIECE_BYTE 6
 
 #define SK_MAX_TEXT_BYTES 16384
+#define SK_MAX_VOCAB_BYTES ((size_t)256 * 1024 * 1024)
+#define SK_MAX_PIECES 1000000
 #define SK_WS "\xE2\x96\x81" /* U+2581 lower one eighth block */
 
 typedef struct {
@@ -23,6 +25,7 @@ typedef struct {
   int len;
   float score;
   int type;
+  int byte_value;
 } sk_piece;
 
 struct sk_vocab {
@@ -31,6 +34,7 @@ struct sk_vocab {
   int unk_id;
   float unk_score;
   int max_piece_len;
+  int byte_ids[256];
   /* open-addressing hash of scorable pieces -> id */
   int *slots;
   uint32_t mask;
@@ -47,6 +51,13 @@ static uint32_t fnv1a(const char *s, int len) {
     h *= 16777619u;
   }
   return h;
+}
+
+static int hex_value(char byte) {
+  if (byte >= '0' && byte <= '9') return byte - '0';
+  if (byte >= 'A' && byte <= 'F') return byte - 'A' + 10;
+  if (byte >= 'a' && byte <= 'f') return byte - 'a' + 10;
+  return -1;
 }
 
 static int piece_lookup(const sk_vocab *v, const char *s, int len) {
@@ -85,13 +96,23 @@ static uint64_t pb_varint(sk_pb *b) {
 static void pb_skip(sk_pb *b, int wire) {
   switch (wire) {
   case 0: pb_varint(b); break;
-  case 1: b->off += 8; break;
+  case 1:
+    if (b->len - b->off < 8) b->error = 1;
+    else b->off += 8;
+    break;
   case 2: {
     uint64_t n = pb_varint(b);
-    b->off += n;
+    if (n > b->len - b->off) {
+      b->error = 1;
+    } else {
+      b->off += (size_t)n;
+    }
     break;
   }
-  case 5: b->off += 4; break;
+  case 5:
+    if (b->len - b->off < 4) b->error = 1;
+    else b->off += 4;
+    break;
   default: b->error = 1;
   }
   if (b->off > b->len) b->error = 1;
@@ -100,24 +121,25 @@ static void pb_skip(sk_pb *b, int wire) {
 /* --- loading ---------------------------------------------------------- */
 
 static int parse_one_piece(sk_pb *b, uint64_t msg_len, sk_piece *out) {
-  size_t end = b->off + msg_len;
-  if (end > b->len) return 0;
+  if (msg_len > b->len - b->off) return 0;
+  size_t end = b->off + (size_t)msg_len;
   out->bytes = NULL;
   out->len = 0;
   out->score = 0.0f;
   out->type = SK_PIECE_NORMAL;
+  out->byte_value = -1;
   while (b->off < end && !b->error) {
     uint64_t key = pb_varint(b);
     int field = (int)(key >> 3), wire = (int)(key & 7);
     if (field == 1 && wire == 2) {
       uint64_t n = pb_varint(b);
-      if (b->off + n > end || n > 512) return 0;
-      out->bytes = malloc(n + 1);
+      if (out->bytes || n > end - b->off || n > 512) return 0;
+      out->bytes = malloc((size_t)n + 1);
       if (!out->bytes) return 0;
       memcpy(out->bytes, b->p + b->off, n);
       out->bytes[n] = '\0';
       out->len = (int)n;
-      b->off += n;
+      b->off += (size_t)n;
     } else if (field == 2 && wire == 5) {
       if (b->off + 4 > end) return 0;
       memcpy(&out->score, b->p + b->off, 4);
@@ -128,7 +150,8 @@ static int parse_one_piece(sk_pb *b, uint64_t msg_len, sk_piece *out) {
       pb_skip(b, wire);
     }
   }
-  return !b->error && out->bytes != NULL;
+  return !b->error && b->off == end && out->bytes != NULL &&
+         isfinite(out->score);
 }
 
 static unsigned char *read_whole_file(const char *path, size_t *size_out) {
@@ -139,7 +162,7 @@ static unsigned char *read_whole_file(const char *path, size_t *size_out) {
     return NULL;
   }
   long size = ftell(f);
-  if (size <= 0) {
+  if (size <= 0 || (uintmax_t)size > SK_MAX_VOCAB_BYTES) {
     fclose(f);
     return NULL;
   }
@@ -166,6 +189,7 @@ sk_vocab *sk_vocab_load(const char *path, char *err, size_t errsz) {
   int capacity = 0;
   if (!v) goto fail_oom;
   v->unk_id = -1;
+  for (int i = 0; i < 256; i++) v->byte_ids[i] = -1;
 
   sk_pb b = {buf, size, 0, 0};
   while (b.off < b.len && !b.error) {
@@ -173,13 +197,21 @@ sk_vocab *sk_vocab_load(const char *path, char *err, size_t errsz) {
     int field = (int)(key >> 3), wire = (int)(key & 7);
     if (field == 1 && wire == 2) {
       uint64_t n = pb_varint(&b);
+      if (v->count >= SK_MAX_PIECES) {
+        set_err(err, errsz, "vocabulary has too many pieces");
+        goto fail;
+      }
       if (v->count == capacity) {
-        capacity = capacity ? capacity * 2 : 1024;
-        sk_piece *grown = realloc(v->pieces, capacity * sizeof(sk_piece));
+        int next = capacity ? capacity * 2 : 1024;
+        if (next > SK_MAX_PIECES) next = SK_MAX_PIECES;
+        sk_piece *grown = realloc(v->pieces, (size_t)next * sizeof(sk_piece));
         if (!grown) goto fail_oom;
         v->pieces = grown;
+        capacity = next;
       }
       if (!parse_one_piece(&b, n, &v->pieces[v->count])) {
+        free(v->pieces[v->count].bytes);
+        v->pieces[v->count].bytes = NULL;
         set_err(err, errsz, "malformed vocabulary file");
         goto fail;
       }
@@ -197,6 +229,21 @@ sk_vocab *sk_vocab_load(const char *path, char *err, size_t errsz) {
   for (int i = 0; i < v->count; i++) {
     sk_piece *p = &v->pieces[i];
     if (p->type == SK_PIECE_UNKNOWN) v->unk_id = i;
+    if (p->type == SK_PIECE_BYTE) {
+      int hi = p->len == 6 ? hex_value(p->bytes[3]) : -1;
+      int lo = p->len == 6 ? hex_value(p->bytes[4]) : -1;
+      if (p->len != 6 || p->bytes[0] != '<' || p->bytes[1] != '0' ||
+          p->bytes[2] != 'x' || p->bytes[5] != '>' || hi < 0 || lo < 0) {
+        set_err(err, errsz, "vocabulary has an invalid byte piece");
+        goto fail;
+      }
+      p->byte_value = (hi << 4) | lo;
+      if (v->byte_ids[p->byte_value] >= 0) {
+        set_err(err, errsz, "vocabulary has duplicate byte pieces");
+        goto fail;
+      }
+      v->byte_ids[p->byte_value] = i;
+    }
     if (p->score < min_score) min_score = p->score;
     if (p->len > v->max_piece_len) v->max_piece_len = p->len;
   }
@@ -214,8 +261,7 @@ sk_vocab *sk_vocab_load(const char *path, char *err, size_t errsz) {
   for (uint32_t i = 0; i < table; i++) v->slots[i] = -1;
   for (int i = 0; i < v->count; i++) {
     sk_piece *p = &v->pieces[i];
-    if (p->type != SK_PIECE_NORMAL && p->type != SK_PIECE_USER_DEFINED &&
-        p->type != SK_PIECE_BYTE)
+    if (p->type != SK_PIECE_NORMAL && p->type != SK_PIECE_USER_DEFINED)
       continue;
     uint32_t idx = fnv1a(p->bytes, p->len) & v->mask;
     while (v->slots[idx] >= 0) idx = (idx + 1) & v->mask;
@@ -324,11 +370,18 @@ int sk_vocab_encode(const sk_vocab *v, const char *text, int *ids,
   int count = 0;
   int ok = best[n] != -INFINITY;
   if (ok) {
-    /* walk back to count, then fill forward */
+    /* Walk back to count, expanding unknown codepoints into byte pieces when
+     * the vocabulary provides a complete byte fallback table. */
     int pos = n;
     while (pos > 0) {
-      count++;
-      pos = back_start[pos];
+      int start = back_start[pos];
+      int id = back_id[pos];
+      int bytes = pos - start;
+      int byte_fallback = id == v->unk_id;
+      for (int j = start; byte_fallback && j < pos; j++)
+        byte_fallback = v->byte_ids[(unsigned char)s[j]] >= 0;
+      count += byte_fallback ? bytes : 1;
+      pos = start;
     }
     if (count > max_ids) {
       ok = 0;
@@ -336,8 +389,18 @@ int sk_vocab_encode(const sk_vocab *v, const char *text, int *ids,
       pos = n;
       int w = count;
       while (pos > 0) {
-        ids[--w] = back_id[pos];
-        pos = back_start[pos];
+        int start = back_start[pos];
+        int id = back_id[pos];
+        int byte_fallback = id == v->unk_id;
+        for (int j = start; byte_fallback && j < pos; j++)
+          byte_fallback = v->byte_ids[(unsigned char)s[j]] >= 0;
+        if (byte_fallback) {
+          for (int j = pos - 1; j >= start; j--)
+            ids[--w] = v->byte_ids[(unsigned char)s[j]];
+        } else {
+          ids[--w] = id;
+        }
+        pos = start;
       }
     }
   }
@@ -353,23 +416,36 @@ char *sk_vocab_decode(const sk_vocab *v, const int *ids, int count) {
   size_t total = 1;
   for (int i = 0; i < count; i++) {
     if (ids[i] < 0 || ids[i] >= v->count) continue;
-    total += v->pieces[ids[i]].len;
+    const sk_piece *p = &v->pieces[ids[i]];
+    if (p->type == SK_PIECE_CONTROL) continue;
+    size_t add = p->type == SK_PIECE_BYTE ? 1 :
+                 p->type == SK_PIECE_UNKNOWN ? 3 : (size_t)p->len;
+    if (add > SIZE_MAX - total) return NULL;
+    total += add;
   }
   char *out = malloc(total);
   if (!out) return NULL;
-  int n = 0;
+  size_t n = 0;
   for (int i = 0; i < count; i++) {
     if (ids[i] < 0 || ids[i] >= v->count) continue;
     const sk_piece *p = &v->pieces[ids[i]];
-    if (p->type == SK_PIECE_CONTROL || p->type == SK_PIECE_UNKNOWN) continue;
-    memcpy(out + n, p->bytes, p->len);
-    n += p->len;
+    if (p->type == SK_PIECE_CONTROL) continue;
+    if (p->type == SK_PIECE_BYTE && p->byte_value >= 0) {
+      out[n++] = (char)p->byte_value;
+    } else if (p->type == SK_PIECE_UNKNOWN) {
+      memcpy(out + n, "\xEF\xBF\xBD", 3);
+      n += 3;
+    } else {
+      memcpy(out + n, p->bytes, p->len);
+      n += p->len;
+    }
   }
   out[n] = '\0';
   /* replace ▁ (E2 96 81) with spaces, in place */
-  int r = 0, w = 0;
-  while (out[r]) {
-    if ((unsigned char)out[r] == 0xE2 && (unsigned char)out[r + 1] == 0x96 &&
+  size_t r = 0, w = 0;
+  while (r < n) {
+    if (r + 2 < n && (unsigned char)out[r] == 0xE2 &&
+        (unsigned char)out[r + 1] == 0x96 &&
         (unsigned char)out[r + 2] == 0x81) {
       out[w++] = ' ';
       r += 3;
@@ -379,6 +455,6 @@ char *sk_vocab_decode(const sk_vocab *v, const int *ids, int count) {
   }
   out[w] = '\0';
   /* trim leading space introduced by the dummy prefix */
-  if (out[0] == ' ') memmove(out, out + 1, w);
+  if (w > 0 && out[0] == ' ') memmove(out, out + 1, w);
   return out;
 }

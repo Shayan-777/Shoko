@@ -93,6 +93,29 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
     expect(handler).to have_received(:handle_menu_intent).with(:close_translator_mode, nil)
   end
 
+  it 'uses Enter for a translator newline and Alt/Ctrl+Enter for submission' do
+    allow(menu_state_reader).to receive(:mode).and_return(:translator)
+    controller.activate(:translator)
+
+    controller.handle_keys(["\r", "\e\r", "\e[13;5u"])
+
+    expect(handler).to have_received(:handle_menu_intent).with(:translator_activate_focus, nil)
+    expect(handler).to have_received(:handle_menu_intent).with(:translator_submit, nil).twice
+  end
+
+  it 'types a picker filter and switches picker side with Tab' do
+    allow(menu_state_reader).to receive(:mode).and_return(:translator_source_dropdown)
+    controller.activate(:translator_source_dropdown)
+
+    controller.handle_keys(['g', "\t"])
+
+    expect(handler).to have_received(:handle_menu_intent).with(
+      :edit_translator_language_query,
+      have_attributes(operation: :insert, text: 'g')
+    )
+    expect(handler).to have_received(:handle_menu_intent).with(:translator_cycle_focus, nil)
+  end
+
   it 'routes rss navigation keys through the rss reader intent set' do
     allow(menu_state_reader).to receive(:mode).and_return(:rss_reader)
     controller.activate(:rss_reader)

@@ -19,7 +19,9 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::TranslatorMouseHandler
       :translator_target_lang,
       :translator_languages,
       :translator_selection,
-      :translator_context_menu
+      :translator_context_menu,
+      :translator_output_scroll,
+      :translator_dropdown_query
     )
   end
   let(:menu_mutator_class) do
@@ -53,7 +55,9 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::TranslatorMouseHandler
         { code: 'de', name: 'German' },
       ],
       nil,
-      nil
+      nil,
+      0,
+      ''
     )
   end
   let(:translator_screen) do

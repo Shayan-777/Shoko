@@ -193,7 +193,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TranslatorLookupPopupComponent d
 
       text = rendered_rows.values.join("\n")
       expect(text).to include('Type or paste text to translate')
-      expect(text).to include('↵ to translate') # the empty translation pane invites the action
+      expect(text).to include('Alt/Ctrl+Enter to translate')
     end
 
     it 'lays the source editor over a labeled divider and the translation' do

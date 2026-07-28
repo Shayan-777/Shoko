@@ -103,8 +103,9 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
     expect(snapshot.translator_input_cursor).to eq(1)
   end
 
-  it 'types a capital S while editing instead of swapping languages' do
-    action.call(:translator_swap_languages)
+  it 'types a capital S through the ordinary editor path' do
+    payload = Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: 'S')
+    action.call(:edit_translator_input, payload)
 
     expect(reload.translator_input_text).to eq('S')
     expect(reload.translator_source_lang).to eq('auto')
@@ -130,6 +131,17 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
 
     expect(snapshot.mode).to eq(:translator_source_dropdown)
     expect(snapshot.translator_dropdown_selected).to eq(0)
+  end
+
+  it 'switches directly between source and target pickers with Tab' do
+    menu_session_store.save(
+      menu_session_store.load.with(mode: :translator_source_dropdown, translator_focus: :source)
+    )
+
+    action.call(:translator_cycle_focus)
+
+    expect(reload.mode).to eq(:translator_target_dropdown)
+    expect(reload.translator_focus).to eq(:target)
   end
 
   it 'inserts a newline (note-editor parity) when enter is pressed while editing' do
@@ -163,20 +175,20 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
     )
   end
 
-  it 'converts "- " into a bullet via the shared editor operator' do
+  it 'keeps punctuation literal instead of applying note-editor formatting' do
     insert = ->(text) { action.call(:edit_translator_input, Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: text)) }
     insert.call('-')
     insert.call(' ')
 
-    expect(reload.translator_input_text).to eq('● ')
+    expect(reload.translator_input_text).to eq('- ')
   end
 
-  it 'continues a bulleted list when enter is pressed on a bullet line' do
+  it 'inserts only a newline after a bullet-like line' do
     menu_session_store.save(menu_session_store.load.with(translator_input_text: '● a', translator_input_cursor: 3))
 
     action.call(:translator_activate_focus)
 
-    expect(reload.translator_input_text).to eq("● a\n● ")
+    expect(reload.translator_input_text).to eq("● a\n")
   end
 
   it 'forwards arrow-key cursor movement to the translator control' do

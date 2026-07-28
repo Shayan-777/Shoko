@@ -70,6 +70,16 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorPacksScreenCo
       allow(menu_state_reader).to receive(:translator_packs_query).and_return('et-en')
       expect(component.send(:filtered_results).length).to eq(1)
     end
+
+    it 'shows both installed and available versions for an update' do
+      item = packs_results.last.merge(
+        installed: true,
+        installed_version: '1.9',
+        update_available: true
+      )
+
+      expect(component.send(:pack_version_and_size, item)).to include('v1.9 → v2.1')
+    end
   end
 
   describe '#status_label' do

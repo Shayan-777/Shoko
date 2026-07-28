@@ -29,7 +29,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
       query: 'hello', translated_text: 'Hallo', source_lang: 'auto', target_lang: 'de'
     )
   end
-  let(:translation_service) { instance_double(Shoko::Core::Services::TranslationService, translate: translation_result) }
+  let(:translation_service) do
+    instance_double(
+      Shoko::Core::Services::TranslationService,
+      translate: translation_result,
+      available_languages: [
+        Shoko::Core::Models::TranslationLanguage.new(code: 'auto', name: 'Detect language', targets: %w[en de]),
+        Shoko::Core::Models::TranslationLanguage.new(code: 'en', name: 'English', targets: ['de']),
+        Shoko::Core::Models::TranslationLanguage.new(code: 'de', name: 'German', targets: ['en']),
+      ]
+    )
+  end
   let(:input_controller) { instance_double(Shoko::Adapters::Input::ReaderInputController, enter_modal_mode: nil, exit_modal_mode: nil) }
   let(:notification_service) { instance_double(Shoko::Adapters::Output::NotificationService, set_message: nil) }
   let(:clipboard_service) { instance_double(Shoko::Adapters::Output::Clipboard::ClipboardService, read_text: 'world', copy_text?: true) }
@@ -42,7 +52,11 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
       translator_result: nil,
       translator_source_lang: 'auto',
       translator_target_lang: 'de',
-      translator_languages: [{ code: 'en', name: 'English' }, { code: 'de', name: 'German' }],
+      translator_languages: [
+        { code: 'auto', name: 'Detect language', targets: %w[en de] },
+        { code: 'en', name: 'English', targets: ['de'] },
+        { code: 'de', name: 'German', targets: ['en'] },
+      ],
       translator_picker_side: nil,
       translator_picker_query: '',
       translator_picker_index: 0,
@@ -94,6 +108,11 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
 
     it 'pre-fills and translates the selected text when opened from the popup Translate action' do
       state[:translator_query] = ''
+      allow(translator_ui_session).to receive(:write_source) do |text:, cursor:|
+        state[:translator_query] = text
+        state[:translator_cursor] = cursor
+        success_outcome
+      end
       selection_service = instance_double(Shoko::Application::Services::SelectionService, extract_text: '  Bonjour le  monde ')
       rendered = instance_double(Shoko::Application::Ports::Outbound::RenderedContentReader, rendered_lines: {})
       selection_text_source = described_class::SelectionTextSource.new(
@@ -119,11 +138,46 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
   end
 
   describe '#translator_confirm in text mode' do
-    it 'translates the source text with the current pair and publishes the result' do
+    it 'inserts a newline in the multi-line source editor' do
       expect(controller.translator_confirm).to eq(:handled)
+
+      expect(translator_ui_session).to have_received(:write_source).with(text: "hello\n", cursor: 6)
+      expect(translation_service).not_to have_received(:translate)
+    end
+  end
+
+  describe '#translator_submit' do
+    it 'translates the source text with the current pair and publishes the result' do
+      expect(controller.translator_submit).to eq(:handled)
 
       expect(translation_service).to have_received(:translate).with('hello', source_lang: 'auto', target_lang: 'de')
       expect(translator_ui_session).to have_received(:apply_result).with(translation_result, query: 'hello')
+    end
+
+    it 'does not publish a result after the source text changes' do
+      executor = Object.new
+      executor.instance_variable_set(:@jobs, [])
+      executor.define_singleton_method(:submit) { |&job| @jobs << job }
+      executor.define_singleton_method(:run_all) { @jobs.shift.call until @jobs.empty? }
+      relay = Shoko::Application::Services::AsyncResultRelay.new(async_executor: executor)
+      asynchronous = described_class.new(
+        reader_state: reader_state,
+        reader_session_mutator: reader_session_mutator,
+        translation_service: translation_service,
+        translator_ui_session: translator_ui_session,
+        input_controller: input_controller,
+        clipboard_service: clipboard_service,
+        notification_service: notification_service,
+        async_relay: relay,
+        logger: nil
+      )
+
+      asynchronous.translator_submit
+      state[:translator_query] = 'edited while translating'
+      executor.run_all
+      asynchronous.drain_async_results
+
+      expect(translator_ui_session).not_to have_received(:apply_result)
     end
   end
 
@@ -267,7 +321,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
   describe '#translator_confirm in picker mode' do
     it 'applies the highlighted language to the active side and re-translates' do
       state[:translator_picker_side] = :target
-      state[:translator_picker_index] = 0 # 'en' (filtered list keeps backend order)
+      state[:translator_picker_index] = 0 # 'en' is valid for auto
 
       expect(controller.translator_confirm).to eq(:handled)
 

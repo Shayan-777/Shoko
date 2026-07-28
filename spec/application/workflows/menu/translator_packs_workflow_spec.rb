@@ -78,6 +78,10 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorPacksWorkflow do
     )
   end
 
+  before do
+    allow(model_store).to receive(:installed_packs).and_return([])
+  end
+
   def transient
     menu_transient_store.snapshot
   end
@@ -97,6 +101,28 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorPacksWorkflow do
       expect(results.find { |r| r[:from] == 'en' }[:installed]).to be(false)
     end
 
+    it 'keeps installed packs that are no longer present in the remote catalog' do
+      allow(model_catalog_service).to receive(:list_remote).and_return([])
+      allow(model_store).to receive(:installed_packs).and_return([installed_pack('et', 'en')])
+
+      workflow.fetch_pack_catalog
+
+      expect(transient.translator_packs_results).to contain_exactly(
+        hash_including(from: 'et', to: 'en', installed: true)
+      )
+    end
+
+    it 'offers an update only when the catalog version is newer than the installed version' do
+      allow(model_catalog_service).to receive(:list_remote)
+        .and_return([remote_pack('et', 'en', version: '1.9')])
+      newer_local = installed_pack('et', 'en').with(version: '2.0')
+      allow(model_store).to receive(:installed_packs).and_return([newer_local])
+
+      workflow.fetch_pack_catalog
+
+      expect(transient.translator_packs_results.first[:update_available]).to be(false)
+    end
+
     it 'degrades to an error status when the catalog fails' do
       allow(model_catalog_service).to receive(:list_remote)
         .and_raise(Shoko::Adapters::Translation::ModelCatalogService::CatalogError, 'offline')
@@ -105,6 +131,33 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorPacksWorkflow do
 
       expect(transient.translator_packs_status).to eq(:error)
       expect(transient.translator_packs_message).to include('offline')
+    end
+
+    it 'ignores an older catalog request that completes after a refresh' do
+      executor = Object.new
+      executor.instance_variable_set(:@jobs, [])
+      executor.define_singleton_method(:submit) { |&job| @jobs << job }
+      executor.define_singleton_method(:run_all) { @jobs.shift.call until @jobs.empty? }
+      relay = Shoko::Application::Services::AsyncResultRelay.new(async_executor: executor)
+      asynchronous = described_class.new(
+        model_catalog_service: model_catalog_service,
+        model_store: model_store,
+        menu_session_store: menu_session_store,
+        menu_transient_store: menu_transient_store,
+        async_relay: relay
+      )
+      allow(model_catalog_service).to receive(:list_remote).and_return(
+        [remote_pack('et', 'en')],
+        [remote_pack('en', 'de')]
+      )
+
+      asynchronous.fetch_pack_catalog
+      asynchronous.fetch_pack_catalog
+      executor.run_all
+      relay.drain!
+
+      expect(transient.translator_packs_results.map { |entry| [entry[:from], entry[:to]] })
+        .to eq([%w[en de]])
     end
   end
 

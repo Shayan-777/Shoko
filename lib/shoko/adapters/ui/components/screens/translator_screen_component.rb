@@ -13,6 +13,7 @@ require_relative '../ui/cursor_blink'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/ansi'
+require 'shoko/shared/language_directory'
 
 module Shoko
   module Adapters
@@ -56,7 +57,7 @@ module Shoko
               render_panel(surface, bounds, layout[:left_box], kind: :source)
               render_panel(surface, bounds, layout[:right_box], kind: :target)
               render_context_menu(surface, bounds)
-              frame.render_hint('ALT+ENTER translate · TAB focus · S swap · drag selects · right-click copies/pastes')
+              frame.render_hint(translator_hint)
             end
 
             def hit_test(column, row, bounds)
@@ -170,10 +171,14 @@ module Shoko
             end
 
             def handle_move_up
+              return scroll_output(-1) if translator_focus == :target
+
               move_cursor_by_visual_line(-1)
             end
 
             def handle_move_down
+              return scroll_output(1) if translator_focus == :target
+
               move_cursor_by_visual_line(1)
             end
 
@@ -217,6 +222,10 @@ module Shoko
               # visual (wrapped) lines that were last rendered — mirrors the note editor's
               # @editor_text_width. Movement happens off-frame, where bounds are unavailable.
               @source_body_width = body_width(box) if kind == :source
+              if kind == :target
+                @target_body_width = body_width(box)
+                @target_body_height = body_height(box, kind)
+              end
               base = "#{Palette::RESET}#{panel_bg(kind)}#{panel_text_fg(kind)}"
               body_lines(box, kind).each_with_index do |line, index|
                 surface.write(bounds, body_start_row(box, kind) + index, box.col + 2,
@@ -320,6 +329,7 @@ module Shoko
             def render_dropdown(surface, bounds, box, kind)
               popup_box = dropdown_popup_box(box, kind)
               fill_dropdown(surface, bounds, popup_box)
+              render_dropdown_filter(surface, bounds, popup_box)
               register_dropdown_wheel(bounds, popup_box)
               context = {
                 surface: surface,
@@ -331,6 +341,18 @@ module Shoko
               dropdown_rows_for(kind).each_with_index do |item, offset|
                 render_dropdown_row(context, kind, item, offset)
               end
+            end
+
+            def render_dropdown_filter(surface, bounds, popup_box)
+              width = dropdown_inner_width(popup_box)
+              query = menu_state_reader&.translator_dropdown_query.to_s
+              label = query.empty? ? 'type to filter · Tab side' : "filter: #{query}▏"
+              text = Shoko::Shared::Terminal::TextMetrics.truncate_to(label, width)
+              padding = ' ' * [width - visible_length(text), 0].max
+              surface.write(
+                bounds, popup_box.row, popup_box.col + 1,
+                "#{Palette::RESET}#{dropdown_bg}#{dropdown_muted_fg}#{text}#{padding}#{Palette::RESET}"
+              )
             end
 
             # One region over the open picker, so wheel turns anywhere on it
@@ -674,7 +696,12 @@ module Shoko
 
             def language_options(kind)
               languages = Array(menu_state_reader&.translator_languages).map { |item| Shoko::Core::Models::TranslationLanguage.normalized_entry(item) }
-              kind == :source ? [{ code: 'auto', name: 'Auto Detect' }, *languages] : languages
+              Shoko::Shared::LanguageDirectory.candidates_for(
+                languages,
+                side: kind,
+                source_code: selected_language_code(:source),
+                query: menu_state_reader&.translator_dropdown_query.to_s
+              )
             end
 
             def normalize_hash(value)
@@ -734,7 +761,9 @@ module Shoko
                 return placeholder_lines(kind, width, height)
               end
 
-              visible_layouts = visible_body_layouts_for_render(kind, width).first(height)
+              layouts = visible_body_layouts_for_render(kind, width)
+              start = body_window_start(kind, layouts, height)
+              visible_layouts = layouts.slice(start, height) || []
               rendered = visible_layouts.map { |line| render_body_layout_line(line, kind, width) }
               padded_lines(rendered, width, height)
             end
@@ -870,6 +899,28 @@ module Shoko
               layouts << build_line_layout('', cursor_index, cursor_index, [])
             end
 
+            def body_window_start(kind, layouts, height)
+              max_start = [layouts.length - height, 0].max
+              return translator_output_scroll.clamp(0, max_start) if kind == :target
+
+              line, = visual_cursor_line_and_column(layouts, source_cursor)
+              [line - height + 1, 0].max.clamp(0, max_start)
+            end
+
+            def translator_output_scroll
+              (menu_state_reader&.translator_output_scroll || 0).to_i
+            end
+
+            def scroll_output(delta)
+              width = @target_body_width || source_body_width
+              height = @target_body_height || 1
+              layouts = body_layouts(:target, width)
+              max_scroll = [layouts.length - height, 0].max
+              value = (translator_output_scroll + delta.to_i).clamp(0, max_scroll)
+              menu_session_mutator&.update_menu(translator_output_scroll: value)
+              record_cursor_activity
+            end
+
             def build_line_layout(text, start_index, end_index, clusters)
               BodyLineLayout.new(
                 text: text.dup,
@@ -967,6 +1018,14 @@ module Shoko
               MenuDesign::ViewAccents.for(:translator)
             end
 
+            def translator_hint
+              if %i[translator_source_dropdown translator_target_dropdown].include?(current_mode)
+                'TYPE filter · TAB switch side · ENTER select · ESC close'
+              else
+                'ALT/CTRL+ENTER translate · TAB focus · SHIFT+TAB swap · arrows edit/scroll'
+              end
+            end
+
             def status_left_color
               case translator_status
               when :done, :ready then Palette::TRANS_ACCENT_FG
@@ -1029,7 +1088,7 @@ module Shoko
 
               width = body_width(box)
               line_index = row - body_start_row(box, kind)
-              line = visible_body_line(kind, width, line_index)
+              line = visible_body_line(kind, width, line_index, body_height(box, kind))
               rel_column = (column - (box.col + 2)).clamp(0, width)
               index, cluster = index_for_line_column(line, rel_column)
               {
@@ -1042,9 +1101,10 @@ module Shoko
               }
             end
 
-            def visible_body_line(kind, width, line_index)
-              layouts = body_layouts(kind, width)
-              return layouts[line_index] if layouts[line_index]
+            def visible_body_line(kind, width, line_index, height)
+              layouts = visible_body_layouts_for_render(kind, width)
+              start = body_window_start(kind, layouts, height)
+              return layouts[start + line_index] if layouts[start + line_index]
 
               layouts.last || build_line_layout('', 0, 0, [])
             end

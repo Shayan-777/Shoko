@@ -53,6 +53,7 @@ RSpec.describe Shoko::Application::Ports::Inbound::ReaderIntentHandler do
       close_translator
       edit_translator
       translator_confirm
+      translator_submit
       translator_cursor_move
       translator_cycle_picker
       translator_open_picker

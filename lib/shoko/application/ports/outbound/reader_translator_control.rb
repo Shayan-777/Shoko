@@ -29,6 +29,10 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #confirm_translator"
           end
 
+          def submit_translator
+            raise NotImplementedError, "#{self.class} must implement #submit_translator"
+          end
+
           def move_translator_cursor(_cursor_move)
             raise NotImplementedError, "#{self.class} must implement #move_translator_cursor"
           end

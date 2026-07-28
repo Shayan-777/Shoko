@@ -6,7 +6,8 @@ require_relative '../../requests/cursor_move'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
 require 'shoko/shared/hash_normalizer'
-require 'shoko/application/services/annotation_edit/operator'
+require 'shoko/shared/text_buffer_edit'
+require 'shoko/shared/language_directory'
 
 module Shoko
   module Application
@@ -30,6 +31,7 @@ module Shoko
               translator_submit
               translator_swap_languages
               edit_translator_input
+              edit_translator_language_query
               move_translator_cursor
               move_translator_language_selection_up
               move_translator_language_selection_down
@@ -62,7 +64,7 @@ module Shoko
                 :translator_swap_languages,
                 :activate_translator_language_selection
               )
-                .merge(edit_op_payloads(:edit_translator_input))
+                .merge(edit_op_payloads(:edit_translator_input, :edit_translator_language_query))
                 .merge(direction_payloads(:move_translator_cursor))
                 .merge(delta_payloads(*MOVE_INTENTS))
             end
@@ -82,6 +84,9 @@ module Shoko
               {
                 edit_translator_input: route(payload: :edit_op, result: :handled) do |op|
                   update_input(op)
+                end,
+                edit_translator_language_query: route(payload: :edit_op, result: :handled) do |op|
+                  update_dropdown_query(op)
                 end,
                 move_translator_cursor: route(payload: :direction, result: :handled) do |direction|
                   @menu_translator_control.move_translator_cursor(direction: direction)
@@ -110,12 +115,16 @@ module Shoko
                 mode: :translator,
                 translator_focus: current_dropdown_kind,
                 translator_selection: nil,
-                translator_context_menu: nil
+                translator_context_menu: nil,
+                translator_dropdown_query: ''
               )
             end
 
             def cycle_focus
-              return if dropdown_mode?
+              if dropdown_mode?
+                open_dropdown(current_dropdown_kind == :source ? :target : :source)
+                return
+              end
 
               update_menu(
                 translator_focus: next_focus_for(current_menu.translator_focus),
@@ -131,12 +140,8 @@ module Shoko
               open_dropdown(translator_focus)
             end
 
-            # 'S' swaps languages from a language panel, but while editing it must stay a literal
-            # character — a text field you cannot type a capital S into would not feel like the app.
             def swap_languages_or_type
-              return swap_languages unless translator_focus == :input
-
-              update_input(Requests::EditOp.new(operation: :insert, text: 'S'))
+              swap_languages
             end
 
             def swap_languages
@@ -171,6 +176,7 @@ module Shoko
                 mode: mode,
                 translator_focus: kind,
                 translator_dropdown_selected: language_index(kind, current_language_code(kind)),
+                translator_dropdown_query: '',
                 translator_selection: nil,
                 translator_context_menu: nil
               )
@@ -224,43 +230,55 @@ module Shoko
 
             def dropdown_options(kind = current_dropdown_kind)
               languages = Array(current_menu.translator_languages).map { |item| normalize_language(item) }
-              return [{ code: 'auto', name: 'Auto Detect' }, *languages] if kind == :source
-
-              languages
+              Shoko::Shared::LanguageDirectory.candidates_for(
+                languages,
+                side: kind,
+                source_code: current_menu.translator_source_lang,
+                query: current_menu.translator_dropdown_query.to_s
+              )
             end
 
             def normalize_language(item)
               normalized = Shoko::Shared::HashNormalizer.symbolize_keys(item) || {}
               code = normalized[:code]
               name = normalized[:name]
-              { code: code.to_s, name: name.to_s }
+              { code: code.to_s, name: name.to_s, targets: Array(normalized[:targets]).map(&:to_s) }
             end
 
             def update_input(op)
               return unless translator_focus == :input && current_menu.mode == :translator
 
-              operator.apply(op)
+              operator.call(op)
             end
 
-            # Shared with the annotation note editor: insert (auto-bullets), backspace, forward delete,
-            # and newline with list continuation, over the translator_input_* state fields.
+            def update_dropdown_query(op)
+              return unless dropdown_mode?
+
+              query = current_menu.translator_dropdown_query.to_s
+              next_query, = Shoko::Shared::TextBufferEdit.apply(query, query.length, op)
+              update_menu(translator_dropdown_query: next_query, translator_dropdown_selected: 0)
+            end
+
             def operator
-              @operator ||= Shoko::Application::Services::AnnotationEdit::Operator.new(
-                text_reader: -> { current_menu.translator_input_text },
-                cursor_reader: -> { current_menu.translator_input_cursor },
-                writer: lambda do |text:, cursor:|
-                  update_menu(
-                    translator_input_text: text,
-                    translator_input_cursor: cursor,
-                    translator_selection: nil,
-                    translator_context_menu: nil
-                  )
-                end
-              )
+              text = current_menu.translator_input_text.to_s
+              cursor = current_menu.translator_input_cursor.to_i.clamp(0, text.length)
+              lambda do |edit|
+                next_text, next_cursor = Shoko::Shared::TextBufferEdit.apply(text, cursor, edit)
+                update_menu(
+                  translator_input_text: next_text,
+                  translator_input_cursor: next_cursor,
+                  translator_output_text: '',
+                  translator_detected_source_lang: nil,
+                  translator_status: :idle,
+                  translator_message: 'Alt/Ctrl+Enter to translate.',
+                  translator_output_scroll: 0,
+                  translator_selection: nil,
+                  translator_context_menu: nil
+                )
+              end
             end
 
             def submit_translation
-              @translator_workflow.fetch_translation_languages if Array(current_menu.translator_languages).empty?
               @translator_workflow.translate_text(
                 text: current_menu.translator_input_text,
                 source_lang: current_menu.translator_source_lang,

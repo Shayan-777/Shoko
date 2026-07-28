@@ -317,14 +317,17 @@ module Shoko
           end
 
           def target_display_lines(width)
-            return [dim_line('↵ to translate')] if @result.nil?
+            return [dim_line('Alt/Ctrl+Enter to translate')] if @result.nil?
             return error_lines if translation_error?
             return [dim_line('No translation')] if translated_text.empty?
 
             lines = Ui::TextUtils.wrap_prose(translated_text, width).map { |line| text_line(line) }
-            lines << dim_line('↵ to re-translate') if stale?
+            lines << dim_line('Alt/Ctrl+Enter to re-translate') if stale?
             note = detected_note
             lines.push('', dim_line(note)) if note
+            route = route_note
+            lines.push('', dim_line(route)) if route
+            lines.push('', dim_line('Output limit reached; translation may be incomplete.')) if @result&.truncated?
             lines
           end
 
@@ -339,7 +342,17 @@ module Shoko
           def error_lines
             message = @result.error_message.to_s.strip
             message = 'Translation failed' if message.empty?
-            [dim_line(message), dim_line('Check Settings → Translator for language packs and backend.')]
+            [dim_line(message), dim_line(error_action_hint)]
+          end
+
+          def error_action_hint
+            case @result&.error_code
+            when :model_missing then 'Install the required route in Settings → Translator.'
+            when :source_required then 'Choose a source language; local detection is unavailable.'
+            when :engine_missing then 'Build or configure the local translation engine.'
+            when :connection_failed then 'Check the LibreTranslate server or switch to on-device.'
+            else 'Check Settings → Translator for language packs and backend.'
+            end
           end
 
           def stale?
@@ -353,6 +366,13 @@ module Shoko
             return nil if code.empty?
 
             "Detected: #{LanguageDirectory.name_for(code)}"
+          end
+
+          def route_note
+            route = Array(@result&.route)
+            return nil unless route.length > 2
+
+            "Route: #{route.map { |code| LanguageDirectory.name_for(code) }.join(' → ')}"
           end
 
           def render_target_scroll_markers(surface, bounds, layout, total)
@@ -571,7 +591,12 @@ module Shoko
           end
 
           def picker_candidates
-            LanguageDirectory.candidates_for(@languages, side: @picker_side, query: @picker_query)
+            LanguageDirectory.candidates_for(
+              @languages,
+              side: @picker_side,
+              source_code: @source_lang,
+              query: @picker_query
+            )
           end
 
           def active_side_lang

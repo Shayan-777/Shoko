@@ -4,7 +4,9 @@ require_relative 'progress_throttle'
 require 'shoko/application/ports/outbound/menu_session_store'
 require 'shoko/application/ports/outbound/menu_transient_store'
 require 'shoko/core/models/translator_pack_entry'
+require 'shoko/core/services/version_order'
 require_relative 'menu_state_persistence'
+require_relative '../../services/async_result_relay'
 
 module Shoko
   module Application
@@ -17,7 +19,7 @@ module Shoko
           include MenuStatePersistence
 
           def initialize(model_catalog_service:, model_store:, menu_session_store:, menu_transient_store:,
-                         logger: nil)
+                         async_relay: nil, logger: nil)
             raise ArgumentError, 'model_catalog_service is required' if model_catalog_service.nil?
             raise ArgumentError, 'model_store is required' if model_store.nil?
             unless menu_session_store.is_a?(Shoko::Application::Ports::Outbound::MenuSessionStore)
@@ -32,30 +34,66 @@ module Shoko
             @menu_session_store = menu_session_store
             @menu_transient_store = menu_transient_store
             @logger = logger
+            @async_relay = async_relay || Shoko::Application::Services::AsyncResultRelay.new(logger: logger)
+            @remote_by_pair = {}
+            @catalog_generation = 0
           end
 
           def fetch_pack_catalog
+            request_id = next_catalog_request_id
             update_packs_state(catalog_started_payload)
-            remote = @model_catalog_service.list_remote
-            results = merge_installation(remote)
-            update_packs_state(catalog_result_payload(results))
-          rescue Shoko::Error => e
-            raise if e.is_a?(Shoko::FatalExternalInputError)
+            return if @async_relay.submit { perform_catalog_fetch(request_id) }
 
-            log_resilient('fetch_pack_catalog', e)
             update_packs_state(translator_packs_status: :error,
-                               translator_packs_message: "Catalog failed: #{e.message}",
+                               translator_packs_message: 'Catalog worker is unavailable.',
                                translator_packs_progress: 0.0)
           end
+
+          def perform_catalog_fetch(request_id)
+            installed_only = @model_store.installed_packs.map do |pack|
+              Shoko::Core::Models::TranslatorPackEntry.from_h(
+                from: pack.from, to: pack.to, version: pack.version,
+                installed_version: pack.version, size: 0, installed: true,
+                update_available: false
+              ).to_h
+            end
+            unless installed_only.empty?
+              @async_relay.enqueue do
+                next unless current_catalog_request?(request_id)
+
+                update_packs_state(translator_packs_results: installed_only,
+                                   translator_packs_message: 'Checking for pack updates...')
+              end
+            end
+            remote = @model_catalog_service.list_remote
+            results = merge_installation(remote)
+            remote_by_pair = remote.to_h { |pack| ["#{pack.from}-#{pack.to}", pack] }
+            @async_relay.enqueue do
+              next unless current_catalog_request?(request_id)
+
+              @remote_by_pair = remote_by_pair
+              update_packs_state(catalog_result_payload(results))
+            end
+          # resilient-boundary
+          rescue StandardError => e
+            handle_catalog_error(e, request_id)
+          end
+          private :perform_catalog_fetch
 
           def download_pack(entry)
             return unless entry
 
             pack = coerce_pack_entry(entry)
-            return remove_pack(pack) if pack.installed
+            update_packs_state(operation_started_payload(pack))
+            submitted = @async_relay.submit do
+              pack.installed && !pack.update_available ? remove_pack(pack) : install_pack(pack)
+            end
+            return if submitted
 
-            install_pack(pack)
-          rescue Shoko::Error => e
+            update_packs_state(translator_packs_status: :error,
+                               translator_packs_message: 'Language-pack worker is unavailable.',
+                               translator_packs_progress: 0.0)
+          rescue Shoko::Error, ArgumentError => e
             raise if e.is_a?(Shoko::FatalExternalInputError)
 
             log_resilient('download_pack', e, pack: pack_label(pack))
@@ -66,20 +104,29 @@ module Shoko
 
           def install_pack(pack)
             label = pack_label(pack)
-            update_packs_state(download_started_payload(label))
             perform_download(pack, label)
-            update_packs_state(translator_packs_status: :done,
-                               translator_packs_message: "Installed #{label}",
-                               translator_packs_progress: 0.0)
-            mark_pack_installed(pack, installed: true)
+            @async_relay.enqueue do
+              update_packs_state(translator_packs_status: :done,
+                                 translator_packs_message: "Installed #{label}",
+                                 translator_packs_progress: 0.0)
+              mark_pack_installed(pack, installed: true)
+            end
+          # resilient-boundary
+          rescue StandardError => e
+            handle_download_error(e, pack)
           end
 
           def remove_pack(pack)
             @model_store.remove(pack.from, pack.to)
-            update_packs_state(translator_packs_status: :done,
-                               translator_packs_message: "Removed #{pack_label(pack)}",
-                               translator_packs_progress: 0.0)
-            mark_pack_installed(pack, installed: false)
+            @async_relay.enqueue do
+              update_packs_state(translator_packs_status: :done,
+                                 translator_packs_message: "Removed #{pack_label(pack)}",
+                                 translator_packs_progress: 0.0)
+              mark_pack_installed(pack, installed: false)
+            end
+          # resilient-boundary
+          rescue StandardError => e
+            handle_download_error(e, pack)
           end
 
           private
@@ -90,15 +137,31 @@ module Shoko
 
           def merge_installation(remote_packs)
             installed = @model_store.installed_packs.to_h { |pack| ["#{pack.from}-#{pack.to}", pack] }
-            Array(remote_packs).map do |remote|
-              Shoko::Core::Models::TranslatorPackEntry.from_h(
-                from: remote.from,
-                to: remote.to,
-                version: remote.version,
-                size: remote.total_size,
-                installed: installed.key?("#{remote.from}-#{remote.to}")
-              ).to_h
-            end
+            remote_results = Array(remote_packs).map { |remote| remote_entry(remote, installed) }
+            remote_keys = remote_results.to_h { |entry| ["#{entry[:from]}-#{entry[:to]}", true] }
+            local_only = installed.filter_map { |key, pack| local_only_entry(pack) unless remote_keys[key] }
+            (remote_results + local_only).sort_by { |entry| [entry[:from], entry[:to]] }
+          end
+
+          def remote_entry(remote, installed)
+            local = installed["#{remote.from}-#{remote.to}"]
+            Shoko::Core::Models::TranslatorPackEntry.from_h(
+              from: remote.from,
+              to: remote.to,
+              version: remote.version,
+              size: remote.total_size,
+              installed: !local.nil?,
+              installed_version: local&.version,
+              update_available: local &&
+                Shoko::Core::Services::VersionOrder.newer?(remote.version, local.version)
+            ).to_h
+          end
+
+          def local_only_entry(pack)
+            Shoko::Core::Models::TranslatorPackEntry.from_h(
+              from: pack.from, to: pack.to, version: pack.version, size: 0,
+              installed: true, installed_version: pack.version, update_available: false
+            ).to_h
           end
 
           def perform_download(pack, label)
@@ -108,7 +171,9 @@ module Shoko
               progress = total.to_i.positive? ? done.to_f / total : 0.0
               next unless ProgressThrottle.publish?(progress, last_progress)
 
-              update_packs_state(download_progress_payload(label, progress, total))
+              @async_relay.enqueue do
+                update_packs_state(download_progress_payload(label, progress, total))
+              end
               last_progress = progress
             end
           end
@@ -116,9 +181,7 @@ module Shoko
           # Downloads need the attachment URLs, which the trimmed state entry
           # does not carry; resolve the pack against the live catalog.
           def find_remote_pack(pack)
-            remote = @model_catalog_service.list_remote.find do |candidate|
-              candidate.from == pack.from && candidate.to == pack.to
-            end
+            remote = @remote_by_pair[pack.pair_key]
             raise Shoko::Error, "Pack #{pack_label(pack)} is no longer in the catalog" unless remote
 
             remote
@@ -131,7 +194,7 @@ module Shoko
             updated = results.map do |item|
               next item unless item.pair_key == pack.pair_key
 
-              item.with_installation(installed: installed)
+              pack_with_installation(item, installed:)
             end
             update_packs_state(translator_packs_results: updated.map(&:to_h))
           end
@@ -141,7 +204,6 @@ module Shoko
               translator_packs_status: :loading,
               translator_packs_message: 'Loading language pack list...',
               translator_packs_progress: 0.0,
-              translator_packs_results: [],
               translator_packs_selected: 0,
             }
           end
@@ -156,12 +218,61 @@ module Shoko
             }
           end
 
-          def download_started_payload(label)
+          def operation_started_payload(pack)
+            verb = if pack.installed && pack.update_available
+                     'Updating'
+                   elsif pack.installed
+                     'Removing'
+                   else
+                     'Downloading'
+                   end
             {
               translator_packs_status: :downloading,
-              translator_packs_message: "Downloading #{label}...",
+              translator_packs_message: "#{verb} #{pack_label(pack)}...",
               translator_packs_progress: 0.0,
             }
+          end
+
+          def handle_catalog_error(error, request_id)
+            raise error if error.is_a?(Shoko::FatalExternalInputError)
+
+            @async_relay.enqueue do
+              next unless current_catalog_request?(request_id)
+
+              log_resilient('fetch_pack_catalog', error)
+              update_packs_state(translator_packs_status: :error,
+                                 translator_packs_message: "Catalog failed: #{error.message}",
+                                 translator_packs_progress: 0.0)
+            end
+          end
+
+          def handle_download_error(error, pack)
+            raise error if error.is_a?(Shoko::FatalExternalInputError)
+
+            @async_relay.enqueue do
+              log_resilient('download_pack', error, pack: pack_label(pack))
+              update_packs_state(translator_packs_status: :error,
+                                 translator_packs_message: "Download failed: #{error.message}",
+                                 translator_packs_progress: 0.0)
+            end
+          end
+
+          def pack_with_installation(pack, installed:)
+            Shoko::Core::Models::TranslatorPackEntry.from_h(
+              pack.to_h.merge(
+                installed: installed,
+                update_available: false,
+                installed_version: installed ? pack.version : ''
+              )
+            )
+          end
+
+          def next_catalog_request_id
+            @catalog_generation += 1
+          end
+
+          def current_catalog_request?(request_id)
+            request_id == @catalog_generation
           end
 
           def download_progress_payload(label, progress, total)

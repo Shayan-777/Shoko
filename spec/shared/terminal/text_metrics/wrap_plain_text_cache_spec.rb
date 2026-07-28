@@ -11,6 +11,7 @@ RSpec.describe Shoko::Shared::Terminal::TextMetrics::WrapPlainTextCache do
 
   subject(:cache) { described_class.new(controls: controls) }
 
+  before { cache.clear! }
   after { cache.clear! }
 
   it 'returns the frozen stored value on miss AND hit — one consistent contract' do

@@ -64,6 +64,7 @@ module Shoko
             translator_submit
             translator_swap_languages
             edit_translator_input
+            edit_translator_language_query
             move_translator_cursor
             move_translator_language_selection_up
             move_translator_language_selection_down

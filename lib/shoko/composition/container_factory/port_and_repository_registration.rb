@@ -244,7 +244,12 @@ module Shoko
 
         def register_translation_ports(container)
           container.register_singleton(:translation_model_store) do |c|
-            Shoko::Adapters::Translation::ModelStore.new(logger: c.resolve(:logger))
+            Shoko::Adapters::Translation::ModelStore.new(
+              on_change: lambda do |from, to|
+                c.resolve(:translation_engine_client).unload("#{from}-#{to}")
+              end,
+              logger: c.resolve(:logger)
+            )
           end
           container.register_singleton(:translation_engine_client) do |c|
             Shoko::Adapters::Translation::EngineClient.new(logger: c.resolve(:logger))

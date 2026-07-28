@@ -18,7 +18,9 @@ sk_nn *sk_nn_create(sk_model_file *mf, sk_vocab *vocab, char *err,
 void sk_nn_free(sk_nn *m);
 
 /* Translates one sentence (UTF-8, pre-normalized). Returns a malloc'd
- * string, or NULL with a message in err. */
-char *sk_nn_translate(sk_nn *m, const char *text, char *err, size_t errsz);
+ * string, or NULL with a message in err. Sets truncated when decoding
+ * exhausted its output budget without producing EOS. */
+char *sk_nn_translate(sk_nn *m, const char *text, int *truncated,
+                      char *err, size_t errsz);
 
 #endif

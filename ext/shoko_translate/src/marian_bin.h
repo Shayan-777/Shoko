@@ -17,10 +17,13 @@
 #define SK_MARIAN_BIN_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 typedef struct {
   char *name;
-  float *data;  /* dequantized, row-major in STORED layout */
+  float *data;    /* float32 payload, row-major in STORED layout */
+  int8_t *qdata;  /* int8 payload when quantized */
+  float qscale;   /* real value = qdata / qscale */
   int rows;     /* stored leading dim */
   int cols;     /* stored trailing dim */
 } sk_tensor;

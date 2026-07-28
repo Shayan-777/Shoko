@@ -40,13 +40,15 @@ module Shoko
           source = resolve_source(source_lang.to_s, target_lang.to_s)
           target = target_lang.to_s
           route = resolve_route(source, target)
-          translated = translate_segments(normalize(text), route)
+          translated, finish_reason = translate_segments(normalize(text), route)
           Shoko::Core::Models::TranslationResult.new(
             query: text,
             translated_text: translated,
             source_lang: source,
             target_lang: target,
-            detected_source_lang: source_lang.to_s == AUTO ? source : nil
+            detected_source_lang: nil,
+            route: route.flat_map { |pack| [pack.from, pack.to] }.uniq,
+            finish_reason: finish_reason
           )
         rescue EngineClient::EngineError => e
           raise RepositoryError.new(e.message, code: e.code)
@@ -56,19 +58,13 @@ module Shoko
 
         # --- routing ---------------------------------------------------------
 
-        def resolve_source(source, target)
+        def resolve_source(source, _target)
           return source unless source.empty? || source == AUTO
 
-          candidates = @model_store.installed_packs.map(&:from).uniq - [target]
-          reachable = candidates.select { |code| route_exists?(code, target) }
-          return reachable.first if reachable.length == 1
-
-          message = if reachable.empty?
-                      'No language pack installed for this translation.'
-                    else
-                      'Multiple language packs match; select a source language.'
-                    end
-          raise RepositoryError.new(message, code: :source_required)
+          raise RepositoryError.new(
+            'On-device translation requires an explicit source language.',
+            code: :source_required
+          )
         end
 
         def resolve_route(source, target)
@@ -122,26 +118,49 @@ module Shoko
 
         def translate_segments(text, route)
           output = +''
-          SentenceSplitter.segments(text).each do |segment, break_after|
-            translated = route.reduce(segment) { |current, pack| engine_translate(pack, current) }
-            output << translated
-            output << (break_after ? "\n" : ' ')
+          finish_reason = 'eos'
+          SentenceSplitter.segments(text).each do |segment, separator|
+            current = segment
+            route.each do |pack|
+              response = engine_translate(pack, current)
+              current = response.text
+              finish_reason = 'max_tokens' if response.truncated?
+            end
+            output << current
+            output << separator
           end
-          output.strip
+          [output, finish_reason]
         end
 
         def engine_translate(pack, text)
           return text if text.strip.empty?
 
-          slot = "#{pack.from}-#{pack.to}"
-          @engine.ensure_loaded(slot, model_path: pack.model_path, vocab_path: pack.vocab_path)
-          @engine.translate(slot, collapse_spaces(text))
+          core, leading, trailing = extract_whitespace(text)
+          response = invoke_engine(pack, core)
+          preserve_whitespace(response, leading, trailing)
         rescue EngineClient::EngineError => e
-          raise unless e.code == :engine_died
+          raise unless %i[engine_died model_not_loaded engine_timeout engine_protocol].include?(e.code)
 
           # The engine respawns lazily; retry the segment once.
+          response = invoke_engine(pack, core)
+          preserve_whitespace(response, leading, trailing)
+        end
+
+        def invoke_engine(pack, text)
+          slot = "#{pack.from}-#{pack.to}"
           @engine.ensure_loaded(slot, model_path: pack.model_path, vocab_path: pack.vocab_path)
-          @engine.translate(slot, collapse_spaces(text))
+          @engine.translate_with_metadata(slot, collapse_spaces(text))
+        end
+
+        def extract_whitespace(text)
+          leading = text[/\A\s*/].to_s
+          trailing = text[/\s*\z/].to_s
+          core = text[leading.length...(text.length - trailing.length)].to_s
+          [core, leading, trailing]
+        end
+
+        def preserve_whitespace(response, leading, trailing)
+          response.with(text: "#{leading}#{response.text}#{trailing}")
         end
 
         def collapse_spaces(text)

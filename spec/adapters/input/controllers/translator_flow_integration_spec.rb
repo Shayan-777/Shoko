@@ -67,6 +67,16 @@ RSpec.describe 'Translator end-to-end flow' do
   # A fake LibreTranslate that echoes a fixed translation for the chosen target.
   let(:translation_service) do
     Class.new do
+      def available_languages
+        [
+          Shoko::Core::Models::TranslationLanguage.new(
+            code: 'auto', name: 'Detect language', targets: %w[en de]
+          ),
+          Shoko::Core::Models::TranslationLanguage.new(code: 'en', name: 'English', targets: ['de']),
+          Shoko::Core::Models::TranslationLanguage.new(code: 'de', name: 'German', targets: ['en']),
+        ]
+      end
+
       def translate(text, source_lang:, target_lang:)
         Shoko::Core::Models::TranslationResult.new(
           query: text, translated_text: "[#{target_lang}] #{text}",
@@ -116,7 +126,7 @@ RSpec.describe 'Translator end-to-end flow' do
     'hello'.each_char { |c| insert(c) }
     expect(reader_state_reader.translator_query).to eq('hello')
 
-    controller.translator_confirm
+    controller.translator_submit
     expect(reader_state_reader.translator_result.translated_text).to eq('[en] hello')
     expect(render_text).to include('[en] hello')
 
@@ -141,7 +151,7 @@ RSpec.describe 'Translator end-to-end flow' do
   it 'swaps the language pair and re-translates' do
     controller.open_translator
     'hi'.each_char { |c| insert(c) }
-    controller.translator_confirm # auto -> en
+    controller.translator_submit # auto -> en
 
     controller.translator_swap_languages
     # auto source resolves to the detected language (en); old target (en) becomes source.

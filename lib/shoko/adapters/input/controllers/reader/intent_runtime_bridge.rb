@@ -191,6 +191,10 @@ module Shoko
               controller.translator_confirm
             end
 
+            def submit_translator
+              controller.translator_submit
+            end
+
             def move_translator_cursor(direction)
               controller.translator_cursor_move(direction)
             end

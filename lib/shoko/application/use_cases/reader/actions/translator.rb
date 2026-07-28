@@ -28,6 +28,7 @@ module Shoko
               close_translator
               edit_translator
               translator_confirm
+              translator_submit
               translator_cursor_move
               translator_cycle_picker
               translator_open_picker
@@ -62,6 +63,7 @@ module Shoko
                   @reader_translator_control.edit_translator_input(op)
                 end,
                 translator_confirm: route(result: :handled) { @reader_translator_control.confirm_translator },
+                translator_submit: route(result: :handled) { @reader_translator_control.submit_translator },
                 translator_cursor_move: route(payload: :direction, result: :handled) do |direction|
                   @reader_translator_control.move_translator_cursor(direction)
                 end,
@@ -95,6 +97,7 @@ module Shoko
                 close_translator: [NilClass],
                 edit_translator: [Shoko::Application::UseCases::Requests::EditOp],
                 translator_confirm: [NilClass],
+                translator_submit: [NilClass],
                 translator_cursor_move: [Shoko::Application::UseCases::Requests::CursorMove],
                 translator_cycle_picker: [NilClass],
                 translator_open_picker: [Symbol],

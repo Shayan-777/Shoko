@@ -54,10 +54,12 @@ module Shoko
             translator_packs_cursor
             translator_input_text
             translator_input_cursor
+            translator_output_scroll
             translator_source_lang
             translator_target_lang
             translator_focus
             translator_dropdown_selected
+            translator_dropdown_query
             translator_return_mode
             rss_focus
             rss_scope
@@ -110,10 +112,12 @@ module Shoko
             translator_packs_cursor: 0,
             translator_input_text: '',
             translator_input_cursor: 0,
+            translator_output_scroll: 0,
             translator_source_lang: 'auto',
             translator_target_lang: 'en',
             translator_focus: :input,
             translator_dropdown_selected: 0,
+            translator_dropdown_query: '',
             translator_return_mode: nil,
             rss_focus: :feeds,
             rss_scope: :all,

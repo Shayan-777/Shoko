@@ -2,6 +2,9 @@
 
 #include "nn.h"
 
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +22,8 @@
  * memory (see marian_bin.h). */
 typedef struct {
   const float *d;
+  const int8_t *q;
+  float qscale;
   int rows;
   int cols;
 } sk_mat;
@@ -90,8 +95,15 @@ static int config_str(const char *yml, const char *key, char *out,
 static int config_int(const char *yml, const char *key, int *out) {
   char buf[64];
   if (!config_str(yml, key, buf, sizeof(buf))) return 0;
-  *out = atoi(buf);
-  return *out > 0;
+  char *end = NULL;
+  errno = 0;
+  long value = strtol(buf, &end, 10);
+  while (end && isspace((unsigned char)*end)) end++;
+  if (errno || end == buf || !end || *end != '\0' ||
+      value <= 0 || value > INT_MAX)
+    return 0;
+  *out = (int)value;
+  return 1;
 }
 
 static int config_equals(const char *yml, const char *key,
@@ -111,9 +123,15 @@ static void gemm_bt(const float *restrict a, const sk_mat *wt,
     const float *ai = a + (size_t)i * k;
     float *ci = c + (size_t)i * n;
     for (int j = 0; j < n; j++) {
-      const float *bj = wt->d + (size_t)j * k;
       float acc = 0.0f;
-      for (int x = 0; x < k; x++) acc += ai[x] * bj[x];
+      if (wt->q) {
+        const int8_t *bj = wt->q + (size_t)j * k;
+        for (int x = 0; x < k; x++) acc += ai[x] * (float)bj[x];
+        acc /= wt->qscale;
+      } else {
+        const float *bj = wt->d + (size_t)j * k;
+        for (int x = 0; x < k; x++) acc += ai[x] * bj[x];
+      }
       ci[j] = bias ? acc + bias[j] : acc;
     }
   }
@@ -164,10 +182,17 @@ static void positional_embedding(int pos, int dim, float *out) {
 }
 
 static void embed_token(const sk_nn *m, int id, int pos, float *out) {
-  const float *row = m->wemb.d + (size_t)id * m->dim;
   float pe[1024];
   positional_embedding(pos, m->dim, pe);
-  for (int j = 0; j < m->dim; j++) out[j] = row[j] * m->emb_scale + pe[j];
+  if (m->wemb.q) {
+    const int8_t *row = m->wemb.q + (size_t)id * m->dim;
+    for (int j = 0; j < m->dim; j++)
+      out[j] = ((float)row[j] / m->wemb.qscale) * m->emb_scale + pe[j];
+  } else {
+    const float *row = m->wemb.d + (size_t)id * m->dim;
+    for (int j = 0; j < m->dim; j++)
+      out[j] = row[j] * m->emb_scale + pe[j];
+  }
 }
 
 /* Multi-head attention: q_in (lq x dim) attends over precomputed K/V
@@ -232,7 +257,7 @@ static const sk_tensor *need(const sk_model_file *mf, const char *fmt,
   char name[128];
   snprintf(name, sizeof(name), fmt, prefix);
   const sk_tensor *t = sk_model_file_find(mf, name);
-  if (!t || !t->data) {
+  if (!t || (!t->data && !t->qdata)) {
     char msg[192];
     snprintf(msg, sizeof(msg), "model tensor missing: %s", name);
     set_err(err, errsz, msg);
@@ -242,47 +267,64 @@ static const sk_tensor *need(const sk_model_file *mf, const char *fmt,
 }
 
 static int wire_mat(const sk_model_file *mf, const char *fmt,
-                    const char *prefix, sk_mat *out, char *err,
-                    size_t errsz) {
+                    const char *prefix, int rows, int cols, sk_mat *out,
+                    char *err, size_t errsz) {
   const sk_tensor *t = need(mf, fmt, prefix, err, errsz);
   if (!t) return 0;
+  if (t->rows != rows || t->cols != cols) {
+    char msg[192], name[128];
+    snprintf(name, sizeof(name), fmt, prefix);
+    snprintf(msg, sizeof(msg), "model tensor has wrong shape: %s", name);
+    set_err(err, errsz, msg);
+    return 0;
+  }
   out->d = t->data;
+  out->q = t->qdata;
+  out->qscale = t->qscale;
   out->rows = t->rows;
   out->cols = t->cols;
   return 1;
 }
 
 static int wire_vec(const sk_model_file *mf, const char *fmt,
-                    const char *prefix, const float **out, char *err,
-                    size_t errsz) {
+                    const char *prefix, int length, const float **out,
+                    char *err, size_t errsz) {
   const sk_tensor *t = need(mf, fmt, prefix, err, errsz);
   if (!t) return 0;
+  if (!t->data || (int64_t)t->rows * t->cols != length) {
+    char msg[192], name[128];
+    snprintf(name, sizeof(name), fmt, prefix);
+    snprintf(msg, sizeof(msg), "model tensor has wrong shape/type: %s", name);
+    set_err(err, errsz, msg);
+    return 0;
+  }
   *out = t->data;
   return 1;
 }
 
 static int wire_attn(const sk_model_file *mf, const char *prefix,
-                     sk_attn_params *p, char *err, size_t errsz) {
-  return wire_mat(mf, "%s_Wq", prefix, &p->Wq, err, errsz) &&
-         wire_mat(mf, "%s_Wk", prefix, &p->Wk, err, errsz) &&
-         wire_mat(mf, "%s_Wv", prefix, &p->Wv, err, errsz) &&
-         wire_mat(mf, "%s_Wo", prefix, &p->Wo, err, errsz) &&
-         wire_vec(mf, "%s_bq", prefix, &p->bq, err, errsz) &&
-         wire_vec(mf, "%s_bk", prefix, &p->bk, err, errsz) &&
-         wire_vec(mf, "%s_bv", prefix, &p->bv, err, errsz) &&
-         wire_vec(mf, "%s_bo", prefix, &p->bo, err, errsz) &&
-         wire_vec(mf, "%s_Wo_ln_scale", prefix, &p->ln_scale, err, errsz) &&
-         wire_vec(mf, "%s_Wo_ln_bias", prefix, &p->ln_bias, err, errsz);
+                     int dim, sk_attn_params *p, char *err, size_t errsz) {
+  return wire_mat(mf, "%s_Wq", prefix, dim, dim, &p->Wq, err, errsz) &&
+         wire_mat(mf, "%s_Wk", prefix, dim, dim, &p->Wk, err, errsz) &&
+         wire_mat(mf, "%s_Wv", prefix, dim, dim, &p->Wv, err, errsz) &&
+         wire_mat(mf, "%s_Wo", prefix, dim, dim, &p->Wo, err, errsz) &&
+         wire_vec(mf, "%s_bq", prefix, dim, &p->bq, err, errsz) &&
+         wire_vec(mf, "%s_bk", prefix, dim, &p->bk, err, errsz) &&
+         wire_vec(mf, "%s_bv", prefix, dim, &p->bv, err, errsz) &&
+         wire_vec(mf, "%s_bo", prefix, dim, &p->bo, err, errsz) &&
+         wire_vec(mf, "%s_Wo_ln_scale", prefix, dim, &p->ln_scale, err, errsz) &&
+         wire_vec(mf, "%s_Wo_ln_bias", prefix, dim, &p->ln_bias, err, errsz);
 }
 
 static int wire_ffn(const sk_model_file *mf, const char *prefix,
-                    sk_ffn_params *p, char *err, size_t errsz) {
-  return wire_mat(mf, "%s_W1", prefix, &p->W1, err, errsz) &&
-         wire_mat(mf, "%s_W2", prefix, &p->W2, err, errsz) &&
-         wire_vec(mf, "%s_b1", prefix, &p->b1, err, errsz) &&
-         wire_vec(mf, "%s_b2", prefix, &p->b2, err, errsz) &&
-         wire_vec(mf, "%s_ffn_ln_scale", prefix, &p->ln_scale, err, errsz) &&
-         wire_vec(mf, "%s_ffn_ln_bias", prefix, &p->ln_bias, err, errsz);
+                    int dim, int ffn_dim, sk_ffn_params *p,
+                    char *err, size_t errsz) {
+  return wire_mat(mf, "%s_W1", prefix, ffn_dim, dim, &p->W1, err, errsz) &&
+         wire_mat(mf, "%s_W2", prefix, dim, ffn_dim, &p->W2, err, errsz) &&
+         wire_vec(mf, "%s_b1", prefix, ffn_dim, &p->b1, err, errsz) &&
+         wire_vec(mf, "%s_b2", prefix, dim, &p->b2, err, errsz) &&
+         wire_vec(mf, "%s_ffn_ln_scale", prefix, dim, &p->ln_scale, err, errsz) &&
+         wire_vec(mf, "%s_ffn_ln_bias", prefix, dim, &p->ln_bias, err, errsz);
 }
 
 sk_nn *sk_nn_create(sk_model_file *mf, sk_vocab *vocab, char *err,
@@ -312,7 +354,8 @@ sk_nn *sk_nn_create(sk_model_file *mf, sk_vocab *vocab, char *err,
     free(m);
     return NULL;
   }
-  if (m->dim > 1024 || m->dim % 2 != 0 || m->heads <= 0 ||
+  if (m->dim < 4 || m->dim > 1024 || m->dim % 2 != 0 ||
+      m->ffn_dim > 16384 || m->heads <= 0 ||
       m->dim % m->heads != 0 || m->enc_depth > SK_MAX_LAYERS ||
       m->dec_depth > SK_MAX_LAYERS) {
     set_err(err, errsz, "model dimensions out of supported range");
@@ -324,13 +367,17 @@ sk_nn *sk_nn_create(sk_model_file *mf, sk_vocab *vocab, char *err,
 
   const sk_tensor *wemb = sk_model_file_find(mf, "Wemb");
   const sk_tensor *lbias = sk_model_file_find(mf, "decoder_ff_logit_out_b");
-  if (!wemb || !wemb->data || !lbias || !lbias->data ||
-      wemb->cols != m->dim) {
+  if (!wemb || (!wemb->data && !wemb->qdata) || !lbias || !lbias->data ||
+      wemb->cols != m->dim || wemb->rows <= 2 ||
+      (int64_t)lbias->rows * lbias->cols != wemb->rows) {
     set_err(err, errsz, "model embeddings are missing or malformed");
     free(m);
     return NULL;
   }
-  m->wemb = (sk_mat){wemb->data, wemb->rows, wemb->cols};
+  m->wemb = (sk_mat){
+      .d = wemb->data, .q = wemb->qdata, .qscale = wemb->qscale,
+      .rows = wemb->rows, .cols = wemb->cols
+  };
   m->logit_bias = lbias->data;
   m->vocab_size = wemb->rows;
   if (sk_vocab_size(vocab) != m->vocab_size) {
@@ -342,28 +389,49 @@ sk_nn *sk_nn_create(sk_model_file *mf, sk_vocab *vocab, char *err,
   char prefix[64];
   for (int l = 1; l <= m->enc_depth; l++) {
     snprintf(prefix, sizeof(prefix), "encoder_l%d_self", l);
-    if (!wire_attn(mf, prefix, &m->enc[l - 1].self, err, errsz)) goto fail;
+    if (!wire_attn(mf, prefix, m->dim, &m->enc[l - 1].self, err, errsz)) goto fail;
     snprintf(prefix, sizeof(prefix), "encoder_l%d_ffn", l);
-    if (!wire_ffn(mf, prefix, &m->enc[l - 1].ffn, err, errsz)) goto fail;
+    if (!wire_ffn(mf, prefix, m->dim, m->ffn_dim,
+                  &m->enc[l - 1].ffn, err, errsz)) goto fail;
   }
   for (int l = 1; l <= m->dec_depth; l++) {
     sk_dec_layer *d = &m->dec[l - 1];
     const sk_tensor *t;
     snprintf(prefix, sizeof(prefix), "decoder_l%d_rnn", l);
     if (!(t = need(mf, "%s_W", prefix, err, errsz))) goto fail;
-    d->rnn_W = (sk_mat){t->data, t->rows, t->cols};
+    if (t->rows != m->dim || t->cols != m->dim) {
+      set_err(err, errsz, "model SSRU tensor has wrong shape");
+      goto fail;
+    }
+    d->rnn_W = (sk_mat){t->data, t->qdata, t->qscale, t->rows, t->cols};
     if (!(t = need(mf, "%s_Wf", prefix, err, errsz))) goto fail;
-    d->rnn_Wf = (sk_mat){t->data, t->rows, t->cols};
+    if (t->rows != m->dim || t->cols != m->dim) {
+      set_err(err, errsz, "model SSRU gate tensor has wrong shape");
+      goto fail;
+    }
+    d->rnn_Wf = (sk_mat){t->data, t->qdata, t->qscale, t->rows, t->cols};
     if (!(t = need(mf, "%s_bf", prefix, err, errsz))) goto fail;
+    if (!t->data || (int64_t)t->rows * t->cols != m->dim) {
+      set_err(err, errsz, "model SSRU bias has wrong shape/type");
+      goto fail;
+    }
     d->rnn_bf = t->data;
     if (!(t = need(mf, "%s_ffn_ln_scale", prefix, err, errsz))) goto fail;
+    if (!t->data || (int64_t)t->rows * t->cols != m->dim) {
+      set_err(err, errsz, "model SSRU layer norm has wrong shape/type");
+      goto fail;
+    }
     d->rnn_ln_scale = t->data;
     if (!(t = need(mf, "%s_ffn_ln_bias", prefix, err, errsz))) goto fail;
+    if (!t->data || (int64_t)t->rows * t->cols != m->dim) {
+      set_err(err, errsz, "model SSRU layer norm has wrong shape/type");
+      goto fail;
+    }
     d->rnn_ln_bias = t->data;
     snprintf(prefix, sizeof(prefix), "decoder_l%d_context", l);
-    if (!wire_attn(mf, prefix, &d->context, err, errsz)) goto fail;
+    if (!wire_attn(mf, prefix, m->dim, &d->context, err, errsz)) goto fail;
     snprintf(prefix, sizeof(prefix), "decoder_l%d_ffn", l);
-    if (!wire_ffn(mf, prefix, &d->ffn, err, errsz)) goto fail;
+    if (!wire_ffn(mf, prefix, m->dim, m->ffn_dim, &d->ffn, err, errsz)) goto fail;
   }
 
   m->file = mf;
@@ -425,7 +493,7 @@ fail:
 }
 
 static int greedy_decode(const sk_nn *m, const float *enc_out, int n_src,
-                         int *out_ids, int max_out) {
+                         int *out_ids, int max_out, int *eos_reached) {
   int dim = m->dim, count = -1;
   size_t src_bytes = (size_t)n_src * dim * sizeof(float);
   int layers = m->dec_depth;
@@ -482,7 +550,10 @@ static int greedy_decode(const sk_nn *m, const float *enc_out, int n_src,
         best = j;
       }
     }
-    if (best == SK_EOS_ID) break;
+    if (best == SK_EOS_ID) {
+      *eos_reached = 1;
+      break;
+    }
     out_ids[count++] = best;
     embed_token(m, best, step + 1, x);
   }
@@ -502,7 +573,9 @@ done:
   return count;
 }
 
-char *sk_nn_translate(sk_nn *m, const char *text, char *err, size_t errsz) {
+char *sk_nn_translate(sk_nn *m, const char *text, int *truncated,
+                      char *err, size_t errsz) {
+  if (truncated) *truncated = 0;
   int ids[SK_MAX_SRC_TOKENS];
   int n = sk_vocab_encode(m->vocab, text, ids, SK_MAX_SRC_TOKENS - 1);
   if (n < 0) {
@@ -521,13 +594,15 @@ char *sk_nn_translate(sk_nn *m, const char *text, char *err, size_t errsz) {
   int out_ids[SK_MAX_OUT_TOKENS];
   int budget = 3 * n + 12;
   if (budget > SK_MAX_OUT_TOKENS) budget = SK_MAX_OUT_TOKENS;
-  int out_n = greedy_decode(m, enc_out, n, out_ids, budget);
+  int eos_reached = 0;
+  int out_n = greedy_decode(m, enc_out, n, out_ids, budget, &eos_reached);
   free(enc_out);
   if (out_n < 0) {
     set_err(err, errsz, "out of memory during decoding");
     return NULL;
   }
 
+  if (truncated) *truncated = !eos_reached && out_n == budget;
   char *result = sk_vocab_decode(m->vocab, out_ids, out_n);
   if (!result) set_err(err, errsz, "out of memory during detokenization");
   return result;

@@ -97,8 +97,14 @@ module Shoko
               )
               add_confirm_bindings(bindings, :activate_translator_language_selection)
               bind_intent!(bindings, @key_classifier.action_keys(:space), :activate_translator_language_selection)
+              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_translator_language_query,
+                           payload: edit_op(:backspace))
+              bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_translator_language_query,
+                           payload: edit_op(:delete))
+              bind_intent!(bindings, ["\t", "\e[Z"], :translator_cycle_focus)
               keys = Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
               bind_intent!(bindings, keys, :close_translator_dropdown)
+              bindings[:__default__] = edit_op_text_binding(:edit_translator_language_query)
               dispatcher.register_mode(mode, bindings)
             end
 
@@ -295,9 +301,13 @@ module Shoko
               # Terminals encode Alt+Enter differently — ESC+CR/LF (Meta prefix), or the CSI-u /
               # modifyOtherKeys forms — so accept all of them. (A lone ESC still closes the screen.)
               bind_intent!(bindings, @key_classifier.action_keys(:confirm), :translator_activate_focus)
-              bind_intent!(bindings, ["\e\r", "\e\n", "\e[13;3u", "\e[27;3;13~"], :translator_submit)
+              bind_intent!(
+                bindings,
+                ["\e\r", "\e\n", "\e[13;3u", "\e[27;3;13~", "\e[13;5u", "\e[27;5;13~"],
+                :translator_submit
+              )
               bind_intent!(bindings, ["\t"], :translator_cycle_focus)
-              bind_intent!(bindings, ['S'], :translator_swap_languages)
+              bind_intent!(bindings, ["\e[Z"], :translator_swap_languages)
               bind_translator_cursor_movements!(bindings)
               # Only Esc closes the translator — 'q' (the other mode-change key) must stay typeable.
               bind_intent!(bindings, @key_classifier.action_keys(:cancel), :close_translator_mode)
