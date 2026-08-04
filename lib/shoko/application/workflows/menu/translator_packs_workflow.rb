@@ -50,22 +50,37 @@ module Shoko
           end
 
           def perform_catalog_fetch(request_id)
-            installed_only = @model_store.installed_packs.map do |pack|
+            installed_only = installed_pack_entries
+            publish_installed_pack_entries(installed_only, request_id)
+            publish_remote_pack_entries(@model_catalog_service.list_remote, request_id)
+          # resilient-boundary
+          rescue StandardError => e
+            handle_catalog_error(e, request_id)
+          end
+          private :perform_catalog_fetch
+
+          def installed_pack_entries
+            @model_store.installed_packs.map do |pack|
               Shoko::Core::Models::TranslatorPackEntry.from_h(
                 from: pack.from, to: pack.to, version: pack.version,
                 installed_version: pack.version, size: 0, installed: true,
                 update_available: false
               ).to_h
             end
-            unless installed_only.empty?
-              @async_relay.enqueue do
-                next unless current_catalog_request?(request_id)
+          end
 
-                update_packs_state(translator_packs_results: installed_only,
-                                   translator_packs_message: 'Checking for pack updates...')
-              end
+          def publish_installed_pack_entries(entries, request_id)
+            return if entries.empty?
+
+            @async_relay.enqueue do
+              next unless current_catalog_request?(request_id)
+
+              update_packs_state(translator_packs_results: entries,
+                                 translator_packs_message: 'Checking for pack updates...')
             end
-            remote = @model_catalog_service.list_remote
+          end
+
+          def publish_remote_pack_entries(remote, request_id)
             results = merge_installation(remote)
             remote_by_pair = remote.to_h { |pack| ["#{pack.from}-#{pack.to}", pack] }
             @async_relay.enqueue do
@@ -74,11 +89,8 @@ module Shoko
               @remote_by_pair = remote_by_pair
               update_packs_state(catalog_result_payload(results))
             end
-          # resilient-boundary
-          rescue StandardError => e
-            handle_catalog_error(e, request_id)
           end
-          private :perform_catalog_fetch
+          private :installed_pack_entries, :publish_installed_pack_entries, :publish_remote_pack_entries
 
           def download_pack(entry)
             return unless entry
@@ -90,9 +102,7 @@ module Shoko
             end
             return if submitted
 
-            update_packs_state(translator_packs_status: :error,
-                               translator_packs_message: 'Language-pack worker is unavailable.',
-                               translator_packs_progress: 0.0)
+            report_pack_worker_unavailable
           rescue Shoko::Error, ArgumentError => e
             raise if e.is_a?(Shoko::FatalExternalInputError)
 
@@ -135,12 +145,27 @@ module Shoko
             persist_menu_payload(payload)
           end
 
+          def report_pack_worker_unavailable
+            update_packs_state(translator_packs_status: :error,
+                               translator_packs_message: 'Language-pack worker is unavailable.',
+                               translator_packs_progress: 0.0)
+          end
+
           def merge_installation(remote_packs)
-            installed = @model_store.installed_packs.to_h { |pack| ["#{pack.from}-#{pack.to}", pack] }
+            installed = installed_pack_index
             remote_results = Array(remote_packs).map { |remote| remote_entry(remote, installed) }
+            merge_local_only_entries(remote_results, installed)
+              .sort_by { |entry| [entry[:from], entry[:to]] }
+          end
+
+          def installed_pack_index
+            @model_store.installed_packs.to_h { |pack| ["#{pack.from}-#{pack.to}", pack] }
+          end
+
+          def merge_local_only_entries(remote_results, installed)
             remote_keys = remote_results.to_h { |entry| ["#{entry[:from]}-#{entry[:to]}", true] }
             local_only = installed.filter_map { |key, pack| local_only_entry(pack) unless remote_keys[key] }
-            (remote_results + local_only).sort_by { |entry| [entry[:from], entry[:to]] }
+            remote_results + local_only
           end
 
           def remote_entry(remote, installed)

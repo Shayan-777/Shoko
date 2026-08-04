@@ -26,13 +26,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build offline translation engine
-      run: make -C ext/shoko_translate
-    - name: Smoke-test engine protocol
-      run: |
-        response="$(printf '{"op":"ping"}\n' | ./ext/shoko_translate/shoko-translate)"
-        echo "$response"
-        echo "$response" | grep -q '"ok":true'
+    - name: Build and test offline translation engine
+      run: make -C ext/shoko_translate test
     - name: Ensure no build artifacts are tracked
       run: |
         if git ls-files ext | grep -Ev '\.(c|h|md|sh)$|Makefile$' | grep -q .; then

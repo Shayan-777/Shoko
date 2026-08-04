@@ -16,6 +16,8 @@ module Shoko
         # relay drains. Without a relay executor the workflow stays fully
         # synchronous.
         class TranslatorWorkflow
+          TranslationRequest = Data.define(:query, :source_lang, :target_lang, :request_id)
+
           include Shoko::Application::UseCases::Support::MenuSessionAccess
 
           def initialize(translation_service:, menu_session_store:, menu_transient_store:, async_relay: nil,
@@ -59,8 +61,8 @@ module Shoko
             end
 
             update_translator_state(translator_status: :working, translator_message: 'Translating...')
-            request_id = next_request_id
-            submitted = @async_relay.submit { perform_translation(query, source_lang, target_lang, request_id) }
+            request = TranslationRequest.new(query:, source_lang:, target_lang:, request_id: next_request_id)
+            submitted = @async_relay.submit { perform_translation(request) }
             unless submitted
               update_translator_state(translator_status: :error,
                                       translator_message: 'Translation worker is unavailable.')
@@ -84,53 +86,62 @@ module Shoko
 
           def perform_language_fetch(request_id)
             languages = @translation_service.available_languages.map(&:to_h)
-            @async_relay.enqueue do
-              next unless current_language_request?(request_id)
-
-              @languages_loading = false
-              payload = {
-                translator_languages: languages,
-                translator_status: :ready,
-                translator_message: language_message(languages),
-              }
-              payload.merge!(normalized_pair_payload(languages))
-              update_translator_state(payload)
-              submit_pending_translation if languages.any?
-            end
+            @async_relay.enqueue { publish_languages(languages, request_id) }
           rescue Shoko::Error => e
-            @async_relay.enqueue do
-              next unless current_language_request?(request_id)
-
-              @languages_loading = false
-              @pending_translation = nil
-              log_error('translator.fetch_languages_failed', e)
-              update_translator_state(translator_languages: [], translator_status: :error,
-                                      translator_message: e.message)
-            end
+            @async_relay.enqueue { publish_language_error(e, request_id) }
           end
 
-          def perform_translation(query, source_lang, target_lang, request_id)
-            result = @translation_service.translate(query, source_lang: source_lang, target_lang: target_lang)
-            @async_relay.enqueue do
-              next unless translation_context_current?(
-                request_id, query, source_lang, target_lang
-              )
-
-              update_translator_state(translation_payload(result))
-            end
+          def perform_translation(request)
+            result = @translation_service.translate(
+              request.query, source_lang: request.source_lang, target_lang: request.target_lang
+            )
+            @async_relay.enqueue { publish_translation(result, request) }
           rescue Shoko::Error => e
-            @async_relay.enqueue do
-              next unless translation_context_current?(
-                request_id, query, source_lang, target_lang
-              )
+            @async_relay.enqueue { publish_translation_error(e, request) }
+          end
 
-              log_error('translator.translate_failed', e)
-              update_translator_state(
-                translator_status: :error,
-                translator_message: e.message,
-                translator_output_text: ''
-              )
-            end
+          def publish_languages(languages, request_id)
+            return unless current_language_request?(request_id)
+
+            @languages_loading = false
+            payload = {
+              translator_languages: languages,
+              translator_status: :ready,
+              translator_message: language_message(languages),
+            }.merge(normalized_pair_payload(languages))
+            update_translator_state(payload)
+            submit_pending_translation if languages.any?
+          end
+
+          def publish_language_error(error, request_id)
+            return unless current_language_request?(request_id)
+
+            @languages_loading = false
+            @pending_translation = nil
+            log_error('translator.fetch_languages_failed', error)
+            update_translator_state(translator_languages: [], translator_status: :error,
+                                    translator_message: error.message)
+          end
+
+          def publish_translation(result, request)
+            return unless translation_request_current?(request)
+
+            update_translator_state(translation_payload(result))
+          end
+
+          def publish_translation_error(error, request)
+            return unless translation_request_current?(request)
+
+            log_error('translator.translate_failed', error)
+            update_translator_state(
+              translator_status: :error, translator_message: error.message, translator_output_text: ''
+            )
+          end
+
+          def translation_request_current?(request)
+            translation_context_current?(
+              request.request_id, request.query, request.source_lang, request.target_lang
+            )
           end
 
           def cached_languages
@@ -176,14 +187,22 @@ module Shoko
             )
             return {} if source_options.empty?
 
-            source = current_menu.translator_source_lang.to_s
-            source = source_options.first[:code] unless source_options.any? { |item| item[:code] == source }
+            source = normalized_source_code(source_options)
+            target = normalized_target_code(languages, source)
+            { translator_source_lang: source, translator_target_lang: target }
+          end
+
+          def normalized_source_code(source_options)
+            current = current_menu.translator_source_lang.to_s
+            source_options.any? { |item| item[:code] == current } ? current : source_options.first[:code]
+          end
+
+          def normalized_target_code(languages, source)
             targets = Shoko::Shared::LanguageDirectory.candidates_for(
               languages, side: :target, source_code: source, query: ''
             )
-            target = current_menu.translator_target_lang.to_s
-            target = targets.first[:code] unless targets.any? { |item| item[:code] == target }
-            { translator_source_lang: source, translator_target_lang: target }
+            current = current_menu.translator_target_lang.to_s
+            targets.any? { |item| item[:code] == current } ? current : targets.first[:code]
           end
 
           def next_request_id

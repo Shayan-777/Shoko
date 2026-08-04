@@ -24,11 +24,11 @@ module Shoko
         # This is the whole reader: navigation, rendering, and the mouse state
         # machine (text selection, the right-click context menu, inline-link
         # hover, and the bar-anchored overlay routing) live here as one host.
-        # Mouse behavior shares this object's selection state — @selected_text,
-        # @suppress_popup_release_once — and its dependency graph, so it is not
-        # a separable collaborator (constitution R1: behavior bound to one
-        # host's state belongs on the host; R2: length is never a reason to
-        # split).
+        # Mouse behavior currently shares this object's selection state —
+        # @selected_text, @suppress_popup_release_once — and dependency graph.
+        # Any future boundary must transfer ownership of that state into a real
+        # collaborator; R2 does not treat this class's length as proof either
+        # for or against such a change.
         class ReaderController
           extend Forwardable
 

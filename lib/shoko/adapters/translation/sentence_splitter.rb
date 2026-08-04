@@ -13,8 +13,11 @@ module Shoko
         CLOSERS = /["'”’»)\]]*/
         LATIN_TERMINAL = /[.!?…]+#{CLOSERS}/
         CJK_TERMINAL = /[。！？]+#{CLOSERS}/
-        CANDIDATE =
-          /(?<latin>#{LATIN_TERMINAL})(?<space>[ \t]+|(?=\n|\z))|(?<cjk>#{CJK_TERMINAL})(?<cjk_space>[ \t]*)|(?<line>\n+)/
+        CANDIDATE = /
+          (?<latin>#{LATIN_TERMINAL})(?<space>[ \t]+|(?=\n|\z)) |
+          (?<cjk>#{CJK_TERMINAL})(?<cjk_space>[ \t]*) |
+          (?<line>\n+)
+        /x
         ABBREVIATIONS = %w[
           mr mrs ms dr prof sr jr st vs etc e.g i.e approx no fig al
         ].freeze
@@ -26,24 +29,26 @@ module Shoko
           result = []
           cursor = 0
           source.to_enum(:scan, CANDIDATE).each do
-            match = Regexp.last_match
-            if match[:line]
-              append_segment(result, source[cursor...match.begin(0)], match[:line])
-              cursor = match.end(0)
-              next
-            end
-
-            terminal_end = match[:latin] ? match.end(:latin) : match.end(:cjk)
-            piece = source[cursor...terminal_end]
-            next if abbreviation_boundary?(piece)
-
-            separator = match[:space] || match[:cjk_space] || ''
-            append_segment(result, piece, separator)
-            cursor = match.end(0)
+            cursor = consume_candidate(result, source, Regexp.last_match, cursor)
           end
           append_segment(result, source[cursor..].to_s, '')
           result
         end
+
+        def consume_candidate(result, source, match, cursor)
+          if match[:line]
+            append_segment(result, source[cursor...match.begin(0)], match[:line])
+            return match.end(0)
+          end
+
+          terminal_end = match[:latin] ? match.end(:latin) : match.end(:cjk)
+          piece = source[cursor...terminal_end]
+          return cursor if abbreviation_boundary?(piece)
+
+          append_segment(result, piece, match[:space] || match[:cjk_space] || '')
+          match.end(0)
+        end
+        private_class_method :consume_candidate
 
         def append_segment(result, text, separator)
           content = text.to_s

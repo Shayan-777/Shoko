@@ -130,9 +130,6 @@ RSpec.describe 'Rescue and fallback conventions' do
     expect(offenders).to eq([]), "Rescue branches must not hide failures with numeric defaults:\n#{offenders.join("\n")}"
   end
 
-  # Audited per-case exemptions, matched by file path. Each exempt file has a
-  # single audited rescue site; the rescue itself carries the rationale in code.
-  #
   # ── Exemption-criteria principle ─────────────────────────────────────
   # The default position is that rescue branches must fail fast or translate
   # context, not return literals. Two narrow categories of legitimate
@@ -150,77 +147,23 @@ RSpec.describe 'Rescue and fallback conventions' do
   # APPLICATION-LAYER swallow-into-literal patterns are NOT legitimate —
   # adding an `application/**` file here requires justification beyond
   # case-by-case judgment.
-  LITERAL_DEFAULT_EXEMPT_FILES = [
-    # `cache_expired?`: an unparseable timestamp is semantically equivalent
-    # to "expired" — the literal `true` is the correct domain answer.
-    'adapters/book_sources/book_finder.rb',
-
-    # `parse_timestamp`: a corrupt/hand-edited stored progress timestamp is
-    # semantically "unknown last-read time" — the literal `nil` is the correct
-    # domain answer (and sorts to epoch in `recent_books`). Time.parse raises
-    # ArgumentError on garbage, which is not a Shoko::Error.
-    'adapters/storage/repositories/progress_repository.rb',
-
-    # `load_json_or_empty`: a corrupt/truncated/externally-synced sidecar store
-    # (annotations/bookmarks/progress) is semantically "no data yet" — the
-    # literal `{}` is the correct domain answer, so a single bad file never
-    # blocks opening the book. JSON::ParserError/Errno are not Shoko::Error;
-    # recent.json and rss_reader.json already rescue identically at their load.
-    'adapters/storage/repositories/storage/file_store_utils.rb',
-
-    # `load`: recent.json follows the same sidecar read discipline as
-    # file_store_utils above — a transiently unreadable history file is
-    # semantically "no recent entries right now", and the read-only path must
-    # never block the menu or a launch. Mutations do NOT share this rescue:
-    # `load_for_update` translates the same access errors into StorageError
-    # so a save can never flatten the history.
-    'adapters/storage/recent_files_repository.rb',
-
-    # `parse_xml`: parse-utility contract returns nil when REXML rejects the
-    # input; the nil drives the wrapped-fragment fallback.
-    'adapters/book_sources/epub/parser/opf/navigation_document_scanner.rb',
-
-    # `delete_cache_file`: best-effort cleanup of a stale/corrupt cache file;
-    # SystemCallError translates to nil so the read doesn't crash.
-    'adapters/storage/repositories/display_metadata_cache_repository.rb',
-
-    # `FileProbeAdapter#mtime`: the FileProbe port promises an ISO 8601
-    # string or nil; the rescue implements that contract.
-    'adapters/storage/file_probe_adapter.rb',
-
-    # `emit`: the progress stream is a best-effort sink by contract — when
-    # the parent menu cancels the batch and closes the pipe, progress has
-    # nowhere to go and the pagination work itself must keep its value.
-    'adapters/runtime/prepagination_progress_stream_adapter.rb',
-
-    # `decompress`: a body whose compressed encoding does not parse is
-    # semantically "not actually compressed" (servers mislabel
-    # Content-Encoding); the raw body is the correct domain answer. The
-    # fetchers historically implemented the identical fallback, laundered
-    # through an `undecoded_body(body)` wrapper the analyzer couldn't see —
-    # this exemption states the same judgment honestly. Over-limit
-    # expansion is NOT rescued: TooLarge always propagates.
-    'adapters/rss/bounded_http_body.rb',
-
-    # `sqlite3_available?`: a predicate's contract is to answer its question,
-    # and "the optional gem is not installed" is the false case rather than a
-    # swallowed failure. Previously this raised and the reader controller
-    # laundered the literal through a `dictionary_lookup_unavailable?` wrapper
-    # returning `false` — invisible to the analyzer, exactly the pattern the
-    # bounded_http_body entry above describes — while the three call sites
-    # that did NOT rescue turned a missing gem into a crash. Answering
-    # honestly here is the fix; this exemption states that judgment openly.
-    'adapters/storage/sqlite_dictionary_adapter.rb',
-  ].freeze
-
   it 'forbids fallback literal defaults directly after rescue branches' do
-    offenders = analyzer.fallback_literal_rescue_offenders(lib_root:)
-    offenders = offenders.reject do |entry|
-      LITERAL_DEFAULT_EXEMPT_FILES.any? { |exempt| entry.start_with?("#{exempt}:") }
-    end
-
+    offenders = analyzer.unapproved_fallback_literal_rescue_offenders(lib_root:)
     expect(offenders).to eq([]),
                          "Rescue branches must fail fast instead of returning literal defaults:\n#{offenders.join("\n")}"
+  end
+
+  it 'keeps every fallback-literal exemption live and explicitly justified' do
+    detected = analyzer.approved_fallback_literal_rescue_offenders(lib_root:)
+    detected_paths = detected.map { |entry| entry.split(':', 2).first }.uniq.sort
+    policy = analyzer::FALLBACK_LITERAL_EXEMPTIONS
+
+    expect(policy.values).to all(satisfy { |reason| !reason.to_s.strip.empty? })
+    expect(detected_paths).to eq(policy.keys.sort), <<~MSG
+      Fallback-literal exemption policy is stale or incomplete.
+      Policy:   #{policy.keys.sort.join(', ')}
+      Detected: #{detected_paths.join(', ')}
+    MSG
   end
 
   # Fatal external input is designed to terminate (shared/errors.rb): any

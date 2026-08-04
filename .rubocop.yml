@@ -38,9 +38,10 @@ Layout/LineLength:
 
 # Metrics
 #
-# Class/module length cops are disabled by constitution R2 ("length is never
-# a reason to split; a long, flat, cohesive class is correct"). Method-level
-# complexity cops stay on — R2 is about class/file size, not method quality.
+# Class/module length cops are disabled by constitution R2: length is evidence,
+# never a verdict, and a raw threshold encourages mechanical fragmentation.
+# Method-level complexity cops stay on because they identify local control-flow
+# costs without dictating class boundaries.
 Metrics/ClassLength:
   Enabled: false
 

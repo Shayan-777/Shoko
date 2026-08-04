@@ -1,32 +1,37 @@
 # Shoko Architecture Constitution
 
-Status: **active law** as of 2026-06-01. Derived from `census-2026-06-01.md`.
+Status: **active architecture policy**, adopted 2026-06-01 and last amended
+2026-08-04. Derived from `census-2026-06-01.md`.
 
 ## How to use this document
 
-This is the **oracle for architectural shape**. When you are unsure whether a
-piece of code is structured "right," you do not consult taste — you consult
-this document. Taste is infinitely re-litigable and is the reason past
-refactoring churned. Rules are decidable.
+This document is the project's **enforced baseline and decision framework**,
+not an oracle and not a substitute for engineering judgment. Its rules make
+known failure modes decidable and reduce taste-driven churn. They cannot prove
+that a class is cohesive, that a dependency is semantically inward, or that a
+design will remain appropriate as the product changes.
 
-Scope, stated plainly: conformance here means *architecturally done relative
-to the current rules*. It is not a claim of correctness, security, or
-completeness — green guardrails have coexisted with reproducible correctness
-holes, and no rule set replaces tests, code review, or adversarial audit.
+Conformance is therefore **necessary but not sufficient**. A green guardrail
+proves only the property that guardrail actually measures. Architecture review
+also considers responsibility and change axes, public surface, dependency and
+state ownership, runtime constraints, test seams, and evidence from defects or
+feature work.
 
-Two consequences:
+Three consequences:
 
-1. **If a file conforms to every rule here, it is architecturally DONE.** You
-   do not revisit its *shape* because you imagined a nicer one. "Nicer" is not
-   a defect. (Its *behavior* remains as reviewable as any code.)
-2. **If you think a rule is wrong, you change the *rule* — once, deliberately,
-   with a dated reason in the Amendments section — and then bring code into line.**
-   You never silently drift individual files away from the rule. This is what keeps
-   the constitution itself from becoming a source of churn.
+1. A conforming file may be revisited when concrete evidence shows excessive
+   coupling, mixed responsibilities, unsafe behavior, or disproportionate
+   change cost. Purely aesthetic preference is still not a reason to churn it.
+2. If a rule is wrong or incomplete, change the rule deliberately, record the
+   reason in Amendments, align its enforcement, and then bring code into line.
+   Do not silently create per-file exceptions.
+3. Exceptions must be narrow, named, justified beside their executable policy,
+   and rejected once stale. An exception is evidence about the rule's boundary,
+   not permission to bypass review.
 
 ---
 
-## I. Layers (settled — do not re-open)
+## I. Layers (current baseline)
 
 ```
 core  →  (nothing)              domain models, domain services, domain events. Pure.
@@ -37,7 +42,7 @@ composition → everything        the ONLY place that names concrete classes and
 shared → (nothing app-specific) tiny cross-cutting utilities.
 ```
 
-**The dependency rule (law):** an inner layer must never reference an outer one.
+**The dependency rule:** an inner layer must never depend on an outer one.
 - `core` references `Adapters::`/`Application::`/`Composition::` **zero** times.
 - `application` references `Adapters::`/`Composition::` **zero** times; it talks to
   the outside world only through `Application::Ports`.
@@ -48,16 +53,19 @@ shared → (nothing app-specific) tiny cross-cutting utilities.
   is `LayerPolicy::PATH_EXCEPTIONS`, which every enforcement site consumes.
 - Only `composition` may name concrete adapter classes.
 
-This rule is already satisfied (see census). **There is no further "hexagonal
-hardening" work to do.** Do not start any.
+The static matrix enforces paths and constant references, but semantic
+dependencies must also be reviewed. Duck typing can remove an outer constant
+name while preserving dependence on an outer representation or capability.
+Boundary work is warranted when concrete evidence exposes such coupling; it is
+not warranted merely to pursue a purer diagram.
 
 ---
 
 ## II. Decomposition (the rules that stop the churn)
 
-### R1 — Hard zero one-host fragments.
-A unit of behavior fused into **exactly one** host is **forbidden**, through
-every door it can arrive by:
+### R1 — Do not disguise one-host behavior fragments as reuse.
+A unit of behavior fused into exactly one host through the following mechanisms
+is forbidden because it adds indirection without an independently owned role:
 
 1. **Mixin** — a module `include`d, `prepend`ed, or `extend`ed into exactly one
    host. `extend` is the same fragmentation through the singleton class, not a
@@ -71,31 +79,32 @@ every door it can arrive by:
    class earns its place by having a second subclass, or by being used in its
    own right.
 
-Private behavior belongs as **private methods on its host**, full stop.
+Private behavior normally remains private methods on its host when it has no
+independent state, role, lifecycle, or second consumer.
 
 The only way a unit of behavior earns its own file is by becoming a **collaborator
 object** — a class you instantiate/inject and *call*, never a module you mix in.
 
-**A collaborator object is justified only if it meets at least one of:**
+**A collaborator object is justified when it meets at least one of:**
 - it is used by **two or more** call sites, OR
 - it owns **distinct state** the host should not hold, OR
 - it represents a **distinct domain/role concept** with a name a user of the system
   would recognize, AND it is **unit-tested in isolation**.
 
-If a chunk of a class meets none of these, it stays as private methods. A long,
-flat, cohesive class is **correct**, not debt.
+One consumer does not disqualify a collaborator that owns distinct state or a
+recognizable, independently tested role. Conversely, length alone does not
+justify extracting stateless fragments. A long class can be cohesive or badly
+coupled; conformance to R1 proves neither conclusion.
 
-**R1 also runs in the positive direction, and it is enforced.** The first
-clause above — "used by two or more call sites" — is not merely a permission
-to extract; it is a **requirement** that one behavior have exactly one home.
-The same method body in two files is a violation regardless of what the copies
-are named. Satisfying it by leaving a one-line delegator in each file moves the
-duplication rather than removing it; give the behavior a real owner (a shared
-module or collaborator, the base class when siblings need it, or the type that
-already owns the concept). Enforcement:
-`no_duplicate_implementations` (`DuplicateImplementationScanner`), Ripper-backed
-and name-independent, with a significance floor below which repetition is
-coincidence rather than a shared concept. **No allowlist.**
+**R1 also checks substantial identical implementations across files.** Such a
+match triggers review because duplicated knowledge should have one owner. It is
+not proof that two implementations represent the same concept: independent
+interface implementations can coincide. The
+`DuplicateImplementationScanner` is a conservative token-identity detector. It
+ignores method names but retains other identifiers and uses an implementation
+threshold; it is not semantic equivalence analysis. A CI match must be resolved
+by consolidating genuinely shared knowledge or, for an independent contract,
+by a narrow documented scanner exemption and constitutional amendment.
 
 **Exempt from R1:** `Application::Ports::*` interface modules (they document a
 contract); genuine shared mixins included by **two or more** classes; the
@@ -105,9 +114,14 @@ each with its rationale — in the scanner `ALLOWLIST`
 executable enforcement name the same exemptions; an ALLOWLIST addition is a
 constitutional amendment.
 
-### R2 — Length is never a reason to split.
-File/class length does not trigger extraction. Census shows sizes are healthy.
-Splitting a cohesive 300-line class into mixins to "shorten" it is an R1 violation.
+### R2 — Length is evidence, never a verdict.
+File/class length alone does not trigger extraction, and splitting a cohesive
+class into mixins merely to reduce a line count violates R1. Length becomes
+meaningful when it accompanies multiple change axes, excessive dependencies or
+public methods, separately owned state, weak test seams, or repeated defect
+clusters. In those cases, extract real collaborators under R3. Class/module
+length cops remain disabled to prevent mechanical decomposition; architectural
+review still considers size together with those stronger signals.
 
 ### R3 — Extract objects, not fragments.
 When R1's bar *is* met, the result is a noun-named class with a small public
@@ -138,19 +152,20 @@ internals.
 
 ---
 
-## V. Guardrails = this constitution, executed
+## V. Guardrails execute narrow policy claims
 
-- The architecture spec suite exists **only** to enforce the rules above. **One spec
-  per rule**, named after the rule.
-- Specs named for *moods* — `*_hardening`, `*_coherence`, `*_migration`,
-  `final_*`, `no_legacy_*` — are forbidden. They encode a moment, not a law. Delete them.
+- The architecture suite enforces durable rules above. Prefer one cohesive spec
+  per rule family, named for the property it measures.
+- Do not add specs named for moods or migration moments (`*_hardening`,
+  `*_coherence`, `final_*`, `no_legacy_*`). Encode a durable invariant or put
+  behavioral coverage with the owning unit.
 - To change enforced behavior: amend this doc → update the one matching spec → fix code.
   Never add a spec that pins a one-off decision.
-
-Target shape (~8–10 specs): `layer_dependency`, `no_include_once_mixin`,
-`no_duplicate_implementations`, `naming_banlist`, `directory_depth`,
-`rescue_conventions`, `ports_contract`, `composition_is_only_concrete_wiring`,
-plus a small number of genuine domain-invariant specs.
+- Every source scanner documents its blind spots. Passing a token, path, or
+  constant-name scan proves only that narrow syntactic property. Behavioral and
+  semantic claims require behavioral tests and review.
+- Keep the suite small enough that every guardrail has a clear failure mode and
+  maintenance value. A numeric spec-count target is not an architecture rule.
 
 An invariant earns a place in `domain_invariants` only if it states "no OTHER
 file may do this" — a property of the tree, which no unit test can express. An
@@ -158,24 +173,28 @@ invariant that CAN be stated as behavior belongs in the owning unit spec.
 
 ---
 
-## VI. Done
+## VI. Completion and continuing review
 
-The whole effort is finished when:
+An architecture work item is complete when:
 
-> **all consolidated guardrails are green AND a single inside-out pass
-> (core → application → adapters) finds zero violations of this document.**
+> **its behavioral tests and consolidated guardrails are green, and an
+> inside-out review (core → application → adapters) finds no remaining evidence
+> in the agreed scope.**
 
-Not "feels clean." The feeling never converges. This checklist does. When it's met,
-**stop.**
+That closes the bounded work item; it does not make any file permanently done.
+Reopen a shape when new evidence warrants it, not because a different style is
+fashionable.
 
 ---
 
-## VII. Explicitly NOT doing (permission to stop)
+## VII. Default non-goals
 
-- ❌ More hexagonal boundary work — boundaries are done.
-- ❌ Splitting/merging by file length — sizes are fine.
-- ❌ Adding guardrail specs for one-off decisions.
-- ❌ Revisiting a file that already conforms.
+- Do not pursue boundary work without a demonstrated semantic dependency or
+  change-cost problem.
+- Do not split or merge solely to hit a file-length preference.
+- Do not add guardrails for one-off decisions.
+- Do not revisit conforming code without concrete evidence, but do not use
+  conformance to dismiss such evidence.
 
 ---
 
@@ -214,6 +233,27 @@ Every resilient boundary:
 ---
 
 ## Amendments
+
+- **2026-08-04 — Conformance stops being an oracle; decomposition becomes
+  evidence-based.** The opening policy no longer declares compliant files
+  permanently "DONE," the layer model is a reviewable baseline rather than a
+  settled prohibition on further hardening, and completion now closes a bounded
+  work item rather than freezing code shape. R2 changes from "length is never a
+  reason" to "length is evidence, never a verdict": line count alone still
+  cannot justify fragmentary mixins, while length combined with dependency
+  count, public surface, state ownership, change axes, test seams, or defect
+  clusters can justify a real collaborator. R1 now states explicitly that a
+  one-consumer collaborator is valid when it owns distinct state or a tested
+  role. The duplicate-body scanner is documented accurately as conservative
+  token identity—not semantic, identifier-independent proof—and independent
+  contract implementations may receive a narrow, amended exemption. Guardrail
+  counts are no longer a target, every scanner must state what it cannot prove,
+  and stale policy exemptions must fail. Absolute statements in older amendment
+  entries are historical decisions and are superseded by this policy. The first
+  exact-site exemption covers the coincident five-line `perform_language_fetch`
+  relay jobs in reader `TranslatorController` and menu `TranslatorWorkflow`:
+  their adapter/application state boundaries are intentionally independent, and
+  a shared owner would create the cross-layer coupling the layer rule forbids.
 
 - **2026-07-26 — R1 closes its third door (inheritance) and gains its missing
   positive half; the guardrail suite stops pinning moments.**

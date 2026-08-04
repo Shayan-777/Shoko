@@ -58,7 +58,7 @@ module Shoko
         def write_manifest(from, to, version:, model_file:, vocab_file:)
           dir = create_pack_dir(from, to)
           validate_file_names!(model_file, vocab_file)
-          manifest = manifest_payload(from, to, version, model_file, vocab_file)
+          manifest = manifest_payload(from, to, version:, model_file:, vocab_file:)
           write_manifest_file(dir, manifest)
           manifest
         end
@@ -70,7 +70,7 @@ module Shoko
           FileUtils.mkdir_p(@root)
           stage = Dir.mktmpdir(".#{normalized_code(from)}-#{normalized_code(to)}-", @root)
           yield stage
-          manifest = manifest_payload(from, to, version, model_file, vocab_file)
+          manifest = manifest_payload(from, to, version:, model_file:, vocab_file:)
           write_manifest_file(stage, manifest)
           commit_stage(stage, pack_dir(from, to))
           stage = nil
@@ -102,7 +102,7 @@ module Shoko
                          error: error.class.name, message: error.message)
         end
 
-        def manifest_payload(from, to, version, model_file, vocab_file)
+        def manifest_payload(from, to, version:, model_file:, vocab_file:)
           {
             from: normalized_code(from),
             to: normalized_code(to),

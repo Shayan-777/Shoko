@@ -78,38 +78,10 @@ end
 
 analyzer = SpecSupport::Architecture::RescueGuardrailAnalyzer
 
-# Adapter-layer files where rescuing into a literal is the documented port
-# contract (IO/parse exceptions translate into typed values). Kept in sync
-# with EXEMPT_FILES in spec/core/architecture/no_rescue_literal_default_spec.rb.
-FALLBACK_LITERAL_EXEMPT_FILES = [
-  'adapters/book_sources/book_finder.rb',
-  'adapters/book_sources/epub/parser/opf/navigation_document_scanner.rb',
-  'adapters/storage/repositories/display_metadata_cache_repository.rb',
-  'adapters/storage/file_probe_adapter.rb',
-  # `parse_timestamp`: a corrupt/hand-edited stored progress timestamp is
-  # semantically "unknown last-read time" — nil is the correct domain answer.
-  'adapters/storage/repositories/progress_repository.rb',
-  # `load_json_or_empty`: a corrupt/truncated/externally-synced sidecar store
-  # (annotations/bookmarks/progress) is semantically "no data yet" — {} is the
-  # correct domain answer, so one bad file never blocks opening the book.
-  'adapters/storage/repositories/storage/file_store_utils.rb',
-  # `load`: recent.json reads follow the same sidecar discipline — an
-  # unreadable history file is "no recent entries right now"; mutations go
-  # through `load_for_update`, which raises instead.
-  'adapters/storage/recent_files_repository.rb'
-].freeze
-
-def reject_exempt(offenders, exempt_files)
-  offenders.reject do |entry|
-    exempt_files.any? { |exempt| entry.start_with?("#{exempt}:") }
-  end
-end
-
 report = {
-  fallback_literal_defaults: reject_exempt(
-    analyzer.fallback_literal_rescue_offenders(lib_root: LIB_ROOT),
-    FALLBACK_LITERAL_EXEMPT_FILES
-  ).sort,
+  fallback_literal_defaults: analyzer.unapproved_fallback_literal_rescue_offenders(lib_root: LIB_ROOT).sort,
+  approved_fallback_literal_defaults:
+    analyzer.approved_fallback_literal_rescue_offenders(lib_root: LIB_ROOT).sort,
   numeric_rescue_defaults: analyzer.numeric_default_rescue_offenders(lib_root: LIB_ROOT).sort,
   no_op_reraise_rescues: analyzer.no_op_reraise_rescue_offenders(lib_root: LIB_ROOT).sort,
   fatal_input_swallow_rescues: fatal_swallow_offenders,

@@ -11,6 +11,33 @@ module SpecSupport
       NUMERIC_LITERAL_TAGS = %i[@int @float @rational @imaginary].freeze
       PASS_THROUGH_VAR_TAGS = %i[@ident @ivar @cvar @gvar].freeze
 
+      # Audited cases where translating a specific external failure into a
+      # literal is the public contract rather than a swallowed defect. This is
+      # the single policy inventory consumed by both the RSpec guardrail and
+      # script/architecture/fallback_report.rb. Keeping reasons beside paths
+      # makes additions reviewable; the spec also rejects stale entries that no
+      # longer correspond to a detected fallback.
+      FALLBACK_LITERAL_EXEMPTIONS = {
+        'adapters/book_sources/book_finder.rb' =>
+          'an unparseable cache timestamp is semantically expired',
+        'adapters/book_sources/epub/parser/opf/navigation_document_scanner.rb' =>
+          'the parse utility returns nil so its caller can try the wrapped-fragment fallback',
+        'adapters/rss/bounded_http_body.rb' =>
+          'a mislabeled corrupt compressed response falls back to its already bounded raw body',
+        'adapters/storage/file_probe_adapter.rb' =>
+          'the FileProbe port promises an ISO 8601 timestamp or nil',
+        'adapters/storage/recent_files_repository.rb' =>
+          'an unreadable history is empty on the read-only path; mutations still fail',
+        'adapters/storage/repositories/display_metadata_cache_repository.rb' =>
+          'stale cache-file deletion is best-effort cleanup',
+        'adapters/storage/repositories/progress_repository.rb' =>
+          'an invalid stored timestamp is semantically unknown',
+        'adapters/storage/repositories/storage/file_store_utils.rb' =>
+          'a corrupt sidecar store is quarantined and read as empty',
+        'adapters/storage/sqlite_dictionary_adapter.rb' =>
+          'the availability predicate is false when its optional dependency is absent',
+      }.freeze
+
       # Calls that provably cannot raise Shoko::Error. Two families:
       # - raw stdlib calls whose failures are stdlib exceptions
       #   (JSON::ParserError, Errno::*, IOError) — the handler promises
@@ -35,6 +62,18 @@ module SpecSupport
 
       def fallback_literal_rescue_offenders(lib_root:)
         rescue_default_offenses(lib_root:).map { |offense| format_rescue_default_offense(offense) }
+      end
+
+      def unapproved_fallback_literal_rescue_offenders(lib_root:)
+        fallback_literal_rescue_offenders(lib_root:).reject do |entry|
+          FALLBACK_LITERAL_EXEMPTIONS.any? { |path, _reason| entry.start_with?("#{path}:") }
+        end
+      end
+
+      def approved_fallback_literal_rescue_offenders(lib_root:)
+        fallback_literal_rescue_offenders(lib_root:).select do |entry|
+          FALLBACK_LITERAL_EXEMPTIONS.any? { |path, _reason| entry.start_with?("#{path}:") }
+        end
       end
 
       def numeric_default_rescue_offenders(lib_root:)

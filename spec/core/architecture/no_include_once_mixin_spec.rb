@@ -183,9 +183,9 @@ RSpec.describe 'No include-once mixins (constitution R1)' do
 
     expect(fragments).to eq([]), <<~MSG
       Class fragment(s) detected (constitution R1/R3 — methods split across
-      files via reopening). Merge the fragment's methods into the host file
-      (length is never a reason to split, R2), or promote the fragment to a
-      real collaborator object:
+      files via reopening). Merge the fragment's methods into the host file,
+      or promote it to a real collaborator that owns a role/state/test seam
+      under R2/R3; line count alone decides neither outcome:
 
       #{fragments.map { |p| "  - #{p}" }.join("\n")}
     MSG
@@ -203,9 +203,9 @@ RSpec.describe 'No include-once mixins (constitution R1)' do
 
     expect(offenders).to eq([]), <<~MSG
       Sole-subclass base class(es) detected (constitution R1 — inheritance as
-      fragmentation). Merge the base into its one subclass (length is never a
-      reason to split, R2), or give the base a real reason to exist — a second
-      subclass, or use in its own right:
+      fragmentation). Merge the base into its one subclass, or give the base a
+      real reason to exist — a second subclass or use in its own right. Under
+      R2, line count alone decides neither outcome:
 
       #{offenders.map { |p| "  - #{p}" }.join("\n")}
     MSG

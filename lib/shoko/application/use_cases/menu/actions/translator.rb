@@ -264,18 +264,17 @@ module Shoko
               cursor = current_menu.translator_input_cursor.to_i.clamp(0, text.length)
               lambda do |edit|
                 next_text, next_cursor = Shoko::Shared::TextBufferEdit.apply(text, cursor, edit)
-                update_menu(
-                  translator_input_text: next_text,
-                  translator_input_cursor: next_cursor,
-                  translator_output_text: '',
-                  translator_detected_source_lang: nil,
-                  translator_status: :idle,
-                  translator_message: 'Alt/Ctrl+Enter to translate.',
-                  translator_output_scroll: 0,
-                  translator_selection: nil,
-                  translator_context_menu: nil
-                )
+                update_menu(translator_edit_payload(next_text, next_cursor))
               end
+            end
+
+            def translator_edit_payload(text, cursor)
+              {
+                translator_input_text: text, translator_input_cursor: cursor,
+                translator_output_text: '', translator_detected_source_lang: nil,
+                translator_status: :idle, translator_message: 'Alt/Ctrl+Enter to translate.',
+                translator_output_scroll: 0, translator_selection: nil, translator_context_menu: nil
+              }
             end
 
             def submit_translation

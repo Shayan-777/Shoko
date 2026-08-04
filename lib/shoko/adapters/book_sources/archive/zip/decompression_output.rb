@@ -11,12 +11,13 @@ module Shoko
       end
 
       def append(chunk)
+        prospective_bytes = @data.bytesize + chunk.bytesize
+        @limits.enforce_uncompressed_budget(@entry, prospective_bytes)
         @data << chunk
-        @limits.enforce_uncompressed_budget(@entry, @data.bytesize)
       end
 
       def finalize(inflater)
-        @data << inflater.finish
+        append(inflater.finish)
         @data
       end
     end

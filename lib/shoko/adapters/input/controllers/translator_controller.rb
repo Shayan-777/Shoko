@@ -42,6 +42,7 @@ module Shoko
           # (the popup "Translate" prefill), kept as one parameter so the
           # constructor stays within the dependency budget.
           SelectionTextSource = Data.define(:selection_service, :rendered_content_reader)
+          TranslationRequest = Data.define(:text, :source_lang, :target_lang, :announce, :request_id)
 
           BUTTON_FEEDBACK_SECONDS = 1.0 # how long the Pasted!/Copied! flash stays up
 
@@ -355,26 +356,34 @@ module Shoko
               return
             end
 
-            source_lang = @reader_state.translator_source_lang.to_s
-            target_lang = @reader_state.translator_target_lang.to_s
-            request_id = next_request_id
+            request = build_translation_request(text, announce)
             set_message('Translating…', 2)
-            submitted = @async_relay.submit do
-              perform_translation(text, source_lang, target_lang, announce, request_id)
-            end
+            submitted = @async_relay.submit { perform_translation(request) }
             set_message('Translation worker is unavailable', 3) unless submitted
           end
 
+          def build_translation_request(text, announce)
+            TranslationRequest.new(
+              text:,
+              source_lang: @reader_state.translator_source_lang.to_s,
+              target_lang: @reader_state.translator_target_lang.to_s,
+              announce:,
+              request_id: next_request_id
+            )
+          end
+
           # Worker-side: compute only; the result applies on the UI thread.
-          def perform_translation(text, source_lang, target_lang, announce, request_id)
-            result = @translation_service.translate(text, source_lang: source_lang, target_lang: target_lang)
+          def perform_translation(request)
+            result = @translation_service.translate(
+              request.text, source_lang: request.source_lang, target_lang: request.target_lang
+            )
             @async_relay.enqueue do
               next unless translation_context_current?(
-                request_id, text, source_lang, target_lang
+                request.request_id, request.text, request.source_lang, request.target_lang
               )
 
-              @translator_ui_session.apply_result(result, query: text)
-              announce_translation(result) if announce
+              @translator_ui_session.apply_result(result, query: request.text)
+              announce_translation(result) if request.announce
             end
           end
           private :perform_translation
@@ -522,30 +531,32 @@ module Shoko
 
           def perform_language_fetch(request_id)
             languages = @translation_service.available_languages.map(&:to_h)
-            @async_relay.enqueue do
-              next unless current_language_request?(request_id)
-
-              @languages_loading = false
-              @loaded_languages = languages
-              @translator_ui_session.apply_languages(languages)
-              normalize_pair_for(languages)
-              if languages.any?
-                translate_pending_text
-              else
-                @pending_translation = nil
-                set_message('No translation languages are available', 3)
-              end
-            end
+            @async_relay.enqueue { publish_languages(languages, request_id) }
           rescue Shoko::Error => e
-            @async_relay.enqueue do
-              next unless current_language_request?(request_id)
-
-              @languages_loading = false
-              @pending_translation = nil
-              set_message("Languages unavailable — #{e.message}", 3)
-            end
+            @async_relay.enqueue { publish_language_error(e, request_id) }
           end
           private :perform_language_fetch
+
+          def publish_languages(languages, request_id)
+            return unless current_language_request?(request_id)
+
+            @languages_loading = false
+            @loaded_languages = languages
+            @translator_ui_session.apply_languages(languages)
+            normalize_pair_for(languages)
+            return translate_pending_text if languages.any?
+
+            @pending_translation = nil
+            set_message('No translation languages are available', 3)
+          end
+
+          def publish_language_error(error, request_id)
+            return unless current_language_request?(request_id)
+
+            @languages_loading = false
+            @pending_translation = nil
+            set_message("Languages unavailable — #{error.message}", 3)
+          end
 
           def translate_pending_text
             pending = @pending_translation

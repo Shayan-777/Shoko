@@ -108,41 +108,62 @@ module Shoko
       # Coerce a backend language object or a (symbol-keyed) language hash into a
       # canonical { code:, name: } hash.
       def normalize(lang)
-        code, name, targets =
-          if lang.is_a?(Hash)
-            normalized = lang.transform_keys { |key| key.to_s.to_sym }
-            [normalized[:code], normalized[:name], normalized[:targets]]
-          elsif lang.respond_to?(:code)
-            [lang.code, lang.respond_to?(:name) ? lang.name : nil,
-             lang.respond_to?(:targets) ? lang.targets : nil]
-          end
+        code, name, targets = language_fields(lang)
         code = code.to_s.strip
         return nil if code.empty?
 
         display = name.to_s.strip
-        {
-          code: code,
-          name: display.empty? ? name_for(code) : display,
-          targets: Array(targets).map(&:to_s),
-        }
+        { code:, name: display.empty? ? name_for(code) : display, targets: Array(targets).map(&:to_s) }
+      end
+
+      def language_fields(lang)
+        return hash_language_fields(lang) if lang.is_a?(Hash)
+        return object_language_fields(lang) if lang.respond_to?(:code)
+
+        [nil, nil, nil]
+      end
+
+      def hash_language_fields(lang)
+        normalized = lang.transform_keys { |key| key.to_s.to_sym }
+        [normalized[:code], normalized[:name], normalized[:targets]]
+      end
+
+      def object_language_fields(lang)
+        name = lang.name if lang.respond_to?(:name)
+        targets = lang.targets if lang.respond_to?(:targets)
+        [lang.code, name, targets]
       end
 
       def candidates_for_side(languages, side:, source_code:)
-        capabilities_known = languages.any? { |lang| lang[:targets].any? }
-        if side.to_s == 'source'
-          return languages.reject { |lang| lang[:code] == AUTO } unless capabilities_known
-
-          return languages.select { |lang| lang[:targets].any? }
-        end
+        capabilities_known = capabilities_known?(languages)
+        return source_candidates(languages, capabilities_known) if side.to_s == 'source'
 
         source = languages.find { |lang| lang[:code] == source_code.to_s }
         allowed = Array(source&.dig(:targets))
+        target_candidates(languages, allowed, capabilities_known)
+      end
+
+      def capabilities_known?(languages)
+        languages.any? { |lang| lang[:targets].any? }
+      end
+
+      def source_candidates(languages, capabilities_known)
         return languages.reject { |lang| lang[:code] == AUTO } unless capabilities_known
 
-        languages.select do |lang|
-          lang[:code] != AUTO && allowed.include?(lang[:code])
-        end
+        languages.select { |lang| lang[:targets].any? }
       end
+
+      def target_candidates(languages, allowed, capabilities_known)
+        return languages.reject { |lang| lang[:code] == AUTO } unless capabilities_known
+
+        languages.select { |lang| lang[:code] != AUTO && allowed.include?(lang[:code]) }
+      end
+      private_class_method :language_fields,
+                           :hash_language_fields,
+                           :object_language_fields,
+                           :capabilities_known?,
+                           :source_candidates,
+                           :target_candidates
     end
   end
 end

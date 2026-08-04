@@ -22,22 +22,29 @@ RSpec.describe 'No duplicate implementations (constitution R1)' do
   let(:lib_root) { File.join(root, 'lib', 'shoko') }
   let(:scanner) { SpecSupport::Architecture::DuplicateImplementationScanner }
 
-  # NO ALLOWLIST. Every duplicate above the significance floor was consolidated
-  # on 2026-07-26; a new one is a defect, not an entry to be added here.
   it 'forbids the same method body in two or more files' do
     offenders = scanner.violations(lib_root)
 
     expect(offenders).to eq([]), <<~MSG
-      Duplicated implementation(s) detected (constitution R1 — a unit of
-      behavior used by two or more call sites earns ONE home).
+      Duplicated implementation(s) detected (constitution R1).
 
-      Give the behavior a single owner: a shared module/collaborator when the
-      concept is genuinely shared, the base class when siblings need it, or the
-      type that already owns the concept. Do NOT satisfy this rule by adding a
-      one-line delegator in each file — that moves the duplication, it does not
-      remove it.
+      Determine whether this is shared knowledge or an independent contract.
+      Shared knowledge needs one owner. An independent coincidence needs a
+      narrow exact-site exemption with a constitutional rationale; do not alter
+      code merely to evade token identity.
 
       #{offenders.map { |entry| "  - #{entry}" }.join("\n")}
+    MSG
+  end
+
+  it 'rejects stale or unjustified exact-site exemptions' do
+    stale = scanner.stale_exemptions(lib_root)
+    missing_reasons = scanner::EXEMPT_SITE_GROUPS.reject { |policy| !policy[:reason].to_s.strip.empty? }
+
+    expect(stale + missing_reasons).to eq([]), <<~MSG
+      Duplicate-implementation exemptions must match a live exact site group
+      and carry a non-empty rationale:
+      #{(stale + missing_reasons).inspect}
     MSG
   end
 
