@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/text_buffer_edit'
+require 'shoko/core/services/text_buffer_edit'
 require 'shoko/application/use_cases/requests/edit_op'
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_access'
 require 'shoko/shared/text_sanitizer'
-require 'shoko/shared/language_directory'
+require 'shoko/core/services/language_directory'
 
 module Shoko
   module Adapters
@@ -31,12 +31,12 @@ module Shoko
         #   * picker mode — type to filter languages, ↑/↓ move, ←/→ (or Tab) flip
         #     Source⇄Target, ↵ applies the language and re-translates, Esc backs out.
         class TranslatorController
-          TextBufferEdit = Shoko::Shared::TextBufferEdit
+          TextBufferEdit = Shoko::Core::Services::TextBufferEdit
 
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
           include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
 
-          LanguageDirectory = Shoko::Shared::LanguageDirectory
+          LanguageDirectory = Shoko::Core::Services::LanguageDirectory
 
           # The two collaborators used only to pull text out of a live selection
           # (the popup "Translate" prefill), kept as one parameter so the

@@ -26,7 +26,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
   end
   let(:progress_presenter) do
     instance_double(
-      Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter,
+      Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchProgressPresenter,
       show: nil,
       clear: nil,
       update_status: false,

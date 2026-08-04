@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../application/ports/outbound/cache_availability'
-require_relative '../../shared/source_fingerprint'
+require 'shoko/adapters/storage/source_fingerprint'
 require_relative 'cache_paths'
 require_relative 'json_cache_store'
 require_relative 'cache_pointer_manager'
@@ -57,7 +57,7 @@ module Shoko
             path: source_path,
             mtime: File.mtime(source_path).utc,
             size_bytes: File.size(source_path),
-            fingerprint: normalized_fingerprint(Shoko::Shared::SourceFingerprint.compute(source_path))
+            fingerprint: normalized_fingerprint(Shoko::Adapters::Storage::SourceFingerprint.compute(source_path))
           )
         end
 

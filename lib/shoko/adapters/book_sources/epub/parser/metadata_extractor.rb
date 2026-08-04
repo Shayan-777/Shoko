@@ -3,7 +3,7 @@
 require 'rexml/document'
 
 require_relative 'opf_processor'
-require_relative 'rexml_safe_parser'
+require 'shoko/adapters/support/rexml_safe_parser'
 
 module Shoko
   module Adapters
@@ -31,7 +31,7 @@ module Shoko
 
           def self.find_opf_path(zip)
             container_xml = zip.read('META-INF/container.xml')
-            container = REXMLSafeParser.parse(container_xml)
+            container = Shoko::Adapters::Support::REXMLSafeParser.parse(container_xml)
             rootfile = container.elements['//rootfile']
             return nil unless rootfile
 

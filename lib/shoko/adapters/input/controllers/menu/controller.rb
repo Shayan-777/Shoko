@@ -12,7 +12,7 @@ require_relative 'mouse_router'
 require_relative 'workflow_render_observer'
 require_relative 'input_mode_observer'
 require 'shoko/shared/hash_normalizer'
-require 'shoko/shared/language_directory'
+require 'shoko/core/services/language_directory'
 
 module Shoko
   module Adapters
@@ -603,7 +603,7 @@ module Shoko
 
             def translator_language_options(kind)
               languages = Array(@menu_state_reader.translator_languages).map { |item| Shoko::Core::Models::TranslationLanguage.normalized_entry(item) }
-              Shoko::Shared::LanguageDirectory.candidates_for(
+              Shoko::Core::Services::LanguageDirectory.candidates_for(
                 languages,
                 side: kind,
                 source_code: selected_translator_language_code(:source),

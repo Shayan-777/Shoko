@@ -2,8 +2,6 @@
 
 require 'forwardable'
 require 'shoko/shared/errors'
-require 'shoko/shared/terminal/mouse_button'
-require 'shoko/core/models/selection_anchor'
 require_relative 'reader/intent_runtime_bridge'
 require_relative 'reader/runtime_types'
 require_relative 'reader/runtime_setup'
@@ -11,6 +9,9 @@ require_relative 'reader/state_observer'
 require_relative 'reader/progress_autosave'
 require_relative 'reader/toc_anchor_resolver'
 require_relative 'reader/inline_link_navigator'
+require_relative 'reader/render_mailbox'
+require_relative 'reader/bar_overlay_mouse_router'
+require_relative 'reader/selection_interaction'
 
 require_relative 'reader/input_router'
 require_relative 'reader/event_loop'
@@ -21,14 +22,11 @@ module Shoko
       module Controllers
         # Coordinator class for the reading experience.
         #
-        # This is the whole reader: navigation, rendering, and the mouse state
-        # machine (text selection, the right-click context menu, inline-link
-        # hover, and the bar-anchored overlay routing) live here as one host.
-        # Mouse behavior currently shares this object's selection state —
-        # @selected_text, @suppress_popup_release_once — and dependency graph.
-        # Any future boundary must transfer ownership of that state into a real
-        # collaborator; R2 does not treat this class's length as proof either
-        # for or against such a change.
+        # Owns reader-session orchestration: runtime setup, lifecycle entry,
+        # controller/coordinator delegation, and the top-level input decision
+        # order. Distinct mutable/change axes live in collaborators: render
+        # signaling, bar-overlay pointer routing, selection/context-menu state,
+        # inline-link interaction, and input-sequence filtering.
         class ReaderController
           extend Forwardable
 
@@ -135,46 +133,6 @@ module Shoko
             recalculating?
           ].freeze
 
-          # Synthesised keys the overlay mouse router replays onto the active
-          # mode's existing bindings.
-          OVERLAY_SCROLL_UP_KEY = "\e[A"
-          OVERLAY_SCROLL_DOWN_KEY = "\e[B"
-          OVERLAY_ACTIVATE_KEY = "\r"
-          OVERLAY_DISMISS_KEY = "\e"
-
-          # The reader-state field holding each overlay's selection cursor, written
-          # before the activate key so ⏎ confirms the clicked row.
-          BAR_OVERLAY_INDEX_FIELDS = {
-            in_book_search: :search_selected_index,
-            dictionary: :dictionary_selected_index,
-            toc: :toc_selected_index,
-            translator: :translator_picker_index,
-            notes: :notes_selected_index,
-          }.freeze
-
-          # Overlay click targets that are buttons (not list rows) and light up
-          # under the pointer like a row does.
-          HOVERABLE_OVERLAY_ACTIONS = %i[paste_source copy_translation translator_close].freeze
-
-          # Symbol hit-targets that re-enter the use-case layer as a translator intent
-          # (the mouse equivalent of Tab / a typed action), mapped to their args.
-          OVERLAY_CLICK_INTENTS = {
-            picker_source: %i[translator_open_picker source],
-            picker_target: %i[translator_open_picker target],
-            paste_source: %i[translator_paste_source],
-            copy_translation: %i[translator_copy_translation],
-          }.freeze
-
-          # The state accessor for each overlay's render component (which owns the
-          # frame's hit geometry).
-          BAR_OVERLAY_POPUPS = {
-            in_book_search: :in_book_search_popup,
-            dictionary: :dictionary_lookup_popup,
-            toc: :toc_lookup_popup,
-            translator: :translator_lookup_popup,
-            notes: :notes_lookup_popup,
-          }.freeze
-
           CONTEXT_DELEGATORS.each { |target, methods| def_delegators target, *methods }
           def_delegators :ui_controller, *UI_CONTROLLER_METHODS
           def_delegators :state_controller, *STATE_CONTROLLER_METHODS
@@ -218,11 +176,11 @@ module Shoko
             [core, state, services, runtime_boot, runtime_startup].each(&:validate!)
 
             @context = Reader::RuntimeTypes.context_for(epub_path)
-            @render_pending = false
             @services = Reader::RuntimeTypes.services_for(core)
             @references = Reader::RuntimeTypes.references_for(core: core, state: state, services: services)
             assign_service_references(@references)
             assign_state_references(@references)
+            @render_mailbox = Reader::RenderMailbox.new(wake_input: -> { terminal_service.wake_input })
             @observer_registry = state.observer_registry
             @state_observer = Reader::StateObserver.new(
               controller: self,
@@ -283,31 +241,27 @@ module Shoko
           # read. Safe from worker threads: the flag is only consumed (and the
           # frame drawn) on the UI thread, mirroring the resize path.
           def request_render
-            @render_pending = true
-            terminal_service.wake_input
-            nil
+            @render_mailbox.request
           end
 
           # True once per render-request burst; the event loop redraws and the
           # next blocking read resumes.
           def consume_render_request?
-            pending = @render_pending
-            @render_pending = false
-            pending == true
+            @render_mailbox.consume?
           end
 
           # Relays carrying async results (e.g. translations) back to the UI
           # thread; registered during composition, drained by the event loop.
           def register_async_relay(relay)
-            (@async_relays ||= []) << relay
+            @render_mailbox.register(relay)
           end
 
           def drain_async_results
-            Array(@async_relays).sum(&:drain!)
+            @render_mailbox.drain
           end
 
           def async_work_pending?
-            Array(@async_relays).any?(&:busy?)
+            @render_mailbox.busy?
           end
 
           # Mouse reporting is enabled for the whole session and always torn
@@ -342,9 +296,7 @@ module Shoko
           end
 
           def clear_selection!
-            @reader_session_mutator.update_reader(popup_menu: nil, hovered_inline_link: nil)
-            @mouse_handler&.reset
-            @reader_session_mutator.clear_selection
+            selection_interaction.clear
           end
 
           private
@@ -443,9 +395,7 @@ module Shoko
           end
 
           def bootstrap_mouse_state
-            @reader_session_mutator.update_reader(popup_menu: nil, hovered_inline_link: nil)
-            @selected_text = nil
-            @reader_session_mutator.clear_selection
+            selection_interaction.clear
             @render_state_writer.clear_rendered_lines
             refresh_annotations
           end
@@ -478,41 +428,11 @@ module Shoko
           # While an overlay owns the screen it consumes every mouse event so
           # nothing bleeds through to text selection.
           def handle_bar_overlay_mouse(event)
-            mode = active_bar_overlay_mode
-            return false unless mode
-
-            if wheel_event?(event)
-              feed_overlay_key(wheel_up?(event) ? OVERLAY_SCROLL_UP_KEY : OVERLAY_SCROLL_DOWN_KEY)
-            elsif motion_event?(event)
-              update_overlay_hover(mode, event)
-            elsif left_press?(event)
-              move_overlay_selection(mode, event)
-            elsif left_release?(event)
-              activate_overlay_click(mode, event)
-            end
-            true
+            bar_overlay_mouse_router.handle(event)
           end
 
           def handle_overlay_click(event)
-            return true if popup_overlay_handled?(event)
-            return true if popup_context_click_handled?(event)
-            return false unless event[:released]
-
-            if annotation_editor_visible?
-              handle_annotation_editor_click(event)
-              return true
-            end
-
-            return true if content_mouse_blocked?
-
-            false
-          end
-
-          def consume_suppressed_popup_release?
-            return false unless @suppress_popup_release_once
-
-            @suppress_popup_release_once = false
-            true
+            selection_interaction.handle_overlay?(event)
           end
 
           def handle_content_mouse_event(event)
@@ -533,140 +453,15 @@ module Shoko
             handle_content_mouse_result(result)
           end
 
-          def handle_annotation_editor_click(event)
-            coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
-            controller = ui_controller
-            result = controller.handle_annotation_editor_overlay_click(coords[:x], coords[:y])
-            controller.handle_annotation_editor_overlay_event(result) if result
-            @mouse_handler.reset
-          ensure
-            draw_screen
-          end
-
-          # The active bar-overlay mode, or nil when the reader is in normal
-          # reading/selection (the annotation editor and the right-click context
-          # menu keep their own existing mouse handling).
-          def active_bar_overlay_mode
-            mode = @reader_state_reader&.mode
-            BAR_OVERLAY_INDEX_FIELDS.key?(mode) ? mode : nil
-          end
-
-          # SGR wheel reports set bit 6; bit 0 is direction (up=0/down=1) and bit 1
-          # marks the horizontal wheel, which we ignore.
-          def wheel_event?(event)
-            button = event[:button].to_i
-            button.allbits?(0x40) && button.nobits?(0x02)
-          end
-
-          def wheel_up?(event)
-            event[:button].to_i.nobits?(0x01)
-          end
-
-          # Pointer-motion report (bit 5), with or without a button held — drives
-          # the hover preview.
-          def motion_event?(event)
-            event[:button].to_i.allbits?(0x20)
-          end
-
-          # A left-button press (low bits 0, no motion/wheel bits, not a release).
-          def left_press?(event)
-            !event[:released] && event[:button].to_i.nobits?(0x63)
-          end
-
-          # A left-button release (low bits 0, not a wheel report).
-          def left_release?(event)
-            event[:released] && event[:button].to_i.nobits?(0x43)
-          end
-
-          # Hover preview: light up the row — or the Paste/Copy button — under the
-          # pointer (or clear it when off them). The hover target is the row index
-          # or the action symbol; only writes/redraws when it actually changes.
-          def update_overlay_hover(mode, event)
-            target = overlay_hit_target_for_event(mode, event)
-            hover = overlay_hover_value(target)
-            return if hover == @reader_state_reader&.overlay_hover_index
-
-            @reader_session_mutator.update_reader(overlay_hover_index: hover)
-            draw_screen
-          end
-
-          def overlay_hover_value(target)
-            return target if target.is_a?(Integer)
-            return target if HOVERABLE_OVERLAY_ACTIONS.include?(target)
-
-            nil
-          end
-
-          # Press moves the real selection cursor to the row under the pointer
-          # (and drops the hover preview, since the row is now selected).
-          def move_overlay_selection(mode, event)
-            target = overlay_hit_target_for_event(mode, event)
-            return unless target.is_a?(Integer)
-
-            @reader_session_mutator.update_reader(
-              BAR_OVERLAY_INDEX_FIELDS.fetch(mode) => target, overlay_hover_index: nil
+          def bar_overlay_mouse_router
+            @bar_overlay_mouse_router ||= Reader::BarOverlayMouseRouter.new(
+              reader_state_reader: @reader_state_reader,
+              reader_session_mutator: @reader_session_mutator,
+              coordinate_service: @coordinate_service,
+              dispatch_keys: ->(keys) { dispatch_input_keys(keys) },
+              dispatch_intent: ->(intent, payload) { input_controller&.dispatch_reader_intent(intent, payload) },
+              draw: -> { draw_screen }
             )
-            draw_screen
-          end
-
-          # Release activates: confirm the row under the pointer (⏎), re-enter a
-          # translator affordance (open/flip the picker, Paste, Copy), close the
-          # translator from its red box, or dismiss the overlay when the release lands
-          # in the book above it (Esc — but never for the translator, which closes
-          # only from its box or Esc).
-          def activate_overlay_click(mode, event)
-            target = overlay_hit_target_for_event(mode, event)
-            return activate_overlay_row(mode, target) if target.is_a?(Integer)
-            return dismiss_overlay if target == :translator_close
-            return dismiss_overlay if target == :outside && mode != :translator
-
-            intent = OVERLAY_CLICK_INTENTS[target]
-            dispatch_overlay_intent(*intent) if intent
-          end
-
-          def activate_overlay_row(mode, index)
-            @reader_session_mutator.update_reader(
-              BAR_OVERLAY_INDEX_FIELDS.fetch(mode) => index, overlay_hover_index: nil
-            )
-            feed_overlay_key(OVERLAY_ACTIVATE_KEY)
-          end
-
-          # Esc through the same path keys take: from the translator's editor face
-          # this closes it outright. The translator no longer dismisses on a click out
-          # in the book — only its red close box (or Esc) closes it — so the book stays
-          # put while you reach for the Paste button or the language tabs.
-          def dismiss_overlay
-            @reader_session_mutator.update_reader(overlay_hover_index: nil)
-            feed_overlay_key(OVERLAY_DISMISS_KEY)
-          end
-
-          # Clicking a translator affordance (the source/target language label, or
-          # the Paste/Copy button) re-enters the use-case layer with that intent —
-          # the mouse equivalent of Tab / a typed action.
-          def dispatch_overlay_intent(intent, payload = nil)
-            @reader_session_mutator.update_reader(overlay_hover_index: nil)
-            input_controller&.dispatch_reader_intent(intent, payload)
-            draw_screen
-          end
-
-          def overlay_hit_target_for_event(mode, event)
-            coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
-            component = bar_overlay_component(mode)
-            return :inside unless component
-
-            component.hit_test(coords[:x], coords[:y])
-          end
-
-          def bar_overlay_component(mode)
-            accessor = BAR_OVERLAY_POPUPS.fetch(mode)
-            @reader_state_reader&.public_send(accessor)
-          end
-
-          # Replay a synthesised key through the same dispatch path real keys take,
-          # then repaint so the result is immediately visible.
-          def feed_overlay_key(key)
-            dispatch_input_keys([key])
-            draw_screen
           end
 
           def consume_inline_link_click(event)
@@ -689,30 +484,17 @@ module Shoko
             inline_link_interaction.sync_hover(event)
           end
 
-          def popup_overlay_handled?(event)
-            return false unless popup_menu_active?
-
-            event[:released] ? handle_popup_release(event) : handle_popup_hover(event)
-            true
-          end
-
-          def handle_popup_release(event)
-            return if consume_suppressed_popup_release?
-
-            handle_popup_click(event)
-          end
-
           def content_mouse_blocked?
-            dictionary_popup_visible? || translator_visible? || in_book_search_popup_visible?
+            selection_interaction.blocked?
           end
 
           def handle_content_mouse_result(result)
             case result[:type]
             when :selection_drag
-              update_state_selection(@mouse_handler.selection_range)
+              selection_interaction.update_selection(@mouse_handler.selection_range)
               refresh_highlighting
             when :selection_end
-              handle_selection_end
+              selection_interaction.finish_selection
               draw_screen
             else
               draw_screen
@@ -744,26 +526,6 @@ module Shoko
             )
           end
 
-          def dictionary_popup_visible?
-            popup_ui_controller&.dictionary_visible? == true
-          end
-
-          def annotation_editor_visible?
-            popup_ui_controller&.annotation_editor_visible? == true
-          end
-
-          def in_book_search_popup_visible?
-            popup_ui_controller&.in_book_search_visible? == true
-          end
-
-          def translator_visible?
-            popup_ui_controller&.translator_visible? == true
-          end
-
-          def popup_menu_active?
-            @reader_state_reader.popup_menu&.visible
-          end
-
           def popup_ui_controller
             controllers&.ui_controller
           end
@@ -776,174 +538,60 @@ module Shoko
           # ===== text selection + right-click context menu =====
 
           def popup_context_click_handled?(event)
-            return false unless Shoko::Shared::Terminal::MouseButton.right_click_press?(event)
-
-            context = popup_context_click_data(event)
-            return false unless context
-
-            popup_menu = open_popup_menu(anchor_position: context[:anchor_position])
-            @suppress_popup_release_once = true if popup_menu
-            !popup_menu.nil?
+            selection_interaction.context_click_handled?(event)
           end
 
           def open_popup_menu(anchor_position: nil)
-            popup_menu = build_popup_menu(anchor_position: anchor_position)
-            return nil unless popup_menu
-
-            @reader_session_mutator.update_reader(popup_menu: popup_menu, popup_menu_selected: 0)
-            return nil unless popup_menu.visible
-
-            activate_popup_menu
-            popup_menu
-          end
-
-          def build_popup_menu(anchor_position: nil)
-            selection = @reader_state_reader.selection
-            return nil unless selection
-
-            rendered = popup_rendered_lines
-            factory = @ui_component_factory
-            return nil unless factory
-
-            factory.enhanced_popup_menu(**popup_menu_args(selection, rendered, anchor_position))
-          end
-
-          def popup_menu_args(selection, rendered, anchor_position)
-            {
-              selection: selection,
-              coordinate_service: @coordinate_service,
-              reader_state_reader: @reader_state_reader,
-              reader_session_mutator: @reader_session_mutator,
-              popup_position_service: @popup_position_service,
-              clipboard_service: clipboard_service,
-              rendered: rendered,
-              dictionary_enabled: dictionary_lookup_available?,
-              anchor_position: anchor_position,
-            }
-          end
-
-          def activate_popup_menu
-            switch_mode(:popup_menu)
-            draw_screen
-          end
-
-          def popup_context_click_data(event)
-            selection = @reader_state_reader.selection
-            rendered = popup_rendered_lines
-            return nil unless selection && rendered
-
-            click_anchor = popup_click_anchor(event, rendered)
-            return nil unless click_anchor && anchor_within_selection?(click_anchor, selection, rendered)
-            return nil unless popup_selected_text(selection)
-
-            { anchor_position: @coordinate_service.mouse_to_terminal(event[:x], event[:y]) }
-          end
-
-          def popup_rendered_lines
-            rendered = @rendered_content_reader&.rendered_lines
-            return nil if rendered.nil? || rendered.empty?
-
-            rendered
-          end
-
-          def popup_click_anchor(event, rendered)
-            @coordinate_service.anchor_from_point({ x: event[:x], y: event[:y] }, rendered, bias: :nearest)
-          end
-
-          def popup_selected_text(selection)
-            text = @selected_text || extract_selected_text(selection)
-            return nil if text.nil? || text.strip.empty?
-
-            text
-          end
-
-          def anchor_within_selection?(anchor, selection, rendered)
-            normalized = @coordinate_service.normalize_selection_range(selection, rendered)
-            return false unless normalized
-
-            start_anchor = Shoko::Core::Models::SelectionAnchor.from(normalized[:start])
-            end_anchor = Shoko::Core::Models::SelectionAnchor.from(normalized[:end])
-            return false unless start_anchor && end_anchor
-
-            (start_anchor <=> anchor).to_i <= 0 && (anchor <=> end_anchor).to_i <= 0
-          end
-
-          def handle_popup_click(event)
-            terminal_coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
-            popup_menu = @reader_state_reader.popup_menu
-            item = popup_menu.handle_click(terminal_coords[:x], terminal_coords[:y])
-
-            if item
-              handle_popup_action(item)
-            else
-              @reader_session_mutator.update_reader(popup_menu: nil)
-              @mouse_handler.reset
-              @reader_session_mutator.clear_selection
-            end
-            draw_screen
-          end
-
-          def handle_popup_hover(event)
-            terminal_coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
-            popup_menu = @reader_state_reader.popup_menu
-            return unless popup_menu
-
-            result = popup_menu.handle_hover(terminal_coords[:x], terminal_coords[:y])
-            draw_screen if result && result[:type] == :selection_change
+            selection_interaction.open_popup(anchor_position: anchor_position)
           end
 
           def dictionary_lookup_available?
-            dict_avail = @dictionary_availability
-            return false unless dict_avail
-            return false unless dict_avail.sqlite3_available?
-
-            backend = @config_reader.dictionary_backend
-            return false if backend.to_s.downcase == 'disabled'
-
-            true
+            selection_interaction.dictionary_available?
           end
 
           def handle_selection_end
-            update_state_selection(@mouse_handler.selection_range)
-            selection = @reader_state_reader.selection
-            return unless selection
-
-            @selected_text = extract_selected_text(selection)
-            return if @selected_text && !@selected_text.strip.empty?
-
-            @mouse_handler.reset
-            @reader_session_mutator.clear_selection
-          end
-
-          def extract_selected_text(range)
-            selection_service = @selection_service
-            content_reader = @rendered_content_reader
-            return nil unless selection_service && content_reader
-
-            selection_service.extract_text(range, content_reader.rendered_lines)
+            selection_interaction.finish_selection
           end
 
           def update_state_selection(mouse_range)
-            anchor_range = anchor_range_from_mouse(mouse_range)
-            if anchor_range
-              @reader_session_mutator.update_reader(selection: anchor_range)
-            else
-              @reader_session_mutator.clear_selection
-            end
+            selection_interaction.update_selection(mouse_range)
           end
 
-          def anchor_range_from_mouse(mouse_range)
-            return nil unless mouse_range
+          def selection_interaction
+            @selection_interaction ||= Reader::SelectionInteraction.new(
+              state: selection_state_dependencies,
+              services: selection_service_dependencies,
+              callbacks: selection_callbacks
+            )
+          end
 
-            rendered = @rendered_content_reader&.rendered_lines
-            return nil if rendered.nil? || rendered.empty?
+          def selection_state_dependencies
+            Reader::SelectionInteraction::StateDependencies.new(
+              reader_state_reader: @reader_state_reader,
+              reader_session_mutator: @reader_session_mutator,
+              rendered_content_reader: @rendered_content_reader,
+              config_reader: @config_reader
+            )
+          end
 
-            start_anchor = @coordinate_service.anchor_from_point(mouse_range[:start], rendered, bias: :leading)
-            end_anchor = @coordinate_service.anchor_from_point(mouse_range[:end], rendered, bias: :trailing)
-            return nil unless start_anchor && end_anchor
+          def selection_service_dependencies
+            Reader::SelectionInteraction::ServiceDependencies.new(
+              coordinate_service: @coordinate_service,
+              selection_service: @selection_service,
+              mouse_handler: @mouse_handler,
+              dictionary_availability: @dictionary_availability,
+              ui_component_factory: @ui_component_factory,
+              popup_position_service: @popup_position_service,
+              clipboard_service: services&.clipboard_service
+            )
+          end
 
-            @coordinate_service.normalize_selection_range(
-              { start: start_anchor.to_h, end: end_anchor.to_h }, rendered
+          def selection_callbacks
+            Reader::SelectionInteraction::Callbacks.new(
+              ui_controller: ->(_request) { popup_ui_controller },
+              draw: -> { draw_screen },
+              switch_mode: ->(mode) { switch_mode(mode) },
+              popup_action: ->(item) { handle_popup_action(item) }
             )
           end
         end

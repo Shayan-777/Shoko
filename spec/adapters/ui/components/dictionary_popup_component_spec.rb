@@ -67,7 +67,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPopupComponent do
         suggestion_index: 0
       )
 
-      down_key = Shoko::Shared::KeyDefinitions::NAVIGATION[:down].first
+      down_key = Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down].first
       select = component.handle_key(down_key)
       expect(select).to eq(type: :setup_select, stage: :prompt_target, index: 1, value: 'fr')
 
@@ -91,7 +91,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPopupComponent do
     it 'closes on the cancel key' do
       component.show_setup(stage: :prompt_target, query: 'Haus', source_lang: 'en', input_value: 'de')
 
-      cancel = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
+      cancel = Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel].first
       expect(component.handle_key(cancel)).to eq(type: :close)
     end
 

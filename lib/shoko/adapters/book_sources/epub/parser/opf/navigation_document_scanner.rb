@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../html_processor'
-require_relative '../rexml_safe_parser'
+require 'shoko/adapters/support/html_processor'
+require 'shoko/adapters/support/rexml_safe_parser'
 require_relative 'element_queries'
 
 module Shoko
@@ -75,7 +75,7 @@ module Shoko
           # run. Exempt from `no_rescue_literal_default` for this reason
           # — see `EXEMPT_OFFENDERS` in the spec.
           def parse_xml(xml)
-            REXMLSafeParser.parse(xml)
+            Shoko::Adapters::Support::REXMLSafeParser.parse(xml)
           rescue REXML::ParseException
             nil
           end
@@ -95,7 +95,7 @@ module Shoko
           end
 
           def decoded_entity(entity)
-            decoded = HTMLProcessor.decode_entities(entity)
+            decoded = Shoko::Adapters::Support::HTMLProcessor.decode_entities(entity)
             decoded == entity ? ' ' : decoded
           end
 

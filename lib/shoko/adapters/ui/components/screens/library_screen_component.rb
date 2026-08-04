@@ -10,7 +10,7 @@ require_relative '../menu_design/view_accents'
 require_relative '../status_bar/palette'
 require_relative '../ui/spinner'
 require_relative '../ui/text_utils'
-require 'shoko/shared/prepagination_status'
+require 'shoko/core/services/prepagination_status'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/terminal/text_sanitizer'
 require 'time'
@@ -61,7 +61,7 @@ module Shoko
             STATUS_GAP = 2 # the space before the re-pagination note
             MIN_TITLE_WIDTH = 16
 
-            Status = Shoko::Shared::PrepaginationStatus
+            Status = Shoko::Core::Services::PrepaginationStatus
             TextMetrics = Shoko::Shared::Terminal::TextMetrics
             Spinner = Shoko::Adapters::Ui::Components::Ui::Spinner
 

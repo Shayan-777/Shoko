@@ -272,7 +272,7 @@ RSpec.describe Shoko::Adapters::BookSources::Epub::XHTMLContentParser do
 
   describe 'with a style resolver' do
     def parse_with_css(css, html)
-      catalog = Shoko::Adapters::BookSources::Css::StyleCatalog.new(stylesheets: { 'style.css' => css })
+      catalog = Shoko::Adapters::Output::Formatting::Css::StyleCatalog.new(stylesheets: { 'style.css' => css })
       raw = %(<html><head><link href="style.css" rel="stylesheet"/></head><body>#{html}</body></html>)
       resolver = catalog.resolver_for(chapter_source_path: 'ch1.xhtml', raw_content: raw)
       described_class.new(raw, style_resolver: resolver).parse

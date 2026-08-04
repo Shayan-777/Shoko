@@ -6,8 +6,8 @@ require_relative '../../requests/cursor_move'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
 require 'shoko/shared/hash_normalizer'
-require 'shoko/shared/text_buffer_edit'
-require 'shoko/shared/language_directory'
+require 'shoko/core/services/text_buffer_edit'
+require 'shoko/core/services/language_directory'
 
 module Shoko
   module Application
@@ -230,7 +230,7 @@ module Shoko
 
             def dropdown_options(kind = current_dropdown_kind)
               languages = Array(current_menu.translator_languages).map { |item| normalize_language(item) }
-              Shoko::Shared::LanguageDirectory.candidates_for(
+              Shoko::Core::Services::LanguageDirectory.candidates_for(
                 languages,
                 side: kind,
                 source_code: current_menu.translator_source_lang,
@@ -255,7 +255,7 @@ module Shoko
               return unless dropdown_mode?
 
               query = current_menu.translator_dropdown_query.to_s
-              next_query, = Shoko::Shared::TextBufferEdit.apply(query, query.length, op)
+              next_query, = Shoko::Core::Services::TextBufferEdit.apply(query, query.length, op)
               update_menu(translator_dropdown_query: next_query, translator_dropdown_selected: 0)
             end
 
@@ -263,7 +263,7 @@ module Shoko
               text = current_menu.translator_input_text.to_s
               cursor = current_menu.translator_input_cursor.to_i.clamp(0, text.length)
               lambda do |edit|
-                next_text, next_cursor = Shoko::Shared::TextBufferEdit.apply(text, cursor, edit)
+                next_text, next_cursor = Shoko::Core::Services::TextBufferEdit.apply(text, cursor, edit)
                 update_menu(translator_edit_payload(next_text, next_cursor))
               end
             end

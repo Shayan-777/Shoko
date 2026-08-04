@@ -3,7 +3,7 @@
 require 'shoko/shared/hash_normalizer'
 require 'fileutils'
 require_relative '../base_adapter'
-require_relative '../../shared/download_source_policy'
+require 'shoko/core/policies/download_source_policy'
 require_relative '../../shared/errors'
 
 module Shoko
@@ -224,9 +224,9 @@ module Shoko
         end
 
         def normalize_source(source)
-          return Shoko::Shared::DownloadSourcePolicy.default_id if source.nil?
+          return Shoko::Core::Policies::DownloadSourcePolicy.default_id if source.nil?
 
-          normalized = Shoko::Shared::DownloadSourcePolicy.normalize(source)
+          normalized = Shoko::Core::Policies::DownloadSourcePolicy.normalize(source)
           raise DownloadError, "Unsupported download source: #{source.inspect}" unless normalized
 
           normalized

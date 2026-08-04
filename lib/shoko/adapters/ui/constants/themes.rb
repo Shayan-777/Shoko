@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/theme_policy'
+require 'shoko/core/policies/theme_policy'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/shared/terminal/color_depth'
 
@@ -178,20 +178,20 @@ module Shoko
           module_function
 
           def available_themes(include_aliases: false)
-            themes = Shoko::Shared::ThemePolicy.canonical_ids
+            themes = Shoko::Core::Policies::ThemePolicy.canonical_ids
             return themes unless include_aliases
 
-            (themes + Shoko::Shared::ThemePolicy.aliases.keys).uniq
+            (themes + Shoko::Core::Policies::ThemePolicy.aliases.keys).uniq
           end
 
           def color_mode_for(theme, fallback: :dark)
-            canonical = Shoko::Shared::ThemePolicy.normalize(theme) || Shoko::Shared::ThemePolicy.default_id
+            canonical = Shoko::Core::Policies::ThemePolicy.normalize(theme) || Shoko::Core::Policies::ThemePolicy.default_id
             fallback_mode = normalize_color_mode(fallback)
             THEME_COLOR_MODES.fetch(canonical, fallback_mode)
           end
 
           def palette_for(theme, truecolor: Shoko::Shared::Terminal::ColorDepth.truecolor?)
-            canonical = Shoko::Shared::ThemePolicy.normalize(theme) || Shoko::Shared::ThemePolicy.default_id
+            canonical = Shoko::Core::Policies::ThemePolicy.normalize(theme) || Shoko::Core::Policies::ThemePolicy.default_id
             return TRUECOLOR_THEMES.fetch(canonical, DEFAULT_PALETTE) if truecolor
 
             THEMES.fetch(canonical, DEFAULT_PALETTE)

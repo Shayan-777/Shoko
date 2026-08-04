@@ -4,7 +4,7 @@ require 'rexml/document'
 
 require 'shoko/core/models/text_segment'
 require 'shoko/shared/text_sanitizer'
-require_relative 'html_processor'
+require 'shoko/adapters/support/html_processor'
 require_relative 'markup_visibility'
 
 module Shoko
@@ -195,7 +195,7 @@ module Shoko
           end
 
           def decode_text(text)
-            decoded = Shoko::Adapters::BookSources::Epub::HTMLProcessor.decode_entities(text)
+            decoded = Shoko::Adapters::Support::HTMLProcessor.decode_entities(text)
             Shoko::Shared::TextSanitizer.sanitize(decoded, preserve_newlines: true, preserve_tabs: true)
           end
 

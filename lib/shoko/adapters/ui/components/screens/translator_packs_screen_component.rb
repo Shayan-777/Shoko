@@ -6,8 +6,7 @@ require_relative 'catalog_list_rendering'
 require_relative '../base_component'
 require 'shoko/shared/terminal/text_sanitizer'
 require 'shoko/application/ports/inbound/menu_catalog'
-require 'shoko/shared/language_directory'
-require 'shoko/adapters/translation/engine_locator'
+require 'shoko/core/services/language_directory'
 require_relative '../menu_design/canvas_frame'
 require_relative '../menu_design/canvas_list'
 require_relative '../menu_design/view_accents'
@@ -203,7 +202,7 @@ module Shoko
             end
 
             def language_name(code)
-              Shoko::Shared::LanguageDirectory.name_for(code)
+              Shoko::Core::Services::LanguageDirectory.name_for(code)
             end
 
             def format_size(bytes)
@@ -303,9 +302,9 @@ module Shoko
             end
 
             def engine_value
-              return 'Ready' if Shoko::Adapters::Translation::EngineLocator.available?
+              return 'Ready' if menu_state_reader&.translation_engine_available == true
 
-              "Not built — #{Shoko::Adapters::Translation::EngineLocator::BUILD_HINT}"
+              "Not built — #{menu_state_reader&.translation_engine_build_hint}"
             end
 
             def refresh_value

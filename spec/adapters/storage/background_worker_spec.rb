@@ -88,6 +88,40 @@ RSpec.describe Shoko::Adapters::Storage::BackgroundWorker do
     end.to raise_error(described_class::WorkerStoppedError, 'worker is shutting down')
   end
 
+  it 'reports a shutdown timeout without losing the live thread handle' do
+    logger = build_recording_logger
+    worker = described_class.new(logger: logger, name: 'test-worker')
+    release = Queue.new
+    started = Queue.new
+    worker.submit do
+      started << true
+      release.pop
+    end
+    started.pop
+
+    expect do
+      worker.shutdown(timeout: 0.01)
+    end.to raise_error(described_class::ShutdownTimeoutError, /did not stop/)
+    expect(worker.instance_variable_get(:@thread)).to be_alive
+
+    release << true
+    expect(worker.shutdown(timeout: 1.0)).to be_nil
+    expect(worker.instance_variable_get(:@thread)).to be_nil
+  ensure
+    release << true if release && release.empty?
+    worker&.shutdown(timeout: 1.0)
+  end
+
+  it 'waits indefinitely when timeout is nil and is idempotent after stopping' do
+    worker = described_class.new(logger: build_recording_logger, name: 'test-worker')
+    completed = Queue.new
+    worker.submit { completed << true }
+
+    expect(worker.shutdown(timeout: nil)).to be_nil
+    expect(completed.pop).to be(true)
+    expect(worker.shutdown(timeout: nil)).to be_nil
+  end
+
   it 'logs job failures and the shutdown exit event' do
     logger = build_recording_logger
     worker = described_class.new(logger: logger, name: 'test-worker')

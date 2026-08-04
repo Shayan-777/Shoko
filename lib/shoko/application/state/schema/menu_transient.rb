@@ -37,6 +37,8 @@ module Shoko
             translator_packs_message
             translator_packs_progress
             translator_packs_pending_remove
+            translation_engine_available
+            translation_engine_build_hint
             rss_feeds
             rss_articles
             rss_open_article
@@ -87,6 +89,8 @@ module Shoko
             translator_packs_message: '',
             translator_packs_progress: 0.0,
             translator_packs_pending_remove: nil,
+            translation_engine_available: false,
+            translation_engine_build_hint: '',
             rss_feeds: [].freeze,
             rss_articles: [].freeze,
             rss_open_article: nil,

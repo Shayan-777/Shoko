@@ -17,23 +17,22 @@ RSpec.describe Shoko::Adapters::Input::Controllers::ReaderController do
 
   describe '#handle_overlay_click' do
     let(:reader) { described_class.allocate }
+    let(:interaction) { instance_double(Shoko::Adapters::Input::Controllers::Reader::SelectionInteraction) }
 
-    it 'handles popup context trigger on mouse press events before release gate' do
+    before { reader.instance_variable_set(:@selection_interaction, interaction) }
+
+    it 'delegates press events to the selection interaction' do
       event = { button: 2, released: false, x: 10, y: 5 }
-      allow(reader).to receive(:popup_menu_active?).and_return(false)
-      expect(reader).to receive(:popup_context_click_handled?).with(event).and_return(true)
+      expect(interaction).to receive(:handle_overlay?).with(event).and_return(true)
 
       expect(reader.send(:handle_overlay_click, event)).to be(true)
     end
 
-    it 'consumes the first release after context popup open' do
+    it 'delegates release events to the selection interaction' do
       event = { button: 2, released: true, x: 10, y: 5 }
-      reader.instance_variable_set(:@suppress_popup_release_once, true)
-      allow(reader).to receive(:popup_menu_active?).and_return(true)
-      expect(reader).not_to receive(:handle_popup_click)
+      expect(interaction).to receive(:handle_overlay?).with(event).and_return(true)
 
       expect(reader.send(:handle_overlay_click, event)).to be(true)
-      expect(reader.instance_variable_get(:@suppress_popup_release_once)).to be(false)
     end
   end
 
@@ -55,8 +54,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::ReaderController do
       reader.instance_variable_set(:@mouse_handler, mouse_handler)
       reader.instance_variable_set(:@reader_session_mutator, reader_session_mutator)
       reader.instance_variable_set(:@inline_link_navigator, navigator)
-      allow(reader).to receive(:dictionary_popup_visible?).and_return(false)
-      allow(reader).to receive(:in_book_search_popup_visible?).and_return(false)
+      reader.instance_variable_set(
+        :@selection_interaction,
+        instance_double(Shoko::Adapters::Input::Controllers::Reader::SelectionInteraction, blocked?: false)
+      )
 
       expect(mouse_handler).not_to receive(:handle_event)
       expect(reader).to receive(:draw_screen).once

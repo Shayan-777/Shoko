@@ -8,7 +8,7 @@ require 'shoko/application/ports/outbound/menu_session_store'
 require 'shoko/application/ports/outbound/menu_transient_store'
 require_relative '../../ports/outbound/state/menu_snapshot'
 require_relative '../../ports/outbound/state/menu_state_partition'
-require 'shoko/shared/download_source_policy'
+require 'shoko/core/policies/download_source_policy'
 require 'shoko/shared/errors'
 require_relative '../../services/async_result_relay'
 require_relative 'menu_state_persistence'
@@ -243,18 +243,18 @@ module Shoko
 
           def current_download_source
             snapshot = @app_config_store.load
-            Shoko::Shared::DownloadSourcePolicy.normalize(snapshot.download_source) ||
-              Shoko::Shared::DownloadSourcePolicy.default_id
+            Shoko::Core::Policies::DownloadSourcePolicy.normalize(snapshot.download_source) ||
+              Shoko::Core::Policies::DownloadSourcePolicy.default_id
           end
 
           def source_for_book(book)
             normalized = normalize_book_payload(book)
             source = normalized[:source]
-            Shoko::Shared::DownloadSourcePolicy.normalize(source) || current_download_source
+            Shoko::Core::Policies::DownloadSourcePolicy.normalize(source) || current_download_source
           end
 
           def download_source_label(source)
-            Shoko::Shared::DownloadSourcePolicy.label_for(source)
+            Shoko::Core::Policies::DownloadSourcePolicy.label_for(source)
           end
 
           def safe_book_title(book)

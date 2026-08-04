@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'shoko/adapters/runtime/inline_execution'
 require_relative 'startup_sequence'
 require 'shoko/application/ports/outbound/async_executor'
 require 'shoko/application/ports/outbound/background_worker_builder'
@@ -45,7 +44,7 @@ module Shoko
               end
 
               @background_worker = builder.build(logger: @logger, name: name)
-              @async_executor = @background_worker if Shoko::Adapters::Runtime::InlineExecution.inline?(@async_executor)
+              @async_executor = @background_worker if @async_executor&.synchronous?
               @background_worker
             end
 
@@ -90,7 +89,7 @@ module Shoko
             def worker_executor?(executor)
               return false unless executor
 
-              executor.is_a?(Shoko::Application::Ports::Outbound::AsyncExecutor) && !Shoko::Adapters::Runtime::InlineExecution.inline?(executor)
+              executor.is_a?(Shoko::Application::Ports::Outbound::AsyncExecutor) && !executor.synchronous?
             end
 
             def log_fatal_external_input(error)

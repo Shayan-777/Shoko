@@ -17,6 +17,7 @@ module Shoko
           @logger = logger
           @queue = Queue.new
           @shutdown = false
+          @shutdown_signal_sent = false
           @mutex = Mutex.new
           @thread = spawn_thread
         end
@@ -33,20 +34,37 @@ module Shoko
         end
 
         def shutdown(timeout: 2.0)
-          thread = nil
-          @mutex.synchronize do
-            return if @shutdown
+          thread = begin_shutdown
+          return unless thread
 
-            @shutdown = true
-            thread = @thread
-            @queue << nil if thread&.alive?
-          end
-          thread&.join(timeout)
-        ensure
-          @thread = nil
+          wait_for_shutdown(thread, timeout)
+          @mutex.synchronize { @thread = nil if @thread.equal?(thread) }
+          nil
         end
 
+        def begin_shutdown
+          @mutex.synchronize do
+            @shutdown = true
+            if @thread&.alive? && !@shutdown_signal_sent
+              @queue << nil
+              @shutdown_signal_sent = true
+            end
+            @thread
+          end
+        end
+        private :begin_shutdown
+
+        def wait_for_shutdown(thread, timeout)
+          joined = thread.join(timeout)
+          return if joined
+
+          raise ShutdownTimeoutError,
+                "worker #{@name.inspect} did not stop within #{timeout.inspect} seconds"
+        end
+        private :wait_for_shutdown
+
         class WorkerStoppedError < StandardError; end
+        class ShutdownTimeoutError < StandardError; end
 
         private
 

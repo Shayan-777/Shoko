@@ -6,7 +6,7 @@ require_relative '../../base_adapter'
 require 'shoko/application/ports/outbound/formatting/display_line'
 require 'shoko/application/ports/outbound/chapter_formatter'
 require 'shoko/application/ports/outbound/runtime_config'
-require 'shoko/adapters/book_sources/css/style_catalog'
+require_relative 'css/style_catalog'
 require 'shoko/shared/hash_normalizer'
 require_relative '../terminal/text_metrics'
 require_relative '../kitty/kitty_graphics'
@@ -245,7 +245,7 @@ module Shoko
 
           def build_style_catalog(document)
             metadata = Shoko::Shared::HashNormalizer.symbolize_keys(document.metadata) || {}
-            Shoko::Adapters::BookSources::Css::StyleCatalog.new(
+            Css::StyleCatalog.new(
               stylesheets: metadata[:stylesheets] || {},
               apply_all_sheets: metadata[:stylesheets_apply_all] || false,
               logger: logger

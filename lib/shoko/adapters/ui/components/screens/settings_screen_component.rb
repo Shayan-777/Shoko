@@ -3,8 +3,8 @@
 require_relative '../base_component'
 require_relative '../rect'
 require 'shoko/application/ports/inbound/menu_catalog'
-require 'shoko/shared/download_source_policy'
-require 'shoko/shared/theme_policy'
+require 'shoko/core/policies/download_source_policy'
+require 'shoko/core/policies/theme_policy'
 require_relative '../menu_design/canvas_frame'
 require_relative '../menu_design/canvas_list'
 require_relative '../menu_design/canvas_well'
@@ -363,7 +363,7 @@ module Shoko
             end
 
             def current_theme_id
-              Shoko::Shared::ThemePolicy.normalize(config_reader&.theme) || Shoko::Shared::ThemePolicy.default_id
+              Shoko::Core::Policies::ThemePolicy.normalize(config_reader&.theme) || Shoko::Core::Policies::ThemePolicy.default_id
             end
 
             def view_mode_value
@@ -387,9 +387,9 @@ module Shoko
             end
 
             def download_source_value
-              source = Shoko::Shared::DownloadSourcePolicy.normalize(config_reader&.download_source) ||
-                       Shoko::Shared::DownloadSourcePolicy.default_id
-              accent_value(Shoko::Shared::DownloadSourcePolicy.label_for(source))
+              source = Shoko::Core::Policies::DownloadSourcePolicy.normalize(config_reader&.download_source) ||
+                       Shoko::Core::Policies::DownloadSourcePolicy.default_id
+              accent_value(Shoko::Core::Policies::DownloadSourcePolicy.label_for(source))
             end
 
             def theme_value

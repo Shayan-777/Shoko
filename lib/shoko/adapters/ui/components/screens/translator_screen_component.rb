@@ -13,7 +13,7 @@ require_relative '../ui/cursor_blink'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/ansi'
-require 'shoko/shared/language_directory'
+require 'shoko/core/services/language_directory'
 
 module Shoko
   module Adapters
@@ -696,7 +696,7 @@ module Shoko
 
             def language_options(kind)
               languages = Array(menu_state_reader&.translator_languages).map { |item| Shoko::Core::Models::TranslationLanguage.normalized_entry(item) }
-              Shoko::Shared::LanguageDirectory.candidates_for(
+              Shoko::Core::Services::LanguageDirectory.candidates_for(
                 languages,
                 side: kind,
                 source_code: selected_language_code(:source),

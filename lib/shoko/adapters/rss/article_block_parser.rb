@@ -2,7 +2,7 @@
 
 require 'shoko/core/models/content_block'
 require 'shoko/core/models/text_segment'
-require_relative '../book_sources/epub/parser/html_processor'
+require 'shoko/adapters/support/html_processor'
 
 module Shoko
   module Adapters
@@ -19,7 +19,6 @@ module Shoko
       class ArticleBlockParser
         ContentBlock = Shoko::Core::Models::ContentBlock
         TextSegment = Shoko::Core::Models::TextSegment
-        HTMLProcessor = Shoko::Adapters::BookSources::Epub::HTMLProcessor
 
         # Inline tags that add a style to the text they wrap.
         INLINE_STYLES = {
@@ -236,7 +235,7 @@ module Shoko
         def handle_text(token)
           return unless @dropped_tags.empty?
 
-          text = HTMLProcessor.decode_entities(token)
+          text = Shoko::Adapters::Support::HTMLProcessor.decode_entities(token)
           @preformatted.positive? ? append_preformatted(text) : append_prose(text)
         end
 

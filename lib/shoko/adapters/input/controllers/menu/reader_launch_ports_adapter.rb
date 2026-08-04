@@ -6,7 +6,7 @@ require 'shoko/application/ports/outbound/menu_progress_presenters'
 require 'shoko/application/ports/outbound/menu_session_store'
 require 'shoko/application/ports/outbound/menu_transient_store'
 require 'shoko/core/models/menu_book'
-require 'shoko/adapters/runtime/session_state/menu_progress_presenter'
+require_relative 'reader_launch_progress_presenter'
 
 module Shoko
   module Adapters
@@ -62,7 +62,7 @@ module Shoko
             end
 
             def build
-              Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter.new(
+              ReaderLaunchProgressPresenter.new(
                 @menu_session_store,
                 @menu_transient_store
               )

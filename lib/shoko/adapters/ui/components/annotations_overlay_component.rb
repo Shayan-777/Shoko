@@ -6,7 +6,7 @@ require_relative 'ui/overlay_layout'
 require_relative 'ui/overlay_sizing'
 require_relative 'annotations_overlay/list_renderer'
 require 'shoko/shared/hash_normalizer'
-require 'shoko/shared/key_definitions'
+require 'shoko/adapters/support/key_definitions'
 
 module Shoko
   module Adapters
@@ -156,19 +156,19 @@ module Shoko
           end
 
           def up_key?(key)
-            Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
+            Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up].include?(key)
           end
 
           def down_key?(key)
-            Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
+            Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down].include?(key)
           end
 
           def confirm_key?(key)
-            Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
+            Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm].include?(key)
           end
 
           def cancel_key?(key)
-            Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
+            Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel].include?(key)
           end
 
           def edit_key?(key)

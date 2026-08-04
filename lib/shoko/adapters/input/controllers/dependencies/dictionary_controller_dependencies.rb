@@ -73,12 +73,16 @@ module Shoko
             end
 
             Bundle = Data.define(:state, :services, :ui, :controllers) do
-              def self.build(**)
+              def self.groups = [StateDependencies, ServiceDependencies, UiDependencies, ControllerDependencies]
+
+              def self.build(**dependencies)
+                allowed = groups.flat_map(&:members).uniq
+                StateDependencies.reject_unknown_dependencies!(dependencies.keys, allowed: allowed, label: 'Bundle')
                 new(
-                  state: StateDependencies.build(**),
-                  services: ServiceDependencies.build(**),
-                  ui: UiDependencies.build(**),
-                  controllers: ControllerDependencies.build(**)
+                  state: StateDependencies.build_from(dependencies),
+                  services: ServiceDependencies.build_from(dependencies),
+                  ui: UiDependencies.build_from(dependencies),
+                  controllers: ControllerDependencies.build_from(dependencies)
                 )
               end
 

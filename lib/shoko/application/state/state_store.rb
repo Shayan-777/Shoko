@@ -2,8 +2,8 @@
 
 require_relative '../../core/services/null_logger'
 require_relative '../../shared/deep_structure'
-require_relative '../../shared/download_source_policy'
-require_relative '../../shared/theme_policy'
+require 'shoko/core/policies/download_source_policy'
+require 'shoko/core/policies/theme_policy'
 require_relative 'schema_registry'
 require_relative 'change_set'
 require_relative 'transition_validator'
@@ -69,8 +69,12 @@ module Shoko
           )
           @state = build_initial_state
           @mutex = Mutex.new
+          @observer_mutex = Mutex.new
+          @observer_condition = ConditionVariable.new
           @observers_by_path = {}
           @observers_all = []
+          @notification_queue = []
+          @notification_drainer = nil
           load_persisted_config
         end
 
@@ -95,8 +99,18 @@ module Shoko
         # Commit updates, then notify observers outside the lock so a
         # subscriber may read the store (or update it again) without deadlock.
         def update(updates)
-          change_set = @mutex.synchronize { commit_update(updates) }
-          notify_observers_for_change_set(change_set) if change_set && !change_set.empty?
+          envelope = nil
+          should_drain = false
+          change_set = @mutex.synchronize do
+            committed = commit_update(updates)
+            envelope, should_drain = enqueue_notification(committed) if committed && !committed.empty?
+            committed
+          end
+          if should_drain
+            drain_notification_queue
+          elsif envelope && !notification_drainer_thread?
+            wait_for_notification(envelope)
+          end
           change_set
         end
 
@@ -112,23 +126,28 @@ module Shoko
         # @param observer [Object] Object implementing state_changed
         # @param paths [Array<Symbol, Array>] State paths to observe
         def add_observer(observer, *paths)
-          if paths.empty?
-            @observers_all << observer unless @observers_all.include?(observer)
-            return
+          @observer_mutex.synchronize do
+            if paths.empty?
+              @observers_all << observer unless @observers_all.include?(observer)
+            else
+              paths.each do |path|
+                list = (@observers_by_path[normalize_path(path)] ||= [])
+                list << observer unless list.include?(observer)
+              end
+            end
           end
-
-          paths.each do |path|
-            list = (@observers_by_path[normalize_path(path)] ||= [])
-            list << observer unless list.include?(observer)
-          end
+          observer
         end
 
         # Remove observer from all paths
         #
         # @param observer [Object] Observer to remove
         def remove_observer(observer)
-          @observers_all.delete(observer)
-          @observers_by_path.each_value { |list| list.delete(observer) }
+          @observer_mutex.synchronize do
+            @observers_all.delete(observer)
+            @observers_by_path.each_value { |list| list.delete(observer) }
+          end
+          observer
         end
 
         # Validate state transition (override in subclasses)
@@ -283,6 +302,68 @@ module Shoko
           save_config if config_missing
         end
 
+        def enqueue_notification(change_set)
+          @observer_mutex.synchronize do
+            envelope = { change_set: change_set, complete: false }
+            @notification_queue << envelope
+            should_drain = @notification_drainer.nil?
+            @notification_drainer = Thread.current if should_drain
+            [envelope, should_drain]
+          end
+        end
+
+        def notification_drainer_thread?
+          @observer_mutex.synchronize { @notification_drainer.equal?(Thread.current) }
+        end
+
+        def wait_for_notification(envelope)
+          @observer_mutex.synchronize do
+            @observer_condition.wait(@observer_mutex) until envelope[:complete]
+          end
+        end
+
+        # One thread drains committed change sets in commit order. Reentrant
+        # updates append to the queue and are delivered after the current
+        # callback set, avoiding deadlock and observer-order inversion.
+        def drain_notification_queue
+          loop do
+            envelope = next_notification
+            return unless envelope
+
+            notify_observers_for_change_set(envelope[:change_set])
+            complete_notification(envelope)
+          end
+        ensure
+          release_notification_drainer_if_empty
+        end
+
+        def next_notification
+          @observer_mutex.synchronize do
+            envelope = @notification_queue.shift
+            unless envelope
+              @notification_drainer = nil
+              @observer_condition.broadcast
+            end
+            envelope
+          end
+        end
+
+        def complete_notification(envelope)
+          @observer_mutex.synchronize do
+            envelope[:complete] = true
+            @observer_condition.broadcast
+          end
+        end
+
+        def release_notification_drainer_if_empty
+          @observer_mutex.synchronize do
+            return unless @notification_drainer.equal?(Thread.current) && @notification_queue.empty?
+
+            @notification_drainer = nil
+            @observer_condition.broadcast
+          end
+        end
+
         def notify_observers_for_change_set(change_set)
           change_set.each do |change|
             notify_observers(normalize_path(change.path), change.old_value, change.new_value)
@@ -292,32 +373,34 @@ module Shoko
         # Each observer hears about a given change at most once, even when it
         # is subscribed to the exact path, a parent path, and globally.
         def notify_observers(path, old_value, new_value)
-          notified = {}.compare_by_identity
-          change = [path, old_value, new_value]
-
-          notify_observer_list(@observers_by_path[path], change, notified)
-          notify_parent_path_observers(change, notified)
-          notify_observer_list(@observers_all, change, notified)
-        end
-
-        # Notify observers watching parent paths (e.g. [:reader] when
-        # [:reader, :mode] changes).
-        def notify_parent_path_observers(change, notified)
-          path = change[0]
-          return if path.length <= 1
-
-          (1...path.length).each do |i|
-            notify_observer_list(@observers_by_path[path[0, i]], change, notified)
+          observer_snapshot(path).each do |observer|
+            safe_notify(observer, path, old_value, new_value)
           end
         end
 
-        def notify_observer_list(observers, change, notified)
-          path, old_value, new_value = change
-          Array(observers).each do |observer|
-            next if notified.key?(observer)
+        def observer_snapshot(path)
+          @observer_mutex.synchronize do
+            observers = []
+            observers.concat(@observers_by_path.fetch(path, []))
+            parent_paths(path).each { |parent| observers.concat(@observers_by_path.fetch(parent, [])) }
+            observers.concat(@observers_all)
+            identity_uniq(observers)
+          end
+        end
 
-            safe_notify(observer, path, old_value, new_value)
-            notified[observer] = true
+        def parent_paths(path)
+          return [] if path.length <= 1
+
+          (1...path.length).map { |index| path[0, index] }
+        end
+
+        def identity_uniq(observers)
+          seen = {}.compare_by_identity
+          observers.each_with_object([]) do |observer, unique|
+            next if seen.key?(observer)
+
+            seen[observer] = true
+            unique << observer
           end
         end
 
@@ -386,11 +469,13 @@ module Shoko
         end
 
         def validate_download_source(value)
-          raise ArgumentError, 'invalid download_source' unless Shoko::Shared::DownloadSourcePolicy.valid?(value)
+          return if Shoko::Core::Policies::DownloadSourcePolicy.valid?(value)
+
+          raise ArgumentError, 'invalid download_source'
         end
 
         def validate_theme(value)
-          raise ArgumentError, "invalid theme: #{value.inspect}" unless Shoko::Shared::ThemePolicy.valid?(value)
+          raise ArgumentError, "invalid theme: #{value.inspect}" unless Shoko::Core::Policies::ThemePolicy.valid?(value)
         end
 
         def validate_kitty_images(value)

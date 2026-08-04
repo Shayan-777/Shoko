@@ -225,7 +225,7 @@ RSpec.describe 'State conventions' do
     end
 
     it 'requires the UI-owned component registry for live UI objects' do
-      registry_path = File.join(lib_root, 'adapters', 'ui', 'state', 'reader_component_registry.rb')
+      registry_path = File.join(lib_root, 'adapters', 'support', 'reader_component_registry.rb')
 
       expect(File.exist?(registry_path)).to be(true),
                                             "Reader UI component registry must exist for live UI objects: #{registry_path}"

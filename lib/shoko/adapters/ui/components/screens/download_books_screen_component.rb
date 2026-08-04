@@ -2,7 +2,7 @@
 
 require 'shoko/shared/hash_normalizer'
 require_relative '../base_component'
-require 'shoko/shared/download_source_policy'
+require 'shoko/core/policies/download_source_policy'
 require 'shoko/shared/terminal/text_sanitizer'
 require_relative '../menu_design/canvas_frame'
 require_relative '../menu_design/canvas_list'
@@ -129,7 +129,7 @@ module Shoko
                 row: row,
                 left: [
                   [active ? '● ' : '○ ', active ? accent : Palette::FAINT_FG],
-                  [Shoko::Shared::DownloadSourcePolicy.label_for(source),
+                  [Shoko::Core::Policies::DownloadSourcePolicy.label_for(source),
                    selected ? Palette::LANDING_TITLE_FG : Palette::LANDING_TEXT_FG],
                 ],
                 selected: selected,
@@ -256,8 +256,8 @@ module Shoko
             end
 
             def current_source
-              Shoko::Shared::DownloadSourcePolicy.normalize(config_reader&.download_source) ||
-                Shoko::Shared::DownloadSourcePolicy.default_id
+              Shoko::Core::Policies::DownloadSourcePolicy.normalize(config_reader&.download_source) ||
+                Shoko::Core::Policies::DownloadSourcePolicy.default_id
             end
 
             def current_source_index
@@ -265,11 +265,11 @@ module Shoko
             end
 
             def current_source_label
-              Shoko::Shared::DownloadSourcePolicy.label_for(current_source)
+              Shoko::Core::Policies::DownloadSourcePolicy.label_for(current_source)
             end
 
             def source_options
-              Shoko::Shared::DownloadSourcePolicy.canonical_ids
+              Shoko::Core::Policies::DownloadSourcePolicy.canonical_ids
             end
 
             def result_count_text

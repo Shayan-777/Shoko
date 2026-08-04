@@ -3,7 +3,7 @@
 require_relative '../../requests/selection_delta'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
-require 'shoko/shared/prepagination_status'
+require 'shoko/core/services/prepagination_status'
 
 module Shoko
   module Application
@@ -92,13 +92,13 @@ module Shoko
 
             def library_selection_openable?
               menu = current_menu
-              status = Shoko::Shared::PrepaginationStatus.for_path(
+              status = Shoko::Core::Services::PrepaginationStatus.for_path(
                 @menu_browse_inspection.selected_library_source_path,
                 paths: menu.prepaginate_paths,
                 done: menu.prepaginate_done,
                 active: menu.prepaginate_active == true
               )
-              Shoko::Shared::PrepaginationStatus.openable?(status)
+              Shoko::Core::Services::PrepaginationStatus.openable?(status)
             end
 
             def toggle_library_details

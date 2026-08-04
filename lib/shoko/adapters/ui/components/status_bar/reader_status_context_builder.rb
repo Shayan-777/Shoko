@@ -3,7 +3,7 @@
 require_relative 'status_context'
 require_relative 'format_badge'
 require_relative '../ui/spinner'
-require 'shoko/shared/language_directory'
+require 'shoko/core/services/language_directory'
 
 module Shoko
   module Adapters
@@ -242,7 +242,7 @@ module Shoko
               text = code.to_s.strip
               return '?' if text.empty?
 
-              text.casecmp?(Shoko::Shared::LanguageDirectory::AUTO) ? 'auto' : text.downcase
+              text.casecmp?(Shoko::Core::Services::LanguageDirectory::AUTO) ? 'auto' : text.downcase
             end
 
             def translator_status
@@ -264,7 +264,7 @@ module Shoko
             end
 
             def translator_picker_count
-              Shoko::Shared::LanguageDirectory.candidates_for(
+              Shoko::Core::Services::LanguageDirectory.candidates_for(
                 state_value(:translator_languages),
                 side: state_value(:translator_picker_side),
                 query: state_value(:translator_picker_query).to_s

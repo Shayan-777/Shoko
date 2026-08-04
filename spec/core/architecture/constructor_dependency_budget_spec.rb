@@ -197,6 +197,9 @@ RSpec.describe 'Constructor dependency budget' do
       # TOC, translator, notes) plus annotation/input/reader.
       Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::ControllerDependencies => 9,
       Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::ServiceDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Reader::SelectionInteraction::StateDependencies => 4,
+      Shoko::Adapters::Input::Controllers::Reader::SelectionInteraction::ServiceDependencies => 7,
+      Shoko::Adapters::Input::Controllers::Reader::SelectionInteraction::Callbacks => 4,
     }
 
     offenders = budgets.filter_map do |klass, max_fields|
@@ -277,6 +280,14 @@ RSpec.describe 'Constructor dependency budget' do
       'Reading::RenderDependencies' => {
         actual: flatten_leaves.call(Shoko::Adapters::Ui::Components::Reading::RenderDependencies),
         pinned: 16,
+      },
+      'Reader::SelectionInteraction' => {
+        actual: [
+          Shoko::Adapters::Input::Controllers::Reader::SelectionInteraction::StateDependencies,
+          Shoko::Adapters::Input::Controllers::Reader::SelectionInteraction::ServiceDependencies,
+          Shoko::Adapters::Input::Controllers::Reader::SelectionInteraction::Callbacks,
+        ].sum(&flatten_leaves),
+        pinned: 15,
       },
     }
 

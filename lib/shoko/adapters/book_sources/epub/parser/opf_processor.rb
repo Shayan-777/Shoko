@@ -3,7 +3,7 @@
 require 'cgi'
 require 'rexml/document'
 
-require_relative 'rexml_safe_parser'
+require 'shoko/adapters/support/rexml_safe_parser'
 require_relative 'opf/entry_reader'
 require_relative 'opf/metadata_extractor'
 require_relative 'opf/navigation_extractor'
@@ -26,7 +26,7 @@ module Shoko
             @entry_reader = OPFEntryReader.new(opf_path, zip: zip)
             content = read_opf_content
             @opf = instrument('opf.parse') do
-              REXMLSafeParser.parse(content)
+              Shoko::Adapters::Support::REXMLSafeParser.parse(content)
             end
             @toc_entries = []
             @navigation_extractor = OPFNavigationExtractor.new(opf: @opf, entry_reader: @entry_reader)

@@ -5,8 +5,8 @@ require 'rexml/document'
 require 'rexml/parsers/pullparser'
 
 require 'shoko/core/models/content_block'
-require_relative 'rexml_safe_parser'
-require_relative 'html_processor'
+require 'shoko/adapters/support/rexml_safe_parser'
+require 'shoko/adapters/support/html_processor'
 require_relative 'markup_visibility'
 require_relative 'xhtml_segment_builder'
 require_relative 'xhtml_block_builder'
@@ -118,7 +118,7 @@ module Shoko
             # Preserve whitespace-only text nodes so inline element boundaries
             # don't accidentally collapse words (e.g., <em>foo</em>\n<em>bar</em>).
             # We normalize whitespace later in `normalize_text`.
-            REXMLSafeParser.parse(sanitized)
+            Shoko::Adapters::Support::REXMLSafeParser.parse(sanitized)
           end
 
           def sanitize_for_xml(text)
@@ -140,7 +140,7 @@ module Shoko
           def sanitize_entity(match, name)
             return match if XML_ENTITY_NAMES.include?(name)
 
-            decoded = Shoko::Adapters::BookSources::Epub::HTMLProcessor.decode_entities(match)
+            decoded = Shoko::Adapters::Support::HTMLProcessor.decode_entities(match)
             decoded == match ? "&amp;#{name};" : decoded
           end
 
@@ -167,7 +167,7 @@ module Shoko
           end
 
           def fallback_blocks
-            text = Shoko::Adapters::BookSources::Epub::HTMLProcessor.html_to_text(@html)
+            text = Shoko::Adapters::Support::HTMLProcessor.html_to_text(@html)
             return [] if text.to_s.strip.empty?
 
             paragraphs = text.split(/\n{2,}/).map(&:strip).reject(&:empty?)

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/dictionary_language_setting'
+require 'shoko/core/policies/dictionary_language_setting'
 
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/errors'
@@ -719,7 +719,7 @@ module Shoko
 
             def source_setup_candidate_codes
               configured_source = @config_reader.dictionary_source_lang
-              configured_source = nil if Shoko::Shared::DictionaryLanguageSetting.auto?(configured_source)
+              configured_source = nil if Shoko::Core::Policies::DictionaryLanguageSetting.auto?(configured_source)
               normalize_code_list(
                 [
                   dictionary_book_metadata_language,
@@ -777,12 +777,14 @@ module Shoko
 
             def dictionary_configured_source_value
               source_setting = @config_reader.dictionary_source_lang
-              Shoko::Shared::DictionaryLanguageSetting.auto?(source_setting) ? dictionary_book_language : source_setting
+              return dictionary_book_language if Shoko::Core::Policies::DictionaryLanguageSetting.auto?(source_setting)
+
+              source_setting
             end
 
             def dictionary_configured_target_value
               target_setting = @config_reader.dictionary_target_lang
-              Shoko::Shared::DictionaryLanguageSetting.auto?(target_setting) ? nil : target_setting
+              Shoko::Core::Policies::DictionaryLanguageSetting.auto?(target_setting) ? nil : target_setting
             end
 
             def exact_dictionary_pair(source, target, pairs)

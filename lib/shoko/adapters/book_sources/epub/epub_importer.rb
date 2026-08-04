@@ -4,8 +4,8 @@ require 'rexml/document'
 require 'shoko/shared/errors'
 require 'shoko/shared/text_sanitizer'
 require_relative '../archive/zip_reader'
-require 'shoko/adapters/book_sources/epub/parser/html_processor'
-require 'shoko/adapters/book_sources/epub/parser/rexml_safe_parser'
+require 'shoko/adapters/support/html_processor'
+require 'shoko/adapters/support/rexml_safe_parser'
 require 'shoko/adapters/book_sources/epub/parser/opf_processor'
 require 'shoko/adapters/book_sources/epub/parser/xml_text_normalizer'
 require 'shoko/core/models/book_data'
@@ -166,7 +166,7 @@ module Shoko
             hinted = hinted_title.to_s.strip
             return hinted unless hinted.empty?
 
-            Adapters::BookSources::Epub::HTMLProcessor.extract_title(raw_content) || "Chapter #{number}"
+            Shoko::Adapters::Support::HTMLProcessor.extract_title(raw_content) || "Chapter #{number}"
           end
 
           def fallback_title(path)
@@ -202,7 +202,7 @@ module Shoko
           end
 
           def rootfile_candidate(zip, container_xml)
-            doc = Adapters::BookSources::Epub::REXMLSafeParser.parse(container_xml)
+            doc = Shoko::Adapters::Support::REXMLSafeParser.parse(container_xml)
             elems = doc.elements
             rootfile = elems['//rootfile'] || elems['//container:rootfile']
             candidate = rootfile&.attributes&.[]('full-path')

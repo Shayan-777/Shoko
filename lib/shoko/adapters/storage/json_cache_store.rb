@@ -7,7 +7,7 @@ require 'securerandom'
 
 require_relative 'atomic_file_writer'
 require_relative 'cache_paths'
-require_relative '../../shared/source_fingerprint'
+require 'shoko/adapters/storage/source_fingerprint'
 require 'shoko/shared/hash_normalizer'
 
 module Shoko
@@ -331,7 +331,7 @@ module Shoko
             'source_path' => source_path,
             'source_mtime' => source_mtime&.to_f,
             'source_size_bytes' => safe_file_size(source_path),
-            'source_fingerprint' => Shoko::Shared::SourceFingerprint.compute(source_path),
+            'source_fingerprint' => Shoko::Adapters::Storage::SourceFingerprint.compute(source_path),
             'generated_at' => generated_at&.to_f,
             'created_at' => now,
             'updated_at' => now,

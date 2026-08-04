@@ -4,7 +4,7 @@ require_relative '../base_component'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/text_sanitizer'
 require_relative '../ui/cursor_blink'
-require 'shoko/shared/annotation_list_input'
+require 'shoko/core/services/annotation_list_input'
 require_relative '../ui/annotation_markup'
 require_relative '../ui/text_utils'
 require_relative '../menu_design/canvas_frame'
@@ -92,7 +92,7 @@ module Shoko
 
             def handle_enter
               update_annotation_edit_from do |text, cursor|
-                Shoko::Shared::AnnotationListInput.insert_newline(text, cursor)
+                Shoko::Core::Services::AnnotationListInput.insert_newline(text, cursor)
               end
               record_cursor_activity
             end
@@ -101,7 +101,7 @@ module Shoko
               return unless Shoko::Shared::Terminal::TextSanitizer.printable_char?(char.to_s)
 
               update_annotation_edit_from do |text, cursor|
-                Shoko::Shared::AnnotationListInput.insert_character(text, cursor, char)
+                Shoko::Core::Services::AnnotationListInput.insert_character(text, cursor, char)
               end
               record_cursor_activity
             end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../html_processor'
+require 'shoko/adapters/support/html_processor'
 
 module Shoko
   module Adapters
@@ -36,7 +36,7 @@ module Shoko
             raw_title = @elements['*[local-name()="title"]']&.text
             return unless raw_title
 
-            title = HTMLProcessor.clean_html(raw_title.to_s).strip
+            title = Shoko::Adapters::Support::HTMLProcessor.clean_html(raw_title.to_s).strip
             @metadata[:title] = title unless title.empty?
           end
 
@@ -50,7 +50,7 @@ module Shoko
           def extract_authors
             authors = []
             @elements.each('*[local-name()="creator"]') do |creator|
-              txt = HTMLProcessor.clean_html(creator.text.to_s).strip
+              txt = Shoko::Adapters::Support::HTMLProcessor.clean_html(creator.text.to_s).strip
               authors << txt unless txt.empty?
             end
             @metadata[:authors] = authors unless authors.empty?

@@ -8,7 +8,7 @@ require 'shoko/application/ports/outbound/reader_pagination_store'
 require 'shoko/application/ports/outbound/state/reader_session_snapshot'
 require 'shoko/application/ports/outbound/state/reader_view_snapshot'
 require 'shoko/application/ports/outbound/state/reader_pagination_snapshot'
-require_relative '../../ui/state/reader_component_registry'
+require_relative '../../support/reader_component_registry'
 
 module Shoko
   module Adapters
@@ -16,13 +16,13 @@ module Shoko
       module SessionState
         # Adapter-local write surface that splits a single `update_reader(...)`
         # call across the session, view-state, and pagination stores plus the
-        # UI component registry. Live UI component references (popup menus,
-        # overlays, panels) are routed to `Adapters::Ui::State::ReaderComponentRegistry`
+        # adapter component registry. Live UI component references (popup menus,
+        # overlays, panels) are routed to `Adapters::Support::ReaderComponentRegistry`
         # so the application state hash never carries object references.
         class ReaderSessionMutator
           include Shoko::Application::Ports::Outbound::ReaderViewMutator
 
-          LIVE_UI_FIELDS = Shoko::Adapters::Ui::State::ReaderComponentRegistry::LIVE_FIELDS
+          LIVE_UI_FIELDS = Shoko::Adapters::Support::ReaderComponentRegistry::LIVE_FIELDS
           VIEW_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot::FIELDS.freeze
           PAGINATION_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot::FIELDS.freeze
 
@@ -171,8 +171,8 @@ module Shoko
                                      Shoko::Application::Ports::Outbound::ReaderPaginationStore,
                                      'reader_pagination_store must implement Application::Ports::Outbound::ReaderPaginationStore')
             validate_optional_store!(component_registry,
-                                     Shoko::Adapters::Ui::State::ReaderComponentRegistry,
-                                     'component_registry must be an Adapters::Ui::State::ReaderComponentRegistry')
+                                     Shoko::Adapters::Support::ReaderComponentRegistry,
+                                     'component_registry must be an Adapters::Support::ReaderComponentRegistry')
           end
 
           def validate_required_store!(value, contract, message)

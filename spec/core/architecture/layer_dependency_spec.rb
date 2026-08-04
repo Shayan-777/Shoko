@@ -87,7 +87,7 @@ RSpec.describe 'Layer dependency boundaries' do
 
         dependency_targets(file_path).each do |target_rel|
           next unless layer_for(target_rel)
-          next if layer_policy.allows_path?(source_layer, target_rel)
+          next if layer_policy.allows_path?(source_layer, target_rel, source_path: source_rel)
 
           offenders << "#{source_rel} -> #{target_rel}"
         end
@@ -226,7 +226,7 @@ RSpec.describe 'Layer dependency boundaries' do
       files.each do |path|
         source = relative(path)
         require_relative_targets_with_lines(path).each do |line, target|
-          next if layer_policy.allows_path?('adapters', target)
+          next if layer_policy.allows_path?('adapters', target, source_path: source)
 
           offenders << "#{source}:#{line} -> #{target}"
         end
@@ -261,61 +261,27 @@ RSpec.describe 'Layer dependency boundaries' do
                            "Adapters reference application constants directly:\n#{offenders.sort.join("\n")}"
     end
 
-    it 'forbids adapters/input from referencing adapters/ui constants directly' do
-      files = Dir[File.join(lib_root, 'adapters', 'input', '**', '*.rb')]
-      pattern = /\b(?:Shoko::)?Adapters::Ui::/
+    it 'forbids every adapter family from referencing sibling adapter constants' do
+      files = Dir[File.join(lib_root, 'adapters', '**', '*.rb')]
+      pattern = /\b(?:Shoko::)?Adapters::([A-Z][A-Za-z0-9]*)::/
       offenders = []
 
       files.each do |path|
         source = relative(path)
         non_comment_lines(path).each do |line_no, line|
-          next unless line.match?(pattern)
+          line.scan(pattern).flatten.each do |namespace|
+            target_family = namespace.gsub(/([a-z\d])([A-Z])/, '\\1_\\2').downcase
+            target = "adapters/#{target_family}/"
+            next if layer_policy.allows_adapter_dependency?(source, target)
 
-          offenders << "#{source}:#{line_no}: #{line.strip}"
+            offenders << "#{source}:#{line_no}: #{line.strip}"
+          end
         end
       end
 
       expect(offenders).to be_empty,
-                           "Input adapters reference UI adapter constants directly:\n#{offenders.sort.join("\n")}"
-    end
-
-    it 'forbids ui adapter dependencies on sibling adapters' do
-      files = Dir[File.join(lib_root, 'adapters', 'ui', '**', '*.rb')]
-      require_pattern = %r{require_relative\s+['"][^'"]*adapters/(?:output|input|storage|runtime|monitoring|book_sources)/}
-      const_pattern = /\b(?:Shoko::)?Adapters::(?:Output|Input|Storage|Runtime|Monitoring|BookSources)::/
-
-      offenders = files.select do |path|
-        content = non_comment_content(path)
-        content.match?(require_pattern) || content.match?(const_pattern)
-      end
-
-      expect(offenders).to be_empty,
-                           "UI adapters depend on sibling adapters instead of shared/core boundaries:\n#{offenders.join("\n")}"
-    end
-
-    it 'forbids output adapters from referencing runtime adapter namespace directly' do
-      output_root = File.join(lib_root, 'adapters', 'output')
-      offenders = Dir[File.join(output_root, '**', '*.rb')].filter_map do |path|
-        next unless File.read(path).match?(/\bAdapters::Runtime::/)
-
-        relative(path)
-      end
-
-      expect(offenders).to eq([]),
-                           "Output adapters must depend on outbound ports/shared abstractions, not Adapters::Runtime:\n#{offenders.join("\n")}"
-    end
-
-    it 'forbids storage adapters from referencing book-source or output adapters' do
-      storage_root = File.join(lib_root, 'adapters', 'storage')
-      offenders = Dir[File.join(storage_root, '**', '*.rb')].filter_map do |path|
-        content = File.read(path)
-        next unless content.match?(%r{\bAdapters::(?:BookSources|Output)::|adapters/(?:book_sources|output)/})
-
-        relative(path)
-      end
-
-      expect(offenders).to eq([]),
-                           "Storage adapters must not call sibling adapters:\n#{offenders.join("\n")}"
+                           "Adapter families reference sibling adapter constants instead of ports, core/shared " \
+                           "values, or adapters/support:\n#{offenders.uniq.sort.join("\n")}"
     end
 
     it 'forbids non-UI runtime files from using UI theme normalization helpers' do
@@ -339,7 +305,6 @@ RSpec.describe 'Layer dependency boundaries' do
     # but must not derive application semantics from the filesystem.
     SHARED_IO_EXEMPT_FILES = [
       'shared/optional_dependency.rb',                  # gem-load probing
-      'shared/source_fingerprint.rb',                   # SHA over an input path
       'shared/terminal/kitty_unicode_placeholders.rb',  # bundled codepoint table
       'shared/unicode_display_width.rb',                # bundled width table
     ].freeze

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/text_buffer_edit'
+require 'shoko/core/services/text_buffer_edit'
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_access'
 require 'shoko/shared/text_sanitizer'
@@ -30,7 +30,7 @@ module Shoko
         # persistence through the annotation service, and jumping/deleting through
         # the state controller.
         class NotesLookupController
-          TextBufferEdit = Shoko::Shared::TextBufferEdit
+          TextBufferEdit = Shoko::Core::Services::TextBufferEdit
 
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
           include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess

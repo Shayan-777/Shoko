@@ -15,9 +15,9 @@ module Shoko
           yield
         end
 
-        def shutdown(_timeout = nil)
-          nil
-        end
+        def synchronous? = true
+
+        def shutdown(timeout: nil) = nil # rubocop:disable Lint/UnusedMethodArgument
       end
     end
   end

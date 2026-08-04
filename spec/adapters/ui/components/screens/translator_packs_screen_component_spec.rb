@@ -15,7 +15,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorPacksScreenCo
       mode: :translator_packs,
       translator_packs_status: :done,
       translator_packs_message: '',
-      translator_packs_progress: 0.0
+      translator_packs_progress: 0.0,
+      translation_engine_available: engine_available,
+      translation_engine_build_hint: 'make -C ext/shoko_translate'
     )
   end
   let(:packs_results) do
@@ -26,6 +28,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorPacksScreenCo
   end
 
   subject(:component) { described_class.new(menu_state_reader: menu_state_reader, config_reader: config_reader) }
+
+  let(:engine_available) { false }
 
   before do
     allow(config_reader).to receive(:translator_backend).and_return(:local)
@@ -44,13 +48,15 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorPacksScreenCo
   end
 
   describe '#engine_value' do
-    it 'shows ready when the engine binary is available' do
-      allow(Shoko::Adapters::Translation::EngineLocator).to receive(:available?).and_return(true)
-      expect(component.send(:engine_value)).to eq('Ready')
+    context 'when the engine binary is available' do
+      let(:engine_available) { true }
+
+      it 'shows ready' do
+        expect(component.send(:engine_value)).to eq('Ready')
+      end
     end
 
     it 'shows the build hint when the engine is missing' do
-      allow(Shoko::Adapters::Translation::EngineLocator).to receive(:available?).and_return(false)
       expect(component.send(:engine_value)).to include('make -C ext/shoko_translate')
     end
   end

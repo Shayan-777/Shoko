@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../shared/key_definitions'
+require 'shoko/adapters/support/key_definitions'
 require_relative '../../shared/text_sanitizer'
 require_relative '../../application/use_cases/requests/text_input'
 require_relative '../../application/use_cases/requests/edit_op'
@@ -151,17 +151,17 @@ module Shoko
         private
 
         def annotation_overlay_result_for(ctrl, key)
-          if Shoko::Shared::KeyDefinitions::Helpers.up_key?(key)
+          if Shoko::Adapters::Support::KeyDefinitions::Helpers.up_key?(key)
             ctrl.annotations_up
-          elsif Shoko::Shared::KeyDefinitions::Helpers.down_key?(key)
+          elsif Shoko::Adapters::Support::KeyDefinitions::Helpers.down_key?(key)
             ctrl.annotations_down
-          elsif Shoko::Shared::KeyDefinitions::Helpers.confirm_key?(key)
+          elsif Shoko::Adapters::Support::KeyDefinitions::Helpers.confirm_key?(key)
             ctrl.annotations_open
           elsif %w[e E].include?(key)
             ctrl.annotations_edit
           elsif key == 'd'
             ctrl.annotations_delete
-          elsif Shoko::Shared::KeyDefinitions::Helpers.cancel_key?(key)
+          elsif Shoko::Adapters::Support::KeyDefinitions::Helpers.cancel_key?(key)
             ctrl.annotations_cancel
           end
         end
@@ -254,15 +254,15 @@ module Shoko
         def register_popup_menu_bindings
           bindings = {}
           bind_intent!(bindings,
-                       Shoko::Shared::KeyDefinitions::NAVIGATION[:up],
+                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up],
                        :popup_move_up,
                        payload: selection_delta(-1))
           bind_intent!(bindings,
-                       Shoko::Shared::KeyDefinitions::NAVIGATION[:down],
+                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down],
                        :popup_move_down,
                        payload: selection_delta(1))
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :popup_confirm)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :popup_cancel)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm], :popup_confirm)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel], :popup_cancel)
           @dispatcher.register_mode(:popup_menu, bindings)
         end
 
@@ -281,7 +281,7 @@ module Shoko
 
         def bind_annotation_editor_controls(bindings)
           bind_intent!(bindings, ["\e"], :annotation_editor_cancel)
-          save_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:save] || []
+          save_keys = Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:save] || []
           bind_intent!(bindings, save_keys, :annotation_editor_save)
           bind_intent!(
             bindings,
@@ -289,12 +289,13 @@ module Shoko
             :annotation_editor_spellcheck
           )
           bind_intent!(bindings, ["\x7F", "\b"], :edit_annotation_text, payload: edit_op(:backspace))
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :annotation_editor_confirm)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm],
+                       :annotation_editor_confirm)
         end
 
         def bind_annotation_editor_movements(bindings)
           %i[left right up down].each do |direction|
-            filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[direction]).each do |key|
+            filter_arrow_keys(Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[direction]).each do |key|
               bindings[key] = IntentBinding.new(:move_annotation_cursor, payload: cursor_move(direction))
             end
           end
@@ -313,41 +314,41 @@ module Shoko
         end
 
         def bind_dictionary_controls(bindings)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_dictionary)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel], :close_dictionary)
           bind_intent!(bindings, ['q'], :close_dictionary)
           bind_intent!(bindings, ['f'], :dictionary_toggle_fuzzy)
           bind_intent!(bindings, ["\t"], :dictionary_cycle_result)
           bind_intent!(bindings, ['S'], :dictionary_swap_languages)
           bind_intent!(bindings, ['L'], :dictionary_cycle_pair)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :dictionary_confirm)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_reader_dictionary_query,
-                       payload: edit_op(:backspace))
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm], :dictionary_confirm)
+          backspace_keys = Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:backspace]
+          bind_intent!(bindings, backspace_keys, :edit_reader_dictionary_query, payload: edit_op(:backspace))
         end
 
         def bind_dictionary_navigation(bindings)
           bind_intent!(bindings,
-                       Shoko::Shared::KeyDefinitions::NAVIGATION[:up],
+                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up],
                        :dictionary_move_up,
                        payload: selection_delta(-1))
           bind_intent!(bindings,
-                       Shoko::Shared::KeyDefinitions::NAVIGATION[:down],
+                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down],
                        :dictionary_move_down,
                        payload: selection_delta(1))
         end
 
         def register_in_book_search_bindings
           bindings = {}
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_in_book_search)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel], :close_in_book_search)
           bind_intent!(bindings,
-                       Shoko::Shared::KeyDefinitions::NAVIGATION[:up],
+                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up],
                        :search_move_up,
                        payload: selection_delta(-1))
           bind_intent!(bindings,
-                       Shoko::Shared::KeyDefinitions::NAVIGATION[:down],
+                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down],
                        :search_move_down,
                        payload: selection_delta(1))
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :search_confirm)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_in_book_search,
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm], :search_confirm)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:backspace], :edit_in_book_search,
                        payload: edit_op(:backspace))
           bindings[:__default__] = edit_op_text_binding(:edit_in_book_search)
           @dispatcher.register_mode(:in_book_search, bindings)
@@ -359,17 +360,17 @@ module Shoko
         # into the filter. Mirrors the annotation editor's arrow-only movement.
         def register_toc_bindings
           bindings = {}
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_toc)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel], :close_toc)
           bind_intent!(bindings,
-                       filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[:up]),
+                       filter_arrow_keys(Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up]),
                        :toc_move_up,
                        payload: selection_delta(-1))
           bind_intent!(bindings,
-                       filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[:down]),
+                       filter_arrow_keys(Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down]),
                        :toc_move_down,
                        payload: selection_delta(1))
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :toc_confirm)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_toc_filter,
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm], :toc_confirm)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:backspace], :edit_toc_filter,
                        payload: edit_op(:backspace))
           bindings[:__default__] = edit_op_text_binding(:edit_toc_filter)
           @dispatcher.register_mode(:toc, bindings)
@@ -385,14 +386,14 @@ module Shoko
         # swaps the pair, and Delete forward-deletes.
         def register_translator_bindings
           bindings = {}
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_translator)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel], :close_translator)
           bind_translator_caret_keys(bindings)
           bind_intent!(bindings, ["\t"], :translator_cycle_picker)
           bind_intent!(bindings, ["\e[Z"], :translator_swap_languages)
           bind_intent!(bindings, TRANSLATOR_SHIFT_ENTER_KEYS, :edit_translator, payload: edit_op(:newline))
           bind_intent!(bindings, TRANSLATOR_SUBMIT_KEYS, :translator_submit)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :translator_confirm)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_translator,
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm], :translator_confirm)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:backspace], :edit_translator,
                        payload: edit_op(:backspace))
           bind_intent!(bindings, TRANSLATOR_DELETE_KEYS, :edit_translator, payload: edit_op(:delete))
           bindings[:__default__] = edit_op_text_binding(:edit_translator)
@@ -401,7 +402,7 @@ module Shoko
 
         def bind_translator_caret_keys(bindings)
           %i[left right up down].each do |direction|
-            keys = filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[direction])
+            keys = filter_arrow_keys(Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[direction])
             bind_intent!(bindings, keys, :translator_cursor_move, payload: cursor_move(direction))
           end
           bind_intent!(bindings, TRANSLATOR_HOME_KEYS, :translator_cursor_move, payload: cursor_move(:home))
@@ -414,20 +415,20 @@ module Shoko
         # deletes it, Esc closes.
         def register_notes_bindings
           bindings = {}
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_notes)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel], :close_notes)
           bind_intent!(bindings,
-                       Shoko::Shared::KeyDefinitions::NAVIGATION[:up],
+                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up],
                        :notes_move_up,
                        payload: selection_delta(-1))
           bind_intent!(bindings,
-                       Shoko::Shared::KeyDefinitions::NAVIGATION[:down],
+                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down],
                        :notes_move_down,
                        payload: selection_delta(1))
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :notes_confirm)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm], :notes_confirm)
           bind_intent!(bindings, %w[e E], :notes_edit)
           bind_intent!(bindings, %w[n N], :notes_new)
           bind_intent!(bindings, ['d'], :notes_delete)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:delete], :notes_delete)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:delete], :notes_delete)
           @dispatcher.register_mode(:notes, bindings)
         end
 
@@ -438,11 +439,11 @@ module Shoko
         # Shift/Alt+Enter inserts a newline; Backspace/Delete edit; Esc backs out.
         def register_notes_compose_bindings
           bindings = {}
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_notes)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel], :close_notes)
           bind_notes_compose_caret_keys(bindings)
           bind_intent!(bindings, NOTES_NEWLINE_KEYS, :edit_note, payload: edit_op(:newline))
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :notes_confirm)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_note,
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm], :notes_confirm)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:backspace], :edit_note,
                        payload: edit_op(:backspace))
           bind_intent!(bindings, TRANSLATOR_DELETE_KEYS, :edit_note, payload: edit_op(:delete))
           bindings[:__default__] = edit_op_text_binding(:edit_note)
@@ -451,7 +452,7 @@ module Shoko
 
         def bind_notes_compose_caret_keys(bindings)
           %i[left right].each do |direction|
-            keys = filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[direction])
+            keys = filter_arrow_keys(Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[direction])
             bind_intent!(bindings, keys, :note_cursor_move, payload: cursor_move(direction))
           end
           bind_intent!(bindings, TRANSLATOR_HOME_KEYS, :note_cursor_move, payload: cursor_move(:home))
@@ -466,8 +467,8 @@ module Shoko
         end
 
         def read_mode_local_bindings
-          reader = Shoko::Shared::KeyDefinitions::READER
-          actions = Shoko::Shared::KeyDefinitions::ACTIONS
+          reader = Shoko::Adapters::Support::KeyDefinitions::READER
+          actions = Shoko::Adapters::Support::KeyDefinitions::ACTIONS
           bindings = {}
           bind_reader_display_controls(bindings, reader)
           bind_reader_overlay_controls(bindings, reader)
@@ -501,13 +502,13 @@ module Shoko
         end
 
         def reader_navigation_bindings
-          reader = Shoko::Shared::KeyDefinitions::READER
+          reader = Shoko::Adapters::Support::KeyDefinitions::READER
           bindings = {}
           bind_static_reader_navigation!(bindings, reader)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:down], :scroll_down)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:up], :scroll_up)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :next_page)
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:space], :next_page)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down], :scroll_down)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up], :scroll_up)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm], :next_page)
+          bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:space], :next_page)
           bindings
         end
 

@@ -149,7 +149,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
 
   describe '#handle_key' do
     it 'supports save and cancel shortcuts' do
-      cancel_key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
+      cancel_key = Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel].first
 
       expect(component.handle_key("\x13")).to eq(type: :save, note: '')
       expect(component.handle_key(cancel_key)).to eq(type: :cancel)
@@ -292,7 +292,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
     end
 
     it 'dismisses spell suggestions on the first escape and cancels on the second' do
-      cancel_key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
+      cancel_key = Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel].first
       component_with_note.show_spell_suggestions(component_with_note.spellcheck_target, ['ambiguous'])
 
       expect(component_with_note.handle_key(cancel_key)).to be_nil

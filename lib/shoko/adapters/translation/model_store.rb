@@ -3,7 +3,6 @@
 require 'json'
 require 'fileutils'
 require 'tmpdir'
-require_relative '../storage/config_paths'
 require_relative '../../shared/errors'
 
 module Shoko
@@ -19,8 +18,10 @@ module Shoko
 
         InstalledPack = Data.define(:from, :to, :dir, :model_path, :vocab_path, :version)
 
-        def initialize(root: nil, on_change: nil, logger: nil)
-          @root = root || Storage::ConfigPaths.config_path('translator', 'models')
+        def initialize(root:, on_change: nil, logger: nil)
+          raise ArgumentError, 'root is required' if root.to_s.empty?
+
+          @root = root
           @on_change = on_change
           @logger = logger
         end

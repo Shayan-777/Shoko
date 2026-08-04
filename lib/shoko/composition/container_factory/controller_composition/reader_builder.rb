@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'shoko/adapters/runtime/inline_execution'
 require 'shoko/application/pending_jump_handler'
 require 'shoko/application/ports/outbound/background_worker_builder'
 require 'shoko/application/services/pagination/pagination_coordinator'
@@ -260,7 +259,7 @@ module Shoko
           def prefer_worker_executor(async_executor:, worker:)
             return async_executor unless worker
             return worker if async_executor.nil?
-            return worker if Shoko::Adapters::Runtime::InlineExecution.inline?(async_executor)
+            return worker if async_executor&.synchronous?
 
             async_executor
           end

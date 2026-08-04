@@ -70,7 +70,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
   let(:app_config_store) do
     Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter.new(state_store)
   end
-  let(:component_registry) { Shoko::Adapters::Ui::State::ReaderComponentRegistry.new }
+  let(:component_registry) { Shoko::Adapters::Support::ReaderComponentRegistry.new }
 
   subject(:mutator) do
     described_class.new(

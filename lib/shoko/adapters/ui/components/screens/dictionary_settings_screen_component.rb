@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/dictionary_language_setting'
+require 'shoko/core/policies/dictionary_language_setting'
 
 require_relative 'catalog_list_rendering'
 require_relative '../base_component'
@@ -317,7 +317,7 @@ module Shoko
             def pair_value
               source = config_reader&.dictionary_source_lang
               target = config_reader&.dictionary_target_lang
-              src = Shoko::Shared::DictionaryLanguageSetting.auto?(source) ? 'Auto' : source.to_s.upcase
+              src = Shoko::Core::Policies::DictionaryLanguageSetting.auto?(source) ? 'Auto' : source.to_s.upcase
               tgt = target.to_s.strip.empty? ? 'EN' : target.to_s.upcase
               "#{src} → #{tgt}"
             end

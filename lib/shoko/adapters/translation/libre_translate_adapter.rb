@@ -7,7 +7,7 @@ require_relative '../base_adapter'
 require_relative '../../core/models/translation_language'
 require_relative '../../core/models/translation_result'
 require_relative '../../application/ports/outbound/translation_repository'
-require_relative '../../shared/language_directory'
+require 'shoko/core/services/language_directory'
 
 module Shoko
   module Adapters
@@ -32,8 +32,8 @@ module Shoko
           targets = languages.map(&:code)
           [
             Shoko::Core::Models::TranslationLanguage.new(
-              code: Shoko::Shared::LanguageDirectory::AUTO,
-              name: Shoko::Shared::LanguageDirectory::AUTO_NAME,
+              code: Shoko::Core::Services::LanguageDirectory::AUTO,
+              name: Shoko::Core::Services::LanguageDirectory::AUTO_NAME,
               targets: targets
             ),
             *languages,

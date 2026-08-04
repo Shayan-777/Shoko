@@ -2,7 +2,7 @@
 
 require_relative '../../use_cases/support/menu_session_access'
 require_relative '../../services/async_result_relay'
-require 'shoko/shared/language_directory'
+require 'shoko/core/services/language_directory'
 
 module Shoko
   module Application
@@ -182,7 +182,7 @@ module Shoko
           end
 
           def normalized_pair_payload(languages)
-            source_options = Shoko::Shared::LanguageDirectory.candidates_for(
+            source_options = Shoko::Core::Services::LanguageDirectory.candidates_for(
               languages, side: :source, source_code: nil, query: ''
             )
             return {} if source_options.empty?
@@ -198,7 +198,7 @@ module Shoko
           end
 
           def normalized_target_code(languages, source)
-            targets = Shoko::Shared::LanguageDirectory.candidates_for(
+            targets = Shoko::Core::Services::LanguageDirectory.candidates_for(
               languages, side: :target, source_code: source, query: ''
             )
             current = current_menu.translator_target_lang.to_s

@@ -3,7 +3,7 @@
 require_relative 'path_resolution'
 require 'cgi'
 
-require_relative '../html_processor'
+require 'shoko/adapters/support/html_processor'
 require_relative 'navigation_document_index'
 
 module Shoko
@@ -19,7 +19,7 @@ module Shoko
           def initialize(entry_reader:, source_path:)
             @entry_reader = entry_reader
             @source_path = source_path
-            @text_cleaner = HTMLProcessor
+            @text_cleaner = Shoko::Adapters::Support::HTMLProcessor
             @document_index = OPFNavigationDocumentIndex.new(entry_reader: entry_reader, cleaner: self)
           end
 

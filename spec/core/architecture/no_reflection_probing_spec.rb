@@ -57,7 +57,6 @@ RSpec.describe 'No reflection probing' do
       adapters/ui/components/ui/backdrop_cell_map.rb
       adapters/ui/sessions/dictionary_ui_session_adapter.rb
       shared/lazy_proxy.rb
-      shared/language_directory.rb
     ].map { |rel| File.join(lib_root, rel) }
 
     scoped_roots = [File.join(lib_root, 'adapters'), File.join(lib_root, 'shared')]

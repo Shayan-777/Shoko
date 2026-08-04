@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../shared/hash_normalizer'
-require_relative '../../shared/language_directory'
+require 'shoko/core/services/language_directory'
 
 module Shoko
   module Core
@@ -20,8 +20,8 @@ module Shoko
             from = item[:from].to_s
             to = item[:to].to_s
             pair = "#{from}-#{to}".downcase
-            names = "#{Shoko::Shared::LanguageDirectory.name_for(from)} " \
-                    "#{Shoko::Shared::LanguageDirectory.name_for(to)}".downcase
+            names = "#{Shoko::Core::Services::LanguageDirectory.name_for(from)} " \
+                    "#{Shoko::Core::Services::LanguageDirectory.name_for(to)}".downcase
             pair.include?(needle) || names.include?(needle)
           end
         end

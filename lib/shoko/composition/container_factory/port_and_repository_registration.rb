@@ -48,7 +48,7 @@ require_relative '../../application/state/schema/menu_transient'
 require_relative '../../application/state/schema/config'
 require_relative '../../application/state/schema/ui_globals'
 require_relative '../../adapters/runtime/session_state/app_config_store_adapter'
-require_relative '../../adapters/ui/state/reader_component_registry'
+require_relative '../../adapters/support/reader_component_registry'
 require_relative '../../adapters/runtime/session_state/reader_session_store_adapter'
 require_relative '../../adapters/runtime/session_state/reader_view_state_store_adapter'
 require_relative '../../adapters/runtime/session_state/reader_pagination_store_adapter'
@@ -244,12 +244,7 @@ module Shoko
 
         def register_translation_ports(container)
           container.register_singleton(:translation_model_store) do |c|
-            Shoko::Adapters::Translation::ModelStore.new(
-              on_change: lambda do |from, to|
-                c.resolve(:translation_engine_client).unload("#{from}-#{to}")
-              end,
-              logger: c.resolve(:logger)
-            )
+            build_translation_model_store(c)
           end
           container.register_singleton(:translation_engine_client) do |c|
             Shoko::Adapters::Translation::EngineClient.new(logger: c.resolve(:logger))
@@ -258,6 +253,16 @@ module Shoko
             Shoko::Adapters::Translation::ModelCatalogService.new(logger: c.resolve(:logger))
           end
           register_translation_repository(container)
+        end
+
+        def build_translation_model_store(container)
+          Shoko::Adapters::Translation::ModelStore.new(
+            root: File.join(container.resolve(:config_storage).config_dir, 'translator', 'models'),
+            on_change: lambda do |from, to|
+              container.resolve(:translation_engine_client).unload("#{from}-#{to}")
+            end,
+            logger: container.resolve(:logger)
+          )
         end
 
         def register_translation_repository(container)
@@ -435,8 +440,16 @@ module Shoko
               logger: c.resolve(:logger)
             )
             seed_schema_reset_notice(store, reset_result)
+            seed_translation_engine_status(store)
             store
           end
+        end
+
+        def seed_translation_engine_status(store)
+          store.update(
+            %i[menu translation_engine_available] => Shoko::Adapters::Translation::EngineLocator.available?,
+            %i[menu translation_engine_build_hint] => Shoko::Adapters::Translation::EngineLocator::BUILD_HINT
+          )
         end
 
         def run_schema_reset_guard(container)
@@ -475,7 +488,7 @@ module Shoko
             Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter.new(c.resolve(:global_state))
           end
           container.register_singleton(:reader_component_registry) do |_c|
-            Shoko::Adapters::Ui::State::ReaderComponentRegistry.new
+            Shoko::Adapters::Support::ReaderComponentRegistry.new
           end
           container.register_factory(:reader_session_store) do |c|
             Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter.new(c.resolve(:global_state))

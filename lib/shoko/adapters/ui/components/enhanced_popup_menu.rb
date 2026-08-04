@@ -5,7 +5,7 @@ require_relative 'ui/backdrop_cell_map'
 require_relative 'base_component'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/core/models/selection_anchor'
-require 'shoko/shared/key_definitions'
+require 'shoko/adapters/support/key_definitions'
 
 module Shoko
   module Adapters
@@ -55,15 +55,15 @@ module Shoko
           def handle_key(key)
             return nil unless @visible
 
-            if Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
+            if Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up].include?(key)
               move_selection(-1)
               { type: :selection_change }
-            elsif Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
+            elsif Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down].include?(key)
               move_selection(1)
               { type: :selection_change }
-            elsif Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
+            elsif Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm].include?(key)
               execute_selected_action
-            elsif Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
+            elsif Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel].include?(key)
               { type: :cancel }
             end
           end

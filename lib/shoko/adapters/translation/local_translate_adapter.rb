@@ -4,7 +4,7 @@ require_relative '../base_adapter'
 require_relative '../../core/models/translation_language'
 require_relative '../../core/models/translation_result'
 require_relative '../../application/ports/outbound/translation_repository'
-require_relative '../../shared/language_directory'
+require 'shoko/core/services/language_directory'
 require_relative 'engine_client'
 require_relative 'model_store'
 require_relative 'sentence_splitter'
@@ -20,7 +20,7 @@ module Shoko
         include Shoko::Application::Ports::Outbound::TranslationRepository
 
         PIVOT_LANG = 'en'
-        AUTO = Shoko::Shared::LanguageDirectory::AUTO
+        AUTO = Shoko::Core::Services::LanguageDirectory::AUTO
 
         def initialize(engine_client:, model_store:, logger: nil)
           super(logger: logger)
@@ -105,7 +105,7 @@ module Shoko
         def build_language(code, targets)
           Shoko::Core::Models::TranslationLanguage.new(
             code: code,
-            name: Shoko::Shared::LanguageDirectory.name_for(code),
+            name: Shoko::Core::Services::LanguageDirectory.name_for(code),
             targets: targets
           )
         end

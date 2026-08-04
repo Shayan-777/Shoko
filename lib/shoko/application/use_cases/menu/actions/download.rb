@@ -5,7 +5,7 @@ require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
-require 'shoko/shared/download_source_policy'
+require 'shoko/core/policies/download_source_policy'
 require_relative '../../support/text_editing'
 
 module Shoko
@@ -271,8 +271,8 @@ module Shoko
             end
 
             def current_download_source
-              Shoko::Shared::DownloadSourcePolicy.normalize(config_snapshot.download_source) ||
-                Shoko::Shared::DownloadSourcePolicy.default_id
+              Shoko::Core::Policies::DownloadSourcePolicy.normalize(config_snapshot.download_source) ||
+                Shoko::Core::Policies::DownloadSourcePolicy.default_id
             end
 
             def config_snapshot
@@ -280,11 +280,11 @@ module Shoko
             end
 
             def source_options
-              Shoko::Shared::DownloadSourcePolicy.canonical_ids
+              Shoko::Core::Policies::DownloadSourcePolicy.canonical_ids
             end
 
             def download_source_label(source)
-              Shoko::Shared::DownloadSourcePolicy.label_for(source)
+              Shoko::Core::Policies::DownloadSourcePolicy.label_for(source)
             end
           end
         end

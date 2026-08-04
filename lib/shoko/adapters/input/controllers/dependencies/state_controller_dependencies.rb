@@ -70,11 +70,15 @@ module Shoko
             end
 
             Bundle = Data.define(:session, :document, :services) do
-              def self.build(**)
+              def self.groups = [SessionDependencies, DocumentDependencies, ServiceDependencies]
+
+              def self.build(**dependencies)
+                allowed = groups.flat_map(&:members).uniq
+                SessionDependencies.reject_unknown_dependencies!(dependencies.keys, allowed: allowed, label: 'Bundle')
                 new(
-                  session: SessionDependencies.build(**),
-                  document: DocumentDependencies.build(**),
-                  services: ServiceDependencies.build(**)
+                  session: SessionDependencies.build_from(dependencies),
+                  document: DocumentDependencies.build_from(dependencies),
+                  services: ServiceDependencies.build_from(dependencies)
                 )
               end
 

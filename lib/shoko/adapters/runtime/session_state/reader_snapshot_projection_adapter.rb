@@ -4,7 +4,7 @@ require 'shoko/application/ports/outbound/state/reader_snapshot'
 require 'shoko/application/ports/outbound/state/reader_session_snapshot'
 require 'shoko/application/ports/outbound/state/reader_view_snapshot'
 require 'shoko/application/ports/outbound/state/reader_pagination_snapshot'
-require_relative '../../ui/state/reader_component_registry'
+require_relative '../../support/reader_component_registry'
 
 module Shoko
   module Adapters
@@ -13,9 +13,9 @@ module Shoko
         # Read-only composite reader state adapter that merges session, view, and
         # pagination projections for consumers that still expect the broad
         # ReaderSnapshot surface. Live UI component refs flow through the
-        # `Adapters::Ui::State::ReaderComponentRegistry` rather than the snapshot.
+        # adapter-shared `ReaderComponentRegistry` rather than the snapshot.
         class ReaderSnapshotProjectionAdapter
-          LIVE_UI_FIELDS = Shoko::Adapters::Ui::State::ReaderComponentRegistry::LIVE_FIELDS
+          LIVE_UI_FIELDS = Shoko::Adapters::Support::ReaderComponentRegistry::LIVE_FIELDS
 
           Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot::FIELDS.each do |field|
             define_method(field) { @reader_session_store.load.to_h.fetch(field) }

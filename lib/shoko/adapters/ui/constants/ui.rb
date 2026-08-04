@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/terminal/ansi'
-require 'shoko/shared/ui_constraints'
+require 'shoko/adapters/ui/ui_constraints'
 
 module Shoko
   module Adapters
@@ -10,8 +10,8 @@ module Shoko
         # Centralized UI color and style definitions
         module Ui
           # Dimensions
-          MIN_WIDTH = Shoko::Shared::UiConstraints::MIN_TERMINAL_WIDTH
-          MIN_HEIGHT = Shoko::Shared::UiConstraints::MIN_TERMINAL_HEIGHT
+          MIN_WIDTH = Shoko::Adapters::Ui::UiConstraints::MIN_TERMINAL_WIDTH
+          MIN_HEIGHT = Shoko::Adapters::Ui::UiConstraints::MIN_TERMINAL_HEIGHT
 
           # Base Colors
           COLOR_TEXT_PRIMARY = Shoko::Shared::Terminal::Ansi::DEFAULT_FG

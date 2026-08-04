@@ -53,7 +53,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionA
         loading_progress: 0.75,
       }
     )
-    component_registry = Shoko::Adapters::Ui::State::ReaderComponentRegistry.new
+    component_registry = Shoko::Adapters::Support::ReaderComponentRegistry.new
     popup_menu = Object.new
     component_registry.write(popup_menu: popup_menu)
 

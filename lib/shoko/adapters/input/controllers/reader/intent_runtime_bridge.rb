@@ -10,7 +10,7 @@ require 'shoko/application/ports/outbound/reader_search_control'
 require 'shoko/application/ports/outbound/reader_toc_control'
 require 'shoko/application/ports/outbound/reader_translator_control'
 require 'shoko/application/ports/outbound/reader_notes_control'
-require 'shoko/shared/key_definitions'
+require 'shoko/adapters/support/key_definitions'
 
 module Shoko
   module Adapters
@@ -104,19 +104,19 @@ module Shoko
 
             def move_popup_selection(delta:)
               key = if delta.negative?
-                      Shoko::Shared::KeyDefinitions::NAVIGATION[:up].first
+                      Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up].first
                     else
-                      Shoko::Shared::KeyDefinitions::NAVIGATION[:down].first
+                      Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down].first
                     end
               controller.handle_popup_navigation(key)
             end
 
             def confirm_popup
-              controller.handle_popup_action_key(Shoko::Shared::KeyDefinitions::ACTIONS[:confirm].first)
+              controller.handle_popup_action_key(Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm].first)
             end
 
             def cancel_popup
-              controller.handle_popup_cancel(Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first)
+              controller.handle_popup_cancel(Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel].first)
             end
 
             def show_annotations_overlay

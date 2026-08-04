@@ -41,7 +41,7 @@ RSpec.describe 'Translator end-to-end flow' do
   let(:reader_view_state_store) { Shoko::Adapters::Runtime::SessionState::ReaderViewStateStoreAdapter.new(state_store) }
   let(:reader_pagination_store) { Shoko::Adapters::Runtime::SessionState::ReaderPaginationStoreAdapter.new(state_store) }
   let(:app_config_store) { Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter.new(state_store) }
-  let(:component_registry) { Shoko::Adapters::Ui::State::ReaderComponentRegistry.new }
+  let(:component_registry) { Shoko::Adapters::Support::ReaderComponentRegistry.new }
   let(:reader_state_reader) do
     Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter.new(
       state: state_store, reader_session_store: reader_session_store,

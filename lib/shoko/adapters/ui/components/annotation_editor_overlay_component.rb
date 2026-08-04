@@ -7,12 +7,12 @@ require_relative 'ui/backdrop_overlay'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/overlay_sizing'
 require_relative 'ui/annotation_markup'
-require 'shoko/shared/annotation_list_input'
+require 'shoko/core/services/annotation_list_input'
 require_relative 'ui/cursor_blink'
 require_relative 'ui/text_utils'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/terminal/ansi'
-require 'shoko/shared/key_definitions'
+require 'shoko/adapters/support/key_definitions'
 require 'shoko/shared/terminal/text_sanitizer'
 require_relative '../constants/component_palettes'
 require_relative 'ui/list_windowing'
@@ -174,7 +174,7 @@ module Shoko
               return nil
             end
 
-            updated_note, updated_cursor = Shoko::Shared::AnnotationListInput.insert_newline(note, cursor_pos)
+            updated_note, updated_cursor = Shoko::Core::Services::AnnotationListInput.insert_newline(note, cursor_pos)
             write_note(updated_note, updated_cursor)
           end
 
@@ -182,7 +182,8 @@ module Shoko
             return unless printable?(char)
 
             dismiss_spell_suggestions
-            updated_note, updated_cursor = Shoko::Shared::AnnotationListInput.insert_character(note, cursor_pos, char)
+            updated_note, updated_cursor = Shoko::Core::Services::AnnotationListInput.insert_character(note,
+                                                                                                       cursor_pos, char)
             write_note(updated_note, updated_cursor)
           end
 
@@ -888,7 +889,7 @@ module Shoko
           end
 
           def cancel_key?(key)
-            Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
+            Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel].include?(key)
           end
 
           def printable?(key)

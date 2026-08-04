@@ -9,7 +9,7 @@ require_relative '../atomic_file_writer'
 require_relative '../cache_paths'
 require 'shoko/shared/errors'
 require 'shoko/shared/hash_normalizer'
-require 'shoko/shared/display_metadata_fingerprint'
+require 'shoko/core/services/display_metadata_fingerprint'
 
 module Shoko
   module Adapters
@@ -17,7 +17,7 @@ module Shoko
       module Repositories
         # JSON-backed cache for lightweight display metadata used by Browse Library.
         class DisplayMetadataCacheRepository
-          DisplayMetadataFingerprint = Shoko::Shared::DisplayMetadataFingerprint
+          DisplayMetadataFingerprint = Shoko::Core::Services::DisplayMetadataFingerprint
 
           include Shoko::Application::Ports::Outbound::DisplayMetadataCache
 

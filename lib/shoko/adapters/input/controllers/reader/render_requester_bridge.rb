@@ -18,10 +18,11 @@ module Shoko
               @controller = controller
             end
 
-            # The port carries the reason for requesters' own logging; posting
-            # the flag has no failure mode worth recording here.
-            def request_render(reason:) # rubocop:disable Lint/UnusedMethodArgument
+            def request_render(reason:)
               @controller.request_render
+            rescue StandardError => e
+              raise Shoko::Application::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
+                    "render request #{reason.inspect} failed: #{e.message}"
             end
           end
         end

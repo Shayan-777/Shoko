@@ -34,12 +34,12 @@ Three consequences:
 ## I. Layers (current baseline)
 
 ```
-core  →  (nothing)              domain models, domain services, domain events. Pure.
-application → core              ports (inbound/outbound), use cases, services, workflows, state.
-adapters → application*, core   all I/O: UI, input, storage, book sources, output, runtime.
-                                * only application's PUBLISHED SURFACE — see below
-composition → everything        the ONLY place that names concrete classes and wires them.
-shared → (nothing app-specific) tiny cross-cutting utilities.
+shared → (nothing)               context-free values and deterministic utilities.
+core → shared                    domain models, domain services, domain events. Pure.
+application → core, shared       ports (inbound/outbound), use cases, services, workflows, state.
+adapters → application*, core,   all I/O: UI, input, storage, book sources, output, runtime.
+           shared                * only application's PUBLISHED SURFACE — see below
+composition → everything         the ONLY place that names concrete classes and wires them.
 ```
 
 **The dependency rule:** an inner layer must never depend on an outer one.
@@ -52,6 +52,22 @@ shared → (nothing app-specific) tiny cross-cutting utilities.
   state are closed to them. This narrower permission — not a blanket layer edge —
   is `LayerPolicy::PATH_EXCEPTIONS`, which every enforcement site consumes.
 - Only `composition` may name concrete adapter classes.
+
+Adapter subtrees are **families, not one mutually visible layer**. `input`,
+`ui`, `runtime`, `storage`, `book_sources`, `rss`, `translation`, and `output`
+may use their own family plus `adapters/base_adapter.rb` and
+`adapters/support/`; they may not require or name a sibling family. A workflow
+that combines two adapters is composition. `adapters/support/` is the narrow
+home for edge mechanisms genuinely reused by adapter families (for example,
+safe XML parsing and HTML-to-text conversion). It may not depend back on a
+concrete family.
+
+`shared/` is narrower still. A shared unit must make sense without Shoko's
+workflows, ports, adapter technologies, or mutable runtime graph. It contains
+context-free value policies and deterministic utilities. Reuse alone does not
+make something shared: filesystem/environment discovery, protocol parsing,
+render components, persistence, and external-format handling stay at an edge
+(or in `adapters/support/` when multiple edges truly share the mechanism).
 
 The static matrix enforces paths and constant references, but semantic
 dependencies must also be reviewed. Duck typing can remove an outer constant
@@ -232,7 +248,44 @@ Every resilient boundary:
 
 ---
 
+## IX. Concurrency and wiring contracts
+
+- Worker-thread render requests only post a coalesced signal and wake input;
+  only the UI thread draws. Posting state and relay registration are
+  synchronized, and adapter failures are translated to `RenderRequestError`.
+- `AsyncExecutor#shutdown(timeout:)` stops accepting work before signaling the
+  queue, drains already accepted work, and returns only after the execution
+  thread has stopped. A timeout is explicit failure, never silent detachment;
+  the live thread remains owned so shutdown can be retried.
+- State commits and observer registration are thread-safe. Notifications run
+  outside the state lock, in commit order, once per observer/change. Reentrant
+  updates queue behind the current callback set; one observer failure remains
+  isolated. A non-notification thread's `update` does not return until its
+  notification has been delivered.
+- Typed dependency builders accept exactly their declared keyword surface.
+  Grouped builders may project a wider, already validated union into child
+  records, but no builder may silently discard an unknown wiring key.
+
+---
+
 ## Amendments
+
+- **2026-08-04 — Reader state ownership, adapter-family boundaries, and
+  concurrent lifecycle contracts are made explicit.** `ReaderController` no
+  longer owns selection/context-menu state, overlay routing, or the render
+  mailbox: those axes are independently tested collaborators, reducing the
+  session coordinator from roughly 960 to roughly 600 lines. This supersedes
+  the 2026-07-26 conclusion that the then-merged mouse/controller shape was
+  cohesive merely because splitting by inheritance had been worse. Adapter
+  isolation now applies uniformly to every sibling family rather than a few
+  named pairs; shared edge mechanisms moved to `adapters/support/`, while
+  translation-engine status crosses into UI as state seeded by composition.
+  Product policies formerly parked in `shared/` moved inward to `core`, while
+  key mappings, file fingerprints, and UI constraints moved to their owning
+  adapter surfaces; `shared/` is no longer a semantic dumping ground.
+  Render posting, executor shutdown, and state-observer ordering now have
+  executable concurrency contracts. Dependency builders reject unknown keys
+  instead of slicing away wiring mistakes.
 
 - **2026-08-04 — Conformance stops being an oracle; decomposition becomes
   evidence-based.** The opening policy no longer declares compliant files

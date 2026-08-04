@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'time'
-require 'shoko/shared/display_metadata_fingerprint'
+require 'shoko/core/services/display_metadata_fingerprint'
 
 require_relative '../../application/ports/outbound/background_worker_builder'
 require_relative '../../application/ports/outbound/display_metadata_cache'
@@ -17,7 +17,7 @@ module Shoko
       # Facade providing catalog data (cached books, scan status, metadata) to higher layers.
       # Wraps the infrastructure scanner/metadata helpers so presentation never touches them directly.
       class CatalogService
-        DisplayMetadataFingerprint = Shoko::Shared::DisplayMetadataFingerprint
+        DisplayMetadataFingerprint = Shoko::Core::Services::DisplayMetadataFingerprint
 
         DISPLAY_METADATA_KEYS = %i[title author authors author_str year language].freeze
         ERROR_METADATA = Object.new.freeze

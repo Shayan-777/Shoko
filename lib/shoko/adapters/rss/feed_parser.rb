@@ -5,8 +5,8 @@ require 'time'
 require_relative '../../shared/text_sanitizer'
 require_relative 'article_block_parser'
 require_relative '../../shared/errors'
-require_relative '../book_sources/epub/parser/html_processor'
-require_relative '../book_sources/epub/parser/rexml_safe_parser'
+require 'shoko/adapters/support/html_processor'
+require 'shoko/adapters/support/rexml_safe_parser'
 
 module Shoko
   module Adapters
@@ -19,7 +19,7 @@ module Shoko
           safe_xml = Shoko::Shared::TextSanitizer.sanitize_xml_source(xml.to_s,
                                                                       preserve_newlines: true,
                                                                       preserve_tabs: false)
-          document = Shoko::Adapters::BookSources::Epub::REXMLSafeParser.parse(safe_xml)
+          document = Shoko::Adapters::Support::REXMLSafeParser.parse(safe_xml)
           parse_document(document)
         rescue REXML::ParseException => e
           raise ParseError, "Invalid feed XML: #{e.message}"
@@ -215,12 +215,12 @@ module Shoko
         end
 
         def clean_inline_text(value)
-          text = Shoko::Adapters::BookSources::Epub::HTMLProcessor.html_to_text(value.to_s)
+          text = Shoko::Adapters::Support::HTMLProcessor.html_to_text(value.to_s)
           Shoko::Shared::TextSanitizer.sanitize(text, preserve_newlines: false, preserve_tabs: false).strip
         end
 
         def clean_block_text(value)
-          text = Shoko::Adapters::BookSources::Epub::HTMLProcessor.html_to_text(value.to_s)
+          text = Shoko::Adapters::Support::HTMLProcessor.html_to_text(value.to_s)
           sanitized = Shoko::Shared::TextSanitizer.sanitize(text, preserve_newlines: true, preserve_tabs: false)
           sanitized.gsub(/\n{3,}/, "\n\n").strip
         end

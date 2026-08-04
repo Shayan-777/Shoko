@@ -12,4 +12,16 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::RenderRequesterBridg
 
     bridge.request_render(reason: 'pagination.test')
   end
+
+  it 'translates posting failures into the outbound port error' do
+    bridge = described_class.new(controller: controller)
+    allow(controller).to receive(:request_render).and_raise(IOError, 'wake pipe closed')
+
+    expect do
+      bridge.request_render(reason: 'pagination.test')
+    end.to raise_error(
+      Shoko::Application::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
+      /pagination\.test.*wake pipe closed/
+    )
+  end
 end

@@ -4,7 +4,6 @@ require 'optparse'
 require_relative '../../shared/version'
 require_relative '../../shared/errors'
 require_relative '../../application/ports/outbound/folder_scanner'
-require_relative '../runtime/process_control_adapter'
 
 # Root namespace for the Shoko application.
 module Shoko
@@ -28,7 +27,7 @@ module Shoko
         MAX_FAILURE_LINES = 10
 
         class << self
-          def run(argv = ARGV, app_factory:, process_control: nil, folder_import_factory: nil,
+          def run(argv = ARGV, app_factory:, process_control:, folder_import_factory: nil,
                   prepaginate_factory: nil, input: $stdin, output: $stdout)
             options, args = parse_options(argv)
             log_config = build_log_config(options)
@@ -44,18 +43,12 @@ module Shoko
             app_factory.call(epub_path: target_path, log_config: log_config).run
           rescue Shoko::FatalExternalInputError => e
             emit_fatal_external_input_message(output, e)
-            default_process_control(process_control).terminate(2)
+            process_control.terminate(2)
           rescue StandardError => e
-            handle_fatal_cli_error(output, default_process_control(process_control), e)
+            handle_fatal_cli_error(output, process_control, e)
           end
 
           private
-
-          # bin/shoko passes nothing: the CLI owns its default exit-control
-          # adapter so `--help`/`--version` never touch the composition graph.
-          def default_process_control(process_control)
-            process_control || Shoko::Adapters::Runtime::ProcessControlAdapter.new
-          end
 
           def parse_options(argv)
             options = default_options
@@ -116,7 +109,7 @@ module Shoko
             deprioritize_current_process
             width, height = options[:prepaginate_batch]
             status = prepaginate_factory.call(log_config: log_config).run(width: width, height: height)
-            default_process_control(process_control).terminate(1) if status == :failed
+            process_control.terminate(1) if status == :failed
             nil
           end
 

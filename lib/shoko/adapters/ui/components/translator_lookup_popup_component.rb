@@ -8,7 +8,7 @@ require_relative 'ui/cursor_blink'
 require_relative 'ui/panel_spans'
 require_relative 'ui/list_windowing'
 require_relative 'ui/text_utils'
-require 'shoko/shared/language_directory'
+require 'shoko/core/services/language_directory'
 require_relative 'status_bar/palette'
 
 module Shoko
@@ -44,7 +44,7 @@ module Shoko
           include Ui::PanelSpans
 
           Palette = StatusBar::Palette
-          LanguageDirectory = Shoko::Shared::LanguageDirectory
+          LanguageDirectory = Shoko::Core::Services::LanguageDirectory
 
           MAX_ROWS = 22      # card-height ceiling when it keeps its natural width
           MAX_ROWS_TALL = 32 # taller ceiling when it shrinks into the left margin

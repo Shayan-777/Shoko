@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'fileutils'
 require 'json'
+require 'timeout'
 
 RSpec.describe Shoko::Application::State::StateStore, 'observers' do
   let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
@@ -200,5 +201,71 @@ RSpec.describe Shoko::Application::State::StateStore, 'observers' do
 
     expect { store.update(%i[reader mode] => :help) }.not_to raise_error
     expect(store.get(%i[reader mode])).to eq(:help)
+  end
+
+  it 'serializes concurrent notifications in state commit order' do
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    entered = Queue.new
+    release = Queue.new
+    observed = Queue.new
+    observer = Object.new
+    observer.define_singleton_method(:state_changed) do |_path, _old_value, new_value|
+      entered << true if new_value == :help
+      release.pop if new_value == :help
+      observed << new_value
+    end
+    store.add_observer(observer, %i[reader mode])
+
+    first = Thread.new { store.update(%i[reader mode] => :help) }
+    Timeout.timeout(1) { entered.pop }
+    second = Thread.new { store.update(%i[reader mode] => :annotations) }
+    Thread.pass until store.get(%i[reader mode]) == :annotations
+
+    expect(second).to be_alive
+    release << true
+    [first, second].each(&:join)
+
+    expect([observed.pop, observed.pop]).to eq(%i[help annotations])
+  end
+
+  it 'queues reentrant updates until every observer receives the current change' do
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    events = []
+    updating = Object.new
+    updating.define_singleton_method(:state_changed) do |_path, _old_value, new_value|
+      events << [:updating, new_value]
+      store.update(%i[reader mode] => :annotations) if new_value == :help
+    end
+    recording = Object.new
+    recording.define_singleton_method(:state_changed) do |_path, _old_value, new_value|
+      events << [:recording, new_value]
+    end
+    store.add_observer(updating, %i[reader mode])
+    store.add_observer(recording, %i[reader mode])
+
+    store.update(%i[reader mode] => :help)
+
+    expect(events).to eq([
+                           [:updating, :help],
+                           [:recording, :help],
+                           [:updating, :annotations],
+                           [:recording, :annotations],
+                         ])
+  end
+
+  it 'allows observer registration changes while a callback is running' do
+    store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    late = double('LateObserver', state_changed: nil)
+    remover = Object.new
+    remover.define_singleton_method(:state_changed) do |*_args|
+      store.remove_observer(remover)
+      store.add_observer(late, %i[reader mode])
+    end
+    store.add_observer(remover, %i[reader mode])
+
+    store.update(%i[reader mode] => :help)
+    store.update(%i[reader mode] => :annotations)
+
+    expect(late).to have_received(:state_changed).with(%i[reader mode], :help, :annotations).once
   end
 end

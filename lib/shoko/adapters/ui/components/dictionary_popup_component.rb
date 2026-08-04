@@ -5,7 +5,7 @@ require_relative 'base_component'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/overlay_sizing'
 require 'shoko/shared/terminal/ansi'
-require 'shoko/shared/key_definitions'
+require 'shoko/adapters/support/key_definitions'
 require_relative '../constants/ui'
 
 module Shoko
@@ -69,14 +69,14 @@ module Shoko
           def backspace
             return nil unless @visible && @setup_mode
 
-            handle_setup_key(Shared::KeyDefinitions::ACTIONS[:backspace].first)
+            handle_setup_key(Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:backspace].first)
           end
 
           def confirm
             return nil unless @visible
             return nil unless @setup_mode
 
-            handle_setup_key(Shared::KeyDefinitions::ACTIONS[:confirm].first)
+            handle_setup_key(Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm].first)
           end
 
           def cancel
@@ -192,13 +192,13 @@ module Shoko
           end
 
           def close_setup_key?(key)
-            Shared::KeyDefinitions::ACTIONS[:cancel].include?(key) ||
-              Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
+            Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel].include?(key) ||
+              Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:quit].include?(key)
           end
 
           def setup_navigation_event(key)
-            return emit_setup_selection(-1) if Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
-            return emit_setup_selection(1) if Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
+            return emit_setup_selection(-1) if Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up].include?(key)
+            return emit_setup_selection(1) if Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down].include?(key)
 
             nil
           end
@@ -227,11 +227,11 @@ module Shoko
           end
 
           def setup_confirm_key?(key)
-            Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
+            Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm].include?(key)
           end
 
           def setup_edit_event(key)
-            if Shared::KeyDefinitions::ACTIONS[:backspace].include?(key)
+            if Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:backspace].include?(key)
               update_setup_input(setup_input[0...-1].to_s)
               return { type: :setup_change, stage: setup_stage, value: setup_input }
             end

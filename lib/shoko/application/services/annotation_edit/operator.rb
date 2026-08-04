@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/annotation_list_input'
+require 'shoko/core/services/annotation_list_input'
 require 'shoko/shared/text_sanitizer'
 
 module Shoko
@@ -36,7 +36,8 @@ module Shoko
           def insert_text(char)
             return unless Shoko::Shared::TextSanitizer.printable_char?(char.to_s)
 
-            text, cursor = Shoko::Shared::AnnotationListInput.insert_character(current_text, current_cursor, char)
+            text, cursor = Shoko::Core::Services::AnnotationListInput.insert_character(current_text, current_cursor,
+                                                                                       char)
             @writer.call(text: text, cursor: cursor)
           end
 
@@ -59,7 +60,7 @@ module Shoko
           end
 
           def insert_newline
-            text, cursor = Shoko::Shared::AnnotationListInput.insert_newline(current_text, current_cursor)
+            text, cursor = Shoko::Core::Services::AnnotationListInput.insert_newline(current_text, current_cursor)
             @writer.call(text: text, cursor: cursor)
           end
 

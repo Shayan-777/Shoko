@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../base_adapter'
-require_relative '../book_sources/epub/parser/html_processor'
+require 'shoko/adapters/support/html_processor'
 require_relative 'article_block_parser'
 require_relative 'article_content'
 
@@ -111,7 +111,7 @@ module Shoko
         end
 
         def normalize_text(fragment)
-          text = Shoko::Adapters::BookSources::Epub::HTMLProcessor.html_to_text(fragment.to_s)
+          text = Shoko::Adapters::Support::HTMLProcessor.html_to_text(fragment.to_s)
           text.to_s.gsub(/\n{3,}/, "\n\n").strip
         end
       end

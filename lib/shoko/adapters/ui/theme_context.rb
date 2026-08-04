@@ -3,7 +3,7 @@
 require_relative 'constants/themes'
 require_relative 'constants/ui'
 require_relative 'components/render_style'
-require_relative '../../shared/theme_policy'
+require 'shoko/core/policies/theme_policy'
 
 module Shoko
   module Adapters
@@ -14,7 +14,7 @@ module Shoko
 
         class << self
           def resolve(theme_id:, fallback_color_mode: :dark)
-            canonical_theme = Shoko::Shared::ThemePolicy.normalize(theme_id) || Shoko::Shared::ThemePolicy.default_id
+            canonical_theme = Shoko::Core::Policies::ThemePolicy.normalize(theme_id) || Shoko::Core::Policies::ThemePolicy.default_id
             color_mode = Constants::Themes.color_mode_for(canonical_theme, fallback: fallback_color_mode)
             palette = Constants::Themes.palette_for(canonical_theme)
             ui_tokens = token_snapshot(color_mode)

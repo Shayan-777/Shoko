@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/dictionary_language_setting'
+require 'shoko/core/policies/dictionary_language_setting'
 
 require_relative 'settings_service/wipe_cache_plan'
 require_relative 'settings_service/wipe_cache_message_builder'
 require_relative '../../core/models/reader_settings'
-require_relative '../../shared/download_source_policy'
+require 'shoko/core/policies/download_source_policy'
 require 'shoko/shared/hash_normalizer'
-require_relative '../../shared/theme_policy'
+require 'shoko/core/policies/theme_policy'
 
 module Shoko
   module Application
@@ -52,16 +52,16 @@ module Shoko
         end
 
         def cycle_download_source
-          sources = Shoko::Shared::DownloadSourcePolicy.canonical_ids
-          current = Shoko::Shared::DownloadSourcePolicy.normalize(current_config.download_source) ||
-                    Shoko::Shared::DownloadSourcePolicy.default_id
+          sources = Shoko::Core::Policies::DownloadSourcePolicy.canonical_ids
+          current = Shoko::Core::Policies::DownloadSourcePolicy.normalize(current_config.download_source) ||
+                    Shoko::Core::Policies::DownloadSourcePolicy.default_id
           next_source = sources[(sources.index(current) || 0) + 1] || sources.first
           dispatch_config(download_source: next_source)
           next_source
         end
 
         def select_download_source(source)
-          normalized = Shoko::Shared::DownloadSourcePolicy.normalize(source)
+          normalized = Shoko::Core::Policies::DownloadSourcePolicy.normalize(source)
           raise ArgumentError, "Unsupported download source: #{source.inspect}" unless normalized
 
           dispatch_config(download_source: normalized)
@@ -164,9 +164,9 @@ module Shoko
 
         # Cycle through canonical reader theme options and persist the change.
         def cycle_theme
-          themes = Shoko::Shared::ThemePolicy.canonical_ids
-          current = Shoko::Shared::ThemePolicy.normalize(@app_config_store.load.theme) ||
-                    Shoko::Shared::ThemePolicy.default_id
+          themes = Shoko::Core::Policies::ThemePolicy.canonical_ids
+          current = Shoko::Core::Policies::ThemePolicy.normalize(@app_config_store.load.theme) ||
+                    Shoko::Core::Policies::ThemePolicy.default_id
           current_index = themes.index(current) || 0
           next_theme = themes[(current_index + 1) % themes.length]
           dispatch_config(theme: next_theme)
@@ -176,7 +176,7 @@ module Shoko
         # Set explicit theme after validating against canonical theme registry.
         # rubocop:disable Naming/AccessorMethodName
         def set_theme(theme_id)
-          canonical = Shoko::Shared::ThemePolicy.normalize(theme_id)
+          canonical = Shoko::Core::Policies::ThemePolicy.normalize(theme_id)
           raise ArgumentError, "Unsupported theme: #{theme_id.inspect}" unless canonical
 
           dispatch_config(theme: canonical)
@@ -260,13 +260,13 @@ module Shoko
         end
 
         def current_dictionary_pair_index(pairs, source, target)
-          return -1 if Shoko::Shared::DictionaryLanguageSetting.auto?(source)
+          return -1 if Shoko::Core::Policies::DictionaryLanguageSetting.auto?(source)
 
           pairs.index([source, target]) || -1
         end
 
         def apply_dictionary_pair(pair)
-          if Shoko::Shared::DictionaryLanguageSetting.auto?(pair[:source])
+          if Shoko::Core::Policies::DictionaryLanguageSetting.auto?(pair[:source])
             dispatch_config(dictionary_source_lang: 'auto')
           else
             dispatch_config(dictionary_source_lang: pair[:source], dictionary_target_lang: pair[:target])

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../shared/download_source_policy'
-require_relative '../../shared/theme_policy'
+require 'shoko/core/policies/download_source_policy'
+require 'shoko/core/policies/theme_policy'
 
 module Shoko
   module Application
@@ -99,7 +99,7 @@ module Shoko
             normalized = normalize_symbol_value(key, value)
             normalized = @line_spacing_aliases.fetch(normalized, normalized) if key == :line_spacing
             if key == :theme
-              normalized = Shoko::Shared::ThemePolicy.normalize(normalized) || Shoko::Shared::ThemePolicy.default_id
+              normalized = Shoko::Core::Policies::ThemePolicy.normalize(normalized) || Shoko::Core::Policies::ThemePolicy.default_id
             end
             normalized
           end
@@ -116,7 +116,7 @@ module Shoko
             when :view_mode
               %i[single split].include?(value)
             when :download_source
-              Shoko::Shared::DownloadSourcePolicy.valid?(value)
+              Shoko::Core::Policies::DownloadSourcePolicy.valid?(value)
             when :kitty_images
               value.is_a?(TrueClass) || value.is_a?(FalseClass)
             else

@@ -58,4 +58,33 @@ RSpec.describe 'Dependency bundles' do
   it 'keeps the removed monolithic reader dependency bag deleted' do
     expect(deps_module.const_defined?(:ReaderControllerDependencies, false)).to be(false)
   end
+
+  it 'rejects unknown keys in a direct dependency record builder' do
+    klass = Shoko::Adapters::Input::Controllers::Menu::Controller::SupportDependencies
+
+    expect do
+      klass.build(notification_service: nil, clipboard_service: nil, logger: nil, loger: Object.new)
+    end.to raise_error(ArgumentError, /Unknown SupportDependencies dependencies: :loger/)
+  end
+
+  it 'rejects unknown keys at grouped bundle boundaries' do
+    klass = deps_module::UiControllerDependencies::Bundle
+
+    expect do
+      klass.build(unknown_controller: Object.new)
+    end.to raise_error(ArgumentError, /Unknown Bundle dependencies: :unknown_controller/)
+  end
+
+  it 'projects validated grouped wiring into each child record' do
+    groups = deps_module::StateControllerDependencies
+    dependencies = groups::Bundle.build(
+      **groups::SessionDependencies.members.to_h { |field| [field, Object.new] },
+      **groups::DocumentDependencies.members.to_h { |field| [field, Object.new] },
+      **groups::ServiceDependencies.members.to_h { |field| [field, Object.new] }
+    )
+
+    expect(dependencies.session.to_h.keys).to eq(groups::SessionDependencies.members)
+    expect(dependencies.document.to_h.keys).to eq(groups::DocumentDependencies.members)
+    expect(dependencies.services.to_h.keys).to eq(groups::ServiceDependencies.members)
+  end
 end
