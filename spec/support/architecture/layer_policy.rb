@@ -2,7 +2,7 @@
 
 module SpecSupport
   module Architecture
-    # The dependency rule (constitution §I), in one place.
+    # The dependency rule (constitution section 1), in one place.
     #
     # `MATRIX` lists whole layers a source layer may depend on. The adapters
     # row deliberately omits `application`: an adapter reaches the application

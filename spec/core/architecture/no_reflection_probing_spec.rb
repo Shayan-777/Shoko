@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-# Typed collaborators over reflection (constitution §V): dependencies are
+# Typed collaborators over reflection (constitution sections 3 and 7): dependencies are
 # injected with known contracts, so `respond_to?` probing and `send`-style
 # dispatch are banned. Absorbs the reflection examples of the retired
 # hexagonal_migration/hardening/application_workflow suites.
@@ -12,8 +12,6 @@ RSpec.describe 'No reflection probing' do
 
   def non_comment_content(path)
     File.readlines(path).reject { |line| line.strip.start_with?('#') }.join
-  rescue StandardError
-    ''
   end
 
   it 'forbids reflection-based dispatch and collaborator probing in strict scope' do

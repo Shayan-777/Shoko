@@ -25,7 +25,7 @@ module Shoko
         # Builds the fully-wired reader controller: resolves the container
         # graph, prepares runtime-only dependencies, constructs the staged
         # dependency groups, and instantiates the concrete controller.
-        # Deliberately one flat, boring wiring file (constitution §IV).
+        # Deliberately one flat, boring wiring file (constitution section 7).
         module ReaderBuilder
           # Typed reader builder inputs resolved directly from the container and launch state.
           ResolvedDependencies = Data.define(

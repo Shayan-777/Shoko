@@ -14,6 +14,7 @@ require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/core/services/language_directory'
+require_relative 'translator_text_layout'
 
 module Shoko
   module Adapters
@@ -45,6 +46,7 @@ module Shoko
               @menu_session_mutator = menu_session_mutator
               @menu_hit_registry = menu_hit_registry
               @menu_visual_profile = menu_visual_profile
+              @text_layout = TranslatorTextLayout.new
               initialize_cursor_blink
             end
 
@@ -75,9 +77,6 @@ module Shoko
             end
 
             # Body rendering helpers for the translator screen.
-            BodyClusterLayout = Data.define(:text, :start_index, :end_index, :column_start, :column_end)
-            BodyLineLayout = Data.define(:text, :start_index, :end_index, :clusters)
-
             CONTEXT_MENU_ACTIONS = [
               { id: :copy_to_clipboard, label: 'Copy to Clipboard' },
               { id: :paste_from_clipboard, label: 'Paste from Clipboard' },
@@ -738,18 +737,7 @@ module Shoko
             # matching how render_body_layout_line draws it: inside the cluster that contains the index,
             # else at the end of the line — but a wrapped continuation owns a shared boundary index.
             def visual_cursor_line_and_column(layouts, cursor)
-              layouts.each_with_index do |line, index|
-                line.clusters.each do |cluster|
-                  return [index, cluster.column_start] if cursor >= cluster.start_index && cursor < cluster.end_index
-                end
-                next unless cursor == line.end_index
-
-                next_line = layouts[index + 1]
-                next if next_line && next_line.start_index == cursor
-
-                return [index, line.clusters.last&.column_end || 0]
-              end
-              [[layouts.length - 1, 0].max, 0]
+              @text_layout.visual_cursor(layouts, cursor)
             end
 
             def body_lines(box, kind)
@@ -884,11 +872,7 @@ module Shoko
             end
 
             def build_text_layout(text, width)
-              state = text_layout_state(width)
-              text.to_s.each_grapheme_cluster do |cluster|
-                process_text_layout_cluster(state, cluster)
-              end
-              finalize_text_layout(state)
+              @text_layout.build(text, width)
             end
 
             def visible_body_layouts_for_render(kind, width)
@@ -896,7 +880,7 @@ module Shoko
               return layouts unless needs_cursor_overflow_line?(kind, layouts, width)
 
               cursor_index = translator_input_cursor.clamp(0, translator_input_text.length)
-              layouts << build_line_layout('', cursor_index, cursor_index, [])
+              layouts << @text_layout.empty_line(cursor_index)
             end
 
             def body_window_start(kind, layouts, height)
@@ -921,94 +905,11 @@ module Shoko
               record_cursor_activity
             end
 
-            def build_line_layout(text, start_index, end_index, clusters)
-              BodyLineLayout.new(
-                text: text.dup,
-                start_index: start_index,
-                end_index: end_index,
-                clusters: clusters.dup
-              )
-            end
-
-            def text_layout_state(width)
-              {
-                visible_width: [width.to_i, 1].max,
-                codepoint_index: 0,
-                line_start_index: 0,
-                line_width: 0,
-                line_text: +'',
-                line_clusters: [],
-                lines: [],
-              }
-            end
-
-            def process_text_layout_cluster(state, cluster)
-              return process_newline_cluster(state, cluster) if cluster == "\n"
-
-              cluster_width = cluster_display_width(cluster)
-              wrap_text_layout_line(state) if needs_text_layout_wrap?(state, cluster_width)
-              append_text_layout_cluster(state, cluster, cluster_width)
-            end
-
-            def process_newline_cluster(state, cluster)
-              push_text_layout_line(state)
-              state[:codepoint_index] += cluster.length
-              reset_text_layout_line(state)
-            end
-
-            def needs_text_layout_wrap?(state, cluster_width)
-              state[:line_clusters].any? && state[:line_width] + cluster_width > state[:visible_width]
-            end
-
-            def wrap_text_layout_line(state)
-              push_text_layout_line(state)
-              reset_text_layout_line(state)
-            end
-
-            def append_text_layout_cluster(state, cluster, cluster_width)
-              cluster_start = state[:codepoint_index]
-              state[:codepoint_index] += cluster.length
-              state[:line_clusters] << BodyClusterLayout.new(
-                text: cluster,
-                start_index: cluster_start,
-                end_index: state[:codepoint_index],
-                column_start: state[:line_width],
-                column_end: state[:line_width] + cluster_width
-              )
-              state[:line_width] += cluster_width
-              state[:line_text] << cluster
-            end
-
-            def finalize_text_layout(state)
-              push_text_layout_line(state)
-              state[:lines]
-            end
-
-            def push_text_layout_line(state)
-              state[:lines] << build_line_layout(
-                state[:line_text],
-                state[:line_start_index],
-                state[:codepoint_index],
-                state[:line_clusters]
-              )
-            end
-
-            def reset_text_layout_line(state)
-              state[:line_start_index] = state[:codepoint_index]
-              state[:line_width] = 0
-              state[:line_text] = +''
-              state[:line_clusters] = []
-            end
-
-            def cluster_display_width(cluster)
-              [Shoko::Shared::Terminal::TextMetrics.display_width_for(cluster), 1].max
-            end
-
             def needs_cursor_overflow_line?(kind, layouts, width)
               return false unless kind == :source && show_input_cursor? && selection_for_kind(:source).nil?
 
               cursor_index = translator_input_cursor.clamp(0, translator_input_text.length)
-              last_line = layouts.last || build_line_layout('', 0, 0, [])
+              last_line = layouts.last || @text_layout.empty_line
               cursor_index == last_line.end_index && last_line.clusters.last&.column_end.to_i >= width
             end
 
@@ -1106,20 +1007,11 @@ module Shoko
               start = body_window_start(kind, layouts, height)
               return layouts[start + line_index] if layouts[start + line_index]
 
-              layouts.last || build_line_layout('', 0, 0, [])
+              layouts.last || @text_layout.empty_line
             end
 
             def index_for_line_column(line, column)
-              line.clusters.each do |cluster|
-                return [cluster.start_index, nil] if column < cluster.column_start
-                next unless column < cluster.column_end
-
-                midpoint = cluster.column_start + ((cluster.column_end - cluster.column_start) / 2.0)
-                index = column < midpoint ? cluster.start_index : cluster.end_index
-                return [index, cluster]
-              end
-
-              [line.end_index, nil]
+              @text_layout.index_for_column(line, column)
             end
 
             def context_menu_width

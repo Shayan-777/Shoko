@@ -8,6 +8,7 @@ require 'shoko/core/models/book_data'
 require 'shoko/adapters/book_sources/rtf/parser/rtf_parser'
 require 'shoko/adapters/book_sources/rtf/parser/rtf_metadata_extractor'
 require 'shoko/adapters/book_sources/rtf/parser/metadata_parser'
+require 'shoko/adapters/book_sources/import_budget'
 require_relative '../../support/importer_lifecycle'
 
 module Shoko
@@ -44,6 +45,7 @@ module Shoko
           # @return [Core::Models::BookData]
           def import(path)
             @rtf_path = SourcePath.validated(path)
+            @import_budget = Adapters::BookSources::ImportBudget.new(path: @rtf_path)
             doc = parsed_rtf_document
             metadata = instrumented_rtf_metadata(doc)
             chapters = build_chapters(instrumented_chapter_groups(doc))
@@ -58,7 +60,7 @@ module Shoko
 
           def parsed_rtf_document
             report('Reading RTF file...', progress: 0.0)
-            raw = instrument('rtf.read') { File.binread(@rtf_path) }
+            raw = instrument('rtf.read') { @import_budget.read_binary }
 
             report('Parsing RTF document...', progress: 0.1)
             instrument('rtf.parse') { parse_rtf(raw) }
@@ -100,7 +102,7 @@ module Shoko
 
             raise Shoko::BookParseError.new('Not a valid RTF file', @rtf_path) unless content.match?(/\A\s*\{\\rtf/)
 
-            Adapters::BookSources::Rtf::RtfParser.new(content).parse
+            Adapters::BookSources::Rtf::RtfParser.new(content, import_budget: @import_budget).parse
           end
 
           def extract_metadata(doc)

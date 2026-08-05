@@ -12,8 +12,9 @@ module Shoko
           # content streams occasionally use predictors too, so this runs on the
           # decoded bytes of any stream that declares /DecodeParms.
           class StreamPredictor
-            def initialize(dict_value:)
+            def initialize(dict_value:, import_budget: nil)
               @dict_value = dict_value
+              @import_budget = import_budget
             end
 
             # @param data [String] already FlateDecoded stream bytes
@@ -46,6 +47,8 @@ module Shoko
               bpc = positive_int(@dict_value.call(params, 'BitsPerComponent'), 8)
               bpp = [(colors * bpc / 8.0).ceil, 1].max
               row_len = [(columns * colors * bpc / 8.0).ceil, 1].max
+              @import_budget&.check_dimension!(bpp, label: 'PDF predictor pixel')
+              @import_budget&.check_dimension!(row_len, label: 'PDF predictor row')
               [row_len, bpp]
             end
 

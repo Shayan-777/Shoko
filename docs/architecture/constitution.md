@@ -1,994 +1,140 @@
-# Shoko Architecture Constitution
-
-Status: **active architecture policy**, adopted 2026-06-01 and last amended
-2026-08-04. Derived from `census-2026-06-01.md`.
-
-## How to use this document
-
-This document is the project's **enforced baseline and decision framework**,
-not an oracle and not a substitute for engineering judgment. Its rules make
-known failure modes decidable and reduce taste-driven churn. They cannot prove
-that a class is cohesive, that a dependency is semantically inward, or that a
-design will remain appropriate as the product changes.
-
-Conformance is therefore **necessary but not sufficient**. A green guardrail
-proves only the property that guardrail actually measures. Architecture review
-also considers responsibility and change axes, public surface, dependency and
-state ownership, runtime constraints, test seams, and evidence from defects or
-feature work.
-
-Three consequences:
-
-1. A conforming file may be revisited when concrete evidence shows excessive
-   coupling, mixed responsibilities, unsafe behavior, or disproportionate
-   change cost. Purely aesthetic preference is still not a reason to churn it.
-2. If a rule is wrong or incomplete, change the rule deliberately, record the
-   reason in Amendments, align its enforcement, and then bring code into line.
-   Do not silently create per-file exceptions.
-3. Exceptions must be narrow, named, justified beside their executable policy,
-   and rejected once stale. An exception is evidence about the rule's boundary,
-   not permission to bypass review.
-
----
-
-## I. Layers (current baseline)
-
-```
-shared → (nothing)               context-free values and deterministic utilities.
-core → shared                    domain models, domain services, domain events. Pure.
-application → core, shared       ports (inbound/outbound), use cases, services, workflows, state.
-adapters → application*, core,   all I/O: UI, input, storage, book sources, output, runtime.
-           shared                * only application's PUBLISHED SURFACE — see below
-composition → everything         the ONLY place that names concrete classes and wires them.
-```
-
-**The dependency rule:** an inner layer must never depend on an outer one.
-- `core` references `Adapters::`/`Application::`/`Composition::` **zero** times.
-- `application` references `Adapters::`/`Composition::` **zero** times; it talks to
-  the outside world only through `Application::Ports`.
-- `adapters` reach the application layer **only through its published surface**:
-  the ports they implement (`Application::Ports::*`) and the request objects they
-  pass (`Application::UseCases::Requests::*`). Use cases, services, workflows, and
-  state are closed to them. This narrower permission — not a blanket layer edge —
-  is `LayerPolicy::PATH_EXCEPTIONS`, which every enforcement site consumes.
-- Only `composition` may name concrete adapter classes.
-
-Adapter subtrees are **families, not one mutually visible layer**. `input`,
-`ui`, `runtime`, `storage`, `book_sources`, `rss`, `translation`, and `output`
-may use their own family plus `adapters/base_adapter.rb` and
-`adapters/support/`; they may not require or name a sibling family. A workflow
-that combines two adapters is composition. `adapters/support/` is the narrow
-home for edge mechanisms genuinely reused by adapter families (for example,
-safe XML parsing and HTML-to-text conversion). It may not depend back on a
-concrete family.
-
-`shared/` is narrower still. A shared unit must make sense without Shoko's
-workflows, ports, adapter technologies, or mutable runtime graph. It contains
-context-free value policies and deterministic utilities. Reuse alone does not
-make something shared: filesystem/environment discovery, protocol parsing,
-render components, persistence, and external-format handling stay at an edge
-(or in `adapters/support/` when multiple edges truly share the mechanism).
-
-The static matrix enforces paths and constant references, but semantic
-dependencies must also be reviewed. Duck typing can remove an outer constant
-name while preserving dependence on an outer representation or capability.
-Boundary work is warranted when concrete evidence exposes such coupling; it is
-not warranted merely to pursue a purer diagram.
-
----
-
-## II. Decomposition (the rules that stop the churn)
-
-### R1 — Do not disguise one-host behavior fragments as reuse.
-A unit of behavior fused into exactly one host through the following mechanisms
-is forbidden because it adds indirection without an independently owned role:
-
-1. **Mixin** — a module `include`d, `prepend`ed, or `extend`ed into exactly one
-   host. `extend` is the same fragmentation through the singleton class, not a
-   loophole. (`extend self` — the module-function idiom — is not a mixin site.)
-2. **Reopening** — a class receiving direct method definitions from two or more
-   files. That is the include-once mixin without the `include`.
-3. **Inheritance** — a superclass with exactly one subclass that is never used
-   on its own (never constructed, never named as a type). The base exists only
-   to be completed by the one subclass, which reaches into its ivars and
-   overrides its no-op hooks, and no caller ever sees the base type. A base
-   class earns its place by having a second subclass, or by being used in its
-   own right.
-
-Private behavior normally remains private methods on its host when it has no
-independent state, role, lifecycle, or second consumer.
-
-The only way a unit of behavior earns its own file is by becoming a **collaborator
-object** — a class you instantiate/inject and *call*, never a module you mix in.
-
-**A collaborator object is justified when it meets at least one of:**
-- it is used by **two or more** call sites, OR
-- it owns **distinct state** the host should not hold, OR
-- it represents a **distinct domain/role concept** with a name a user of the system
-  would recognize, AND it is **unit-tested in isolation**.
-
-One consumer does not disqualify a collaborator that owns distinct state or a
-recognizable, independently tested role. Conversely, length alone does not
-justify extracting stateless fragments. A long class can be cohesive or badly
-coupled; conformance to R1 proves neither conclusion.
-
-**R1 also checks substantial identical implementations across files.** Such a
-match triggers review because duplicated knowledge should have one owner. It is
-not proof that two implementations represent the same concept: independent
-interface implementations can coincide. The
-`DuplicateImplementationScanner` is a conservative token-identity detector. It
-ignores method names but retains other identifiers and uses an implementation
-threshold; it is not semantic equivalence analysis. A CI match must be resolved
-by consolidating genuinely shared knowledge or, for an independent contract,
-by a narrow documented scanner exemption and constitutional amendment.
-
-**Exempt from R1:** `Application::Ports::*` interface modules (they document a
-contract); genuine shared mixins included by **two or more** classes; the
-composition-root wiring modules and interface-contract modules enumerated —
-each with its rationale — in the scanner `ALLOWLIST`
-(`spec/support/architecture/include_once_mixin_scanner.rb`). The rule and its
-executable enforcement name the same exemptions; an ALLOWLIST addition is a
-constitutional amendment.
-
-### R2 — Length is evidence, never a verdict.
-File/class length alone does not trigger extraction, and splitting a cohesive
-class into mixins merely to reduce a line count violates R1. Length becomes
-meaningful when it accompanies multiple change axes, excessive dependencies or
-public methods, separately owned state, weak test seams, or repeated defect
-clusters. In those cases, extract real collaborators under R3. Class/module
-length cops remain disabled to prevent mechanical decomposition; architectural
-review still considers size together with those stronger signals.
-
-### R3 — Extract objects, not fragments.
-When R1's bar *is* met, the result is a noun-named class with a small public
-interface and its own spec — not a `*_support`/`*_actions` grab-bag of the host's
-internals.
-
----
-
-## III. Naming
-
-- **No suffix** `_support`, `_helper`, `_coordinator`, `_dispatch`, `_mixin`,
-  `_actions` unless that word is a **real role/domain concept** (e.g. a true
-  `Coordinator` pattern with multiple collaborators is fine; `FooSupport` carved
-  off `Foo` is not).
-- Objects are **nouns** (`FuzzyRanker`, `PageCalculator`). Methods are **verbs**.
-- A file is named after the single class/module it defines.
-
----
-
-## IV. Filesystem shape
-
-- **Max directory depth: 4 levels** under `lib/shoko/<layer>/`. Census found depth 8.
-- `require_relative` should not climb more than **2** levels (`../../`). If it climbs
-  3+, the file lives in the wrong place — move the file, don't add the `../`.
-- **The composition root is allowed to be flat and verbose.** Prefer a few longer,
-  boring wiring files over a deep tree of `*_builder`/`*_assembler` directories.
-  Wiring is not domain logic; it does not deserve elaborate decomposition.
-
----
-
-## V. Guardrails execute narrow policy claims
-
-- The architecture suite enforces durable rules above. Prefer one cohesive spec
-  per rule family, named for the property it measures.
-- Do not add specs named for moods or migration moments (`*_hardening`,
-  `*_coherence`, `final_*`, `no_legacy_*`). Encode a durable invariant or put
-  behavioral coverage with the owning unit.
-- To change enforced behavior: amend this doc → update the one matching spec → fix code.
-  Never add a spec that pins a one-off decision.
-- Every source scanner documents its blind spots. Passing a token, path, or
-  constant-name scan proves only that narrow syntactic property. Behavioral and
-  semantic claims require behavioral tests and review.
-- Keep the suite small enough that every guardrail has a clear failure mode and
-  maintenance value. A numeric spec-count target is not an architecture rule.
-
-An invariant earns a place in `domain_invariants` only if it states "no OTHER
-file may do this" — a property of the tree, which no unit test can express. An
-invariant that CAN be stated as behavior belongs in the owning unit spec.
-
----
-
-## VI. Completion and continuing review
-
-An architecture work item is complete when:
-
-> **its behavioral tests and consolidated guardrails are green, and an
-> inside-out review (core → application → adapters) finds no remaining evidence
-> in the agreed scope.**
-
-That closes the bounded work item; it does not make any file permanently done.
-Reopen a shape when new evidence warrants it, not because a different style is
-fashionable.
-
----
-
-## VII. Default non-goals
-
-- Do not pursue boundary work without a demonstrated semantic dependency or
-  change-cost problem.
-- Do not split or merge solely to hit a file-length preference.
-- Do not add guardrails for one-off decisions.
-- Do not revisit conforming code without concrete evidence, but do not use
-  conformance to dismiss such evidence.
-
----
-
-## VIII. Error handling — resilient boundaries (R4)
-
-### R4 — Rescue breadth must match what the guarded code can actually raise.
-
-Two distinct rescue roles. Never conflate them:
-
-1. **Domain-error catches** rescue `Shoko::Error` (or a specific subclass)
-   around calls whose *contract* is to raise translated Shoko errors —
-   adapters translate raw failures at their edges (`AtomicFileWriter`,
-   repositories, importers). Narrow is correct here.
-2. **Resilient boundaries** rescue `StandardError`. A resilient boundary is
-   any rescue whose begin-block executes code the rescuer does not own:
-   subscriber/observer/middleware callbacks, queued background jobs,
-   last-resort terminal cleanup, raw stdlib parsing of external input
-   (`JSON.parse` of user files), and best-effort warmups. The error set there
-   is unbounded — `JSON::ParserError`, `Errno::*`, `ThreadError`, and plain
-   bugs are **not** `Shoko::Error`. Writing `rescue Shoko::Error` at such a
-   site is a defect: the comment promises containment the class cannot
-   deliver.
-
-Every resilient boundary:
-
-- carries a `# resilient-boundary` comment on the line directly above the
-  `rescue`. **Enforced:** the marker may only annotate `rescue StandardError`
-  (rescue-conventions guardrail).
-- routes the error through a named handler
-  (`handle_*/record_*/translate_*/swallow_*` + `error`) that logs the error
-  class and message, satisfying the existing translation rule.
-- does **not** re-raise — isolation means the failure stops here. A
-  log-and-rethrow site is not a resilient boundary and must not carry the
-  marker.
-
----
-
-## IX. Concurrency and wiring contracts
-
-- Worker-thread render requests only post a coalesced signal and wake input;
-  only the UI thread draws. Posting state and relay registration are
-  synchronized, and adapter failures are translated to `RenderRequestError`.
-- `AsyncExecutor#shutdown(timeout:)` stops accepting work before signaling the
-  queue, drains already accepted work, and returns only after the execution
-  thread has stopped. A timeout is explicit failure, never silent detachment;
-  the live thread remains owned so shutdown can be retried.
-- State commits and observer registration are thread-safe. Notifications run
-  outside the state lock, in commit order, once per observer/change. Reentrant
-  updates queue behind the current callback set; one observer failure remains
-  isolated. A non-notification thread's `update` does not return until its
-  notification has been delivered.
-- Typed dependency builders accept exactly their declared keyword surface.
-  Grouped builders may project a wider, already validated union into child
-  records, but no builder may silently discard an unknown wiring key.
-
----
-
-## Amendments
-
-- **2026-08-04 — Reader state ownership, adapter-family boundaries, and
-  concurrent lifecycle contracts are made explicit.** `ReaderController` no
-  longer owns selection/context-menu state, overlay routing, or the render
-  mailbox: those axes are independently tested collaborators, reducing the
-  session coordinator from roughly 960 to roughly 600 lines. This supersedes
-  the 2026-07-26 conclusion that the then-merged mouse/controller shape was
-  cohesive merely because splitting by inheritance had been worse. Adapter
-  isolation now applies uniformly to every sibling family rather than a few
-  named pairs; shared edge mechanisms moved to `adapters/support/`, while
-  translation-engine status crosses into UI as state seeded by composition.
-  Product policies formerly parked in `shared/` moved inward to `core`, while
-  key mappings, file fingerprints, and UI constraints moved to their owning
-  adapter surfaces; `shared/` is no longer a semantic dumping ground.
-  Render posting, executor shutdown, and state-observer ordering now have
-  executable concurrency contracts. Dependency builders reject unknown keys
-  instead of slicing away wiring mistakes.
-
-- **2026-08-04 — Conformance stops being an oracle; decomposition becomes
-  evidence-based.** The opening policy no longer declares compliant files
-  permanently "DONE," the layer model is a reviewable baseline rather than a
-  settled prohibition on further hardening, and completion now closes a bounded
-  work item rather than freezing code shape. R2 changes from "length is never a
-  reason" to "length is evidence, never a verdict": line count alone still
-  cannot justify fragmentary mixins, while length combined with dependency
-  count, public surface, state ownership, change axes, test seams, or defect
-  clusters can justify a real collaborator. R1 now states explicitly that a
-  one-consumer collaborator is valid when it owns distinct state or a tested
-  role. The duplicate-body scanner is documented accurately as conservative
-  token identity—not semantic, identifier-independent proof—and independent
-  contract implementations may receive a narrow, amended exemption. Guardrail
-  counts are no longer a target, every scanner must state what it cannot prove,
-  and stale policy exemptions must fail. Absolute statements in older amendment
-  entries are historical decisions and are superseded by this policy. The first
-  exact-site exemption covers the coincident five-line `perform_language_fetch`
-  relay jobs in reader `TranslatorController` and menu `TranslatorWorkflow`:
-  their adapter/application state boundaries are intentionally independent, and
-  a shared owner would create the cross-layer coupling the layer rule forbids.
-
-- **2026-07-26 — R1 closes its third door (inheritance) and gains its missing
-  positive half; the guardrail suite stops pinning moments.**
-  - **Inheritance-as-fragmentation is now a violation, enforced.** R1 had been
-    closed against `include`/`prepend`/`extend` (2026-07-18) and against class
-    reopening (2026-07-11), but a superclass with exactly one subclass — the
-    same fusion through `<` — was unchecked, and three lived in the tree.
-    `ReaderController`/`MouseableReader` was the worst: the composition root
-    only ever built the subclass, there was no base-class spec, the subclass
-    read the parent's ivars directly (`@coordinate_service_ref`,
-    `@annotation_service_ref`, …), and the parent carried a `clear_selection!`
-    no-op hook and an unreachable `read_input_keys` that existed solely for it.
-    The two are now one `ReaderController` (R2: ~1000 cohesive lines are not a
-    reason to split); `mouseable_reader/{input_sequence_filter,
-    inline_link_interaction}` moved to `reader_controller/` as the genuine R3
-    collaborators they are. `StateStore`/`ObserverStateStore` merged the same
-    way — production wired only the subclass, and the base was instantiated by
-    specs alone — as did `BaseAction`/`UpdateMessageAction`, an abstract base
-    with a `NotImplementedError` and a `payload` reader serving one three-line
-    action. Enforcement: `SoleSubclassScanner` (in `no_include_once_mixin`),
-    Ripper-derived and resolved through the same constant inventory the mixin
-    scanner uses. **No allowlist**: a base is exempt when it has a second
-    subclass or is used in its own right (constructed, or named in a `rescue` /
-    `is_a?` — the abstract-type case, which is why `DictionaryFailure` is not
-    an offender).
-  - **The `_ref` alias apparatus is gone.** `ReaderController` had kept
-    `ALIASED_READERS`, a hash driving `define_method(name) { public_send(
-    "#{name}_ref") }`, so nine dependencies each existed as an `@x_ref` ivar,
-    an `x_ref` reader, a metaprogrammed `x` alias, and — in the subclass — an
-    `@x` copy. Four names for one object, with a `public_send` on a constant
-    symbol on the read path. No name collision justified the suffix; it was
-    the residue of the `AliasReaders` mixin the 2026-07-18 pass removed. All
-    twelve ivars now carry their plain names behind one `attr_reader`. The
-    write-only `@render_registry` went with it (the field, the
-    `ReaderControllerServiceDependencies` member, the `References` member, and
-    the composition wiring that filled it), dropping the aggregate pin 46 → 45.
-  - **`Terminal::NullRuntimeConfig` stopped fighting itself.** It inherited the
-    shared null config, then `include`d the RuntimeConfig port — which shadowed
-    every inherited implementation with the port's `NotImplementedError`
-    versions — and then undid that with an
-    `instance_method(...).bind_call(self, ...)` loop over
-    `RuntimeConfig.instance_methods(false)`: the same reflection dance the
-    2026-07-12 amendment removed from `controller_composition`. The shared base
-    (which nothing else used) is deleted and the adapter defines its values
-    directly, where a class body legitimately overrides an included module.
-  - **R1's positive half is enforced.** "Used by two or more call sites" had a
-    scanner for its prohibition and none for its requirement, and the amendment
-    log records the price: four hand-run consolidation sweeps (2026-07-10
-    popup primitives, 2026-07-11 symbolize "actually finished", 2026-07-11
-    width-blind wraps, 2026-07-11 scrollbar/ensure-visible "stragglers"), each
-    announcing that the previous had missed cases. A Ripper-backed,
-    name-independent duplicate scan found 46 duplicated method bodies. All are
-    consolidated and the ratchet ships with an **empty allowlist**. The worst
-    were not near-misses: `AnnotationWorkflow` had copied `current_menu`,
-    `persist_menu_payload`, and `rollback_menu_payload` verbatim out of
-    `MenuStatePersistence` — a mixin three sibling workflows already
-    `include` — and four UI session adapters had copied `success_outcome`,
-    `failure_outcome`, and `log_error` out of `SessionOutcomeConstruction`, a
-    module two others already included. `SingleViewRenderer` and
-    `SplitViewRenderer` re-implemented `lines_fit_column?`/`image_line?`
-    directly above a comment reading "helpers provided by BaseViewRenderer".
-    `fatal_event_id_for` mapped the error taxonomy to event ids in three
-    termination paths, so adding a member would have left two reporting
-    `unknown`; it now lives on `FatalExternalInputError.event_id`, matched by
-    class so `BookParseError` still reports as a book failure. New shared
-    owners: `ThreadLocalScope` (four copies of a thread-local save/restore),
-    `TextBufferEdit`, `PolicyKey`, `DisplayMetadataFingerprint` (writer and
-    reader of the cache-invalidation key, which silently break if they drift),
-    `IndexRange`, `DictionaryLanguageSetting`, `Terminal::MouseButton`,
-    `BoundsGeometry`, `BackdropCellMap`, `CatalogListRendering`,
-    `SourcePath`, `CanonicalMetadata`, `Pdf::StreamOffset`,
-    `Zip::ExactIo`, `OPFPathResolution`, `Rss::RedirectResolver`,
-    `PageRestoreUpdates`, `InlineExecution`, `PortContract`,
-    `ProgressThrottle`, `AnnotationPreload`, `EditorTextRoutes`, plus
-    `HashNormalizer.indifferent_fetch`, `TextSanitizer.single_line` (seven
-    screens spelling out `sanitize`'s own defaults), `TextUtils.cursor_location`
-    (copied with its comment), `BoundedHttpBody.decode`,
-    `MenuSnapshot.from_stores`, `RuntimeConfig.validate!`,
-    `TranslationLanguage.normalized_entry`, and a `loading_mirror:` option on
-    `SnapshotFactory.define_snapshot`. Because the scanner ignores method
-    names, it also caught copies that had been renamed —
-    `validated_fb2_path`/`validated_rtf_path`,
-    `render_packs_empty`/`render_catalog_empty`, `packs_window`/
-    `catalog_window`, `absolute_cell`/`absolute_position`,
-    `dirname`/`source_dir`, `left_click_release?`/`released_primary_click?`,
-    `dynamic_restore_updates`/`pending_restore_updates`.
-  - **§V applied to the guardrails themselves.** The suite had drifted into the
-    moment-pinning §V forbids. Deleted: `layer_dependency`'s self-referential
-    example, which read `__FILE__` and asserted that file contained a string
-    appearing three lines above the assertion — it could not fail while it
-    existed; and `prepagination_process_isolation_spec`, an entire file
-    grepping one source file for four method names, whose real guarantee
-    (the warmup supervises the batch through `PrepaginationBatchRunner`) the
-    warmup's own spec already proves behaviorally. Generalized: the four
-    hardcoded `controller.*` method names became "the application layer calls
-    no method on a controller", and the two DisplayLine pins became one
-    renderer-types-stay-out-of-core example. Moved: the core dictionary
-    service's forbidden-error-strings list became a classification test in
-    `dictionary_service_spec`, which proves the typed failure code drives the
-    result instead of proving five strings are absent from a file.
-    `domain_invariants` keeps only true single-owner seams — §V sanctions
-    those — and now states that bar explicitly.
-  - **The adapters→application rule is written down.** §I's table says
-    `adapters → application`, while enforcement returned false for that edge
-    and re-permitted `application/ports/` and
-    `application/use_cases/requests/` by hand at four sites with three
-    different predicates. The real rule — **adapters reach the application
-    layer only through its published surface: the ports they implement and the
-    request objects they pass** — is now stated in §I and expressed once, as
-    `LayerPolicy::PATH_EXCEPTIONS`, which every site consumes.
-
-- **2026-07-12 — §IV executed on the reader composition tree; the engine
-  binary leaves the repo.**
-  - **The 16-file reader builder/assembler tree collapsed into two flat wiring
-    files.** `controller_composition/reader_builder/**` (8 files:
-    `assembly`, `resolved_dependencies`, `runtime_preparation`,
-    `runtime_context_builder`, `dependency_set`, `controller_factory`,
-    `controller_dependency_factory`) and
-    `controller_composition/reader_runtime_assembler/**` (8 files, incl. the
-    `controller_builder/{state_builder,ui_graph_builder}` sub-tree) were each a
-    pass-through stage — no external call site, no isolated spec — handing a
-    `Data` bundle to the next stage. This is §IV's named anti-pattern ("a deep
-    tree of `*_builder`/`*_assembler` directories" for wiring that "does not
-    deserve elaborate decomposition"). They are merged into
-    `reader_builder.rb` (container resolution → runtime preparation → staged
-    dependency groups → controller instantiation) and
-    `reader_runtime_assembler.rb` (anchor resolver, pagination, controllers,
-    render coordinator, observers). Both are `module_function` wiring modules
-    of `build_*` methods, exactly §IV's "few longer, boring wiring files."
-    `controller_composition.rb` lost its `instance_method(...).bind_call(self,
-    ...)` reflection dance — a straight `ReaderBuilder.build_controller(...)`
-    delegation replaces it — and the dead, never-called
-    `build_reader_runtime_components` seam is gone. The composition-wiring,
-    boot-surface, and ports-contract guardrails now point at the two files
-    instead of the deleted directories; the stale
-    `controller_dependency_factory.rb` MethodLength todo entry moved to
-    `reader_builder.rb` (one 12-kwarg `ReaderIntentHandler.new` wiring call,
-    §IV-endorsed).
-  - **The compiled `shoko-translate` engine binary is no longer tracked.** A
-    60 KB host-specific ELF executable was committed under
-    `ext/shoko_translate/`; it is a build artifact of the checked-in C sources,
-    platform-locked, and re-generated by `make`. It is now git-ignored, and the
-    CI `ruby` workflow gains a `translate-engine` job that compiles the engine
-    from source, smoke-tests its JSON protocol (`{"op":"ping"}`), and fails if
-    any non-source file reappears under `ext/` — so the C code stays
-    build-verified without a binary in history.
-  - **§III executed on the XHTML parser: four constants, four files.**
-    `xhtml_content_parser.rb` defined four sibling top-level classes
-    (`XHTMLContentParser` + `XHTMLContentTraversal`, `XHTMLBlockBuilder`,
-    `XHTMLSegmentBuilder`), violating §III's "a file is named after the single
-    class it defines." Each collaborator now lives in its own file
-    (`xhtml_content_traversal.rb`, `xhtml_block_builder.rb`,
-    `xhtml_segment_builder.rb`); the facade keeps only `XHTMLContentParser` and
-    requires the three. The one cross-class coupling —
-    `XHTMLContentParser.markup_hidden?`, a static predicate the traversal and
-    segment builder both called back into the facade for — became
-    `MarkupVisibility.markup_hidden?`, a small `module_function` utility with a
-    real role concept, called (not mixed) by its two collaborators, so the
-    sub-components no longer depend backward on the facade (R1's ≥2-caller bar,
-    not an include-once mixin).
-
-- **2026-07-11 — Class fragments banned (R1's other door); the symbolize sweep
-  actually finished; both naming/reflection ratchets closed.**
-  - **Reopening a class in a second file to inject methods is now a violation,
-    enforced.** Two hosts had their private methods smeared across satellite
-    files that reopened the class — `JsonCacheStore` (5 fragment files:
-    `payload_helpers`, `chapters`, `layouts`, `resources`, `manifest`) and
-    `EpubCache` (`memory_cache`, `persistence`, `source_reference`, plus its
-    `Serializer` module split across `serialize`/`deserialize`/`helpers`
-    behind a require-stub). This is the include-once mixin without the
-    `include` — the same fragment indirection R1/R3 ban, invisible to the
-    include scanner (whose own comment noted reopenings are not flagged) and
-    in direct violation of §III's one-constant-per-file rule. All fragments
-    are merged into their host files (`json_cache_store.rb`, `epub_cache.rb`,
-    one `serializer.rb` — R2: length is never a reason to split), and
-    `no_include_once_mixin` gains a third example backed by
-    `ClassReopeningScanner`: no class or module may receive direct method
-    definitions from two or more files. No allowlist. Files that reopen a
-    class purely to define a nested collaborator constant (`WrappingService::
-    FetchRequest`, `BookFinder::ScannerContext`, `StateStore::ChangeSet`, …)
-    are unaffected — the nested constant owns its defs.
-  - **The 2026-07-11 symbolize consolidation is now actually complete.** The
-    earlier sweep removed only helpers *named* `symbolize_*`; ~36 sites in 30
-    files still re-implemented `HashNormalizer.symbolize_keys` inline or under
-    `normalize_*` names, with drift already present (two
-    `respond_to?(:to_sym)` variants). Every site now delegates to
-    `Shared::HashNormalizer` (`symbolize_keys`/`deep_symbolize`), preserving
-    each site's own non-Hash contract (`|| {}`, nil, raise). The related
-    `block_type == :image || block_type.to_s == 'image'` dual-typing trilogy
-    (dynamic page-map builder, single/split view renderers) now delegates to
-    the existing `Core::Models::BlockType.image?`/`canonical` — the canonical
-    predicate had existed all along and simply wasn't used.
-  - **The naming-banlist ratchet closed: the allowlist is gone.** All twelve
-    pre-rule holdouts were renamed to role nouns or folded:
-    `OPFElementNameHelpers`→`OPFElementQueries`; `LifecycleHelpers`→
-    `ImporterLifecycle`; `StyleSupport`→`StylePrimitives`; `ListHelpers`→
-    `ListWindowing`; `ConfigHelpers`→`ConfigResolution`; `ContextHelpers`→
-    `SnapshotQueries`; `ProgressHelper.ratio`→`ProgressRatio.compute`; the two
-    same-named `session_outcome_helpers.rb` files became
-    `SessionOutcomeAccess` (controllers read outcomes) and
-    `SessionOutcomeConstruction` (UI sessions build them);
-    `dependency_record_mixins.rb` split into `dependency_builder.rb` +
-    `dependency_validation.rb` (one module per file, §III); the four-constant
-    `annotation_rendering_helpers.rb` split into `annotation_screen_rendering`
-    / `annotation_view` / `annotation_text_box` / `annotation_edit_state`,
-    losing its `defined?(@ivar)` probes; `payload_helpers.rb` died in the
-    fragment merge. `naming_banlist` now enforces the suffix ban with no
-    allowlist.
-  - **Two stale reflection-allowlist entries removed.** `destination_resolver`
-    probed `doc.respond_to?(:chapters)`/`chapter_count` with fallbacks though
-    `Ports::Outbound::ReaderDocument` pins `chapters`/`chapter_count`/
-    `get_chapter` (this amendment cycle itself had added `chapters` to that
-    port) — it now calls the port directly. `reader_view_model_builder` probed
-    `source_path`, which the port did *not* declare: the port now pins
-    `source_path` (its implementer always exposed it) and the probe is gone.
-
-- **2026-07-11 — Dead test-mode seam deleted; R4 enforced in the inverse direction; the last two width-blind word-wraps consolidated.**
-  - **The test-mode terminal seam is gone — it never did what it claimed.**
-    `TestSupport::TestMode` promised "deterministic test behaviour by swapping
-    in lightweight adapters": its const-swap replaced `Shoko::Terminal`, an
-    alias (`lib/shoko/terminal.rb`) that no file named explicitly, and
-    `TerminalService` resolves `Terminal` lexically to the real facade anyway,
-    so the swapped-in `TestTerminalService` still drove the real terminal. Its
-    `queue_input`/`drain_input`/`configure_size` helpers had no callers and
-    pushed keys into a queue nothing read. All of it — the alias file,
-    `test_mode.rb`, the composition root's `apply_test_configuration` hook,
-    and the stale `test_container_registration.rb`/`test_mode.rb`
-    composition-wiring allowlist entries — is deleted. The alias's one
-    *implicit* consumer surfaced by the deletion — `KittyImageLineRenderer`
-    reached the facade through bare-constant lookup (`output: Terminal`) —
-    now receives the sink as `RenderDependencies#terminal_output`, wired from
-    `terminal_service.output` like every other dependency. `TerminalDouble`
-    (the part that was real: specs inject it explicitly) survives, with its
-    `ensure_input_queue` bug fixed (it populated `@ensure_input_queue` instead
-    of `@input_queue`) and a contract-accurate non-blocking read (`nil` when
-    empty, matching `TerminalInput#read_key`, instead of raising
-    `ThreadError`).
-  - **R4 now also bans the inverse defect: `rescue Shoko::Error` over code
-    that cannot raise it.** Seventeen sites guarded pure primitives with dead
-    rescue+fallback branches — untested code that either never ran
-    (`TextSanitizer.sanitize` and `RenderStyle.color` never raise; the pdf/
-    fb2/kindle importers, epub serializer, cached-library repository,
-    lifecycle helpers, annotation editor, `sanitize_xml_source`'s
-    self-rescue, and the kitty line renderer's `String#split` guard all lost
-    theirs, as did the page-map builders' pure pagination loops) or, worse,
-    swallowed a wiring bug: the only
-    `Shoko::Error` that `TextMetrics` can raise is `ConfigurationError` for an
-    unconfigured runtime config, which the annotation-editor and
-    dictionary-popup rescues converted into a silently degraded regex-strip
-    render. Those now fail fast — composition configures TextMetrics on every
-    entry path, so the error is always a wiring defect. `BackdropOverlay`'s
-    `rescue Shoko::Error, StandardError` with a never-true `@resilient` flag
-    (no constructor ever passed it) is deleted along with the flag. The
-    rescue-conventions analyzer's `PROVABLY_NON_SHOKO_CALLS` table now also
-    lists the never-raising Shoko primitives (`TextSanitizer.sanitize`,
-    `sanitize_xml_source`, `HashNormalizer`, `RenderStyle.color`), so the
-    pattern regresses loudly.
-  - **The last two width-blind word-wraps are consolidated.** The 2026-07-10
-    sweep's "wide input can no longer overflow the panels" had two surviving
-    counterexamples, both measuring by `String#length`: the annotation
-    editor's quote wrap (plus its char-based `ljust` padding) and the
-    dictionary `EntryFormatter`'s sense/translation wrap. Both now use
-    `Ui::TextUtils.wrap_prose`/`wrap_words` (display-width-aware, long words
-    cell-wrapped) and `TextMetrics.pad_right`; wide-character regression specs
-    cover both. `EntryFormatter` also lost its now-unused `color_mode:`
-    parameter with the dead accent fallback.
-
-- **2026-07-11 — Spec doubles verify for real; signature probing joins the reflection ban; the last duplicated primitives consolidated.**
-  - **Mock verification is on and every `instance_double` names a real constant.**
-    The suite had 435 `instance_double('Name')` doubles whose string names did
-    not resolve (`'Document'`, `'Logger'`, `'ReaderStateReader'`, …) — under
-    RSpec defaults each silently degraded to a permissive double, so ~95% of
-    the suite's "verified" doubles verified nothing: the exact
-    permissive-doubles trap the 2026-07-10 amendment blamed for silent feature
-    death. Now `spec_helper` sets `verify_partial_doubles = true` and
-    `verify_doubled_constant_names = true` (an unresolvable name is an error —
-    the ratchet), and all 435 sites reference real constants (ports where the
-    double stands in for an injected dependency; concrete classes elsewhere;
-    `Proc` for the CLI factory lambdas). The conversion surfaced and fixed
-    genuine drift: `ReaderLaunch::Contracts::PathResolution` declared only 2 of
-    the 6 methods production calls (`canonical_path`, `canonical_recent_path`,
-    `document_matches?`, `cache_pointer?` were missing);
-    `Ports::Outbound::MenuBrowseInspection` lacked
-    `selected_library_source_path` and `Ports::Outbound::ReaderDocument` lacked
-    `chapters`, both called in production; specs stubbed a retired
-    `dictionary_panel` field, a renamed `close_dictionary` method, and a
-    `respond_to?` fossil of the removed probing.
-  - **`no_reflection_probing` now bans signature probing everywhere in lib.**
-    `x.method(:foo).parameters` / `klass.instance_method(:initialize).parameters`
-    is the `respond_to?` trap through a different door — it defends against
-    contracts the ports already pin and silently drops arguments when a
-    signature drifts. All six sites were removed: the folder-import workflow
-    and progress reporter call the `FolderImporter` port and the notifier
-    contract (`PAYLOAD_KEYS`) directly; `CacheImportAdapter` type-checks a new
-    `Ports::Outbound::DocumentWarmup` port instead of sniffing `#warm`;
-    `BookImporterResolverAdapter` constructs importers through the uniform
-    contract `new(progress_reporter:, runtime_config:)` (all five importers
-    accept both; the dead `logger:` kwarg left the resolver port end-to-end);
-    the FB2 parser's handler table dispatches statically (`title` is the one
-    depth-aware element, handled explicitly). The guardrail's third example
-    enforces the ban (`.parameters` / `arity`, whole lib, no allowlist).
-  - **The scrollbar/ensure-visible/symbolize stragglers are consolidated.**
-    The 2026-07-10 sweep covered the popup family but missed two hosts:
-    `MenuDesign::CanvasList#thumb_metrics` (character-identical to
-    `ListHelpers.scrollbar_thumb`) and the menu translator screen's third
-    thumb variant plus a hand-rolled ensure-visible window — both now call
-    `Ui::ListHelpers`. The eight hand-rolled `symbolize_keys`/`symbolize_hash`
-    helpers re-implementing `Shared::HashNormalizer` are gone (each site
-    delegates, preserving its own non-Hash behavior); `CatalogService` keeps
-    its raising validation but delegates the normalization, and its
-    `private`-masked class method became a plain private instance method
-    (the `Lint/IneffectiveAccessModifier` todo entry is gone).
-
-- **2026-07-10 — Dead event pipeline deleted; reflection-probing rule extended; popup primitives consolidated under R1's own bar.**
-  - **The zero-subscriber event subsystem is gone.** `Application::State::EventBus`
-    had no production subscriber — every `StateStore#update` built and emitted
-    change events into the void, and the whole `Core::Events` tree
-    (`DomainEventBus` + middleware pipeline, `EventFactory`, `BaseDomainEvent`,
-    annotation/bookmark event classes) forwarded through `EventPublisherAdapter`
-    into that same void (~700 LOC, kept alive only by its own unit specs). All of
-    it is deleted; `ObserverStateStore`'s path observers — the mechanism that
-    always carried production traffic — are the single notification path.
-    `StateStore` no longer takes an event bus; `AnnotationService` and
-    `BookmarkService` lost their `domain_event_bus`/`domain_event_factory`
-    dependencies. If domain events become a real requirement, design them for a
-    real consumer; git preserves the old shape.
-  - **`no_reflection_probing` now also covers adapters + shared.** Probing an
-    injected collaborator for a method its contract guarantees
-    (`x.respond_to?(:foo) && x.foo`) is a silent-failure trap: a rename passes
-    every test against permissive doubles while the feature quietly dies. ~35
-    such probes were removed (event loop → controller, menu controller → catalog,
-    input router → ui controller, screens → typed dependency records, session
-    adapters → popups, state readers for schema-guaranteed fields); the affected
-    spec doubles were completed instead. `respond_to?` survives only at genuine
-    polymorphic/external boundaries (protocol-conversion probes on values, plus
-    an explicit per-file allowlist in the spec, each entry justified).
-  - **The bottom-docked popup family's primitives are consolidated.** R1's own
-    bar ("used by two or more call sites") had been met — and ignored — by
-    copy-pasted `wrap`/`wrap_indices`, `scrollbar_thumb`, `ensure_*_visible!`,
-    and `seg`/`cell`/`dim_line`/`body_line`/`render_rule` across the five
-    popups, with drift (three `scrollbar_thumb` variants; a dead prose-wrap in
-    notes missing the long-word split). Now: `Ui::TextUtils.wrap_prose` /
-    `.wrap_indexed` (display-width-aware, so wide input can no longer overflow
-    the panels), `Ui::ListHelpers.scrollbar_thumb` / `.scroll_to_reveal`, and
-    the `Ui::PanelSpans` mixin (a genuine ≥2-host mixin with per-host palette
-    hooks) — each unit-tested in isolation. The dictionary *setup wizard* keeps
-    its deliberate styled-input-safe variants; it is a different family.
-
-- **2026-06-23 — R1 fully enforced: the two deferred protocol redesigns landed.**
-  The last two `no_include_once_mixin` ALLOWLIST holdouts are gone; the scanner
-  allowlist now contains only the §IV composition-wiring files and the
-  reader_launch type contracts.
-  - **Dictionary install wizard.** `dictionary/setup_flow_support` +
-    `dictionary/language_pair_support` (two modules mixed once into
-    `DictionaryController`, sharing `@setup_session` and calling back into ~8
-    controller methods) became `Dictionary::SetupSession` — a real collaborator
-    that owns the wizard state (`@setup_session`, the per-book manual-source
-    memory) and the language/pair logic, built from the controller's own typed
-    dependency groups and unit-tested in isolation
-    (`setup_session_spec`). The controller now drives it through a small public
-    surface (`begin_lookup`, `present_result`, `resolve_pair`, `handle_*`,
-    `clear`). Their `*_support` names also leave the `naming_banlist` allowlist.
-  - **Reader text selection / right-click menu.** `selection_mouse_handler`
-    (a module mixed once into `MouseableReader`, reaching the host's ivars
-    through `defined?(@ivar)` probes and sharing its mutable
-    `@selected_text` / `@suppress_popup_release_once`) was **inlined** into
-    `MouseableReader` as private methods — the constitution's R1 first option,
-    correct here because the behavior is bound to that one host's mouse state
-    machine (the census itself called it "not a separable collaborator"). The
-    fragile `smh_*`/`defined?` accessors collapse to direct ivar reads; the
-    isolated spec now exercises the real host via `allocate`.
-
-- **2026-06-12 — §IV executed: census-P2 flattening landed; require-climb rule live.**
-  The two allowlisted deep prefixes are gone and both §IV rules are enforced
-  with **empty allowlists** (`directory_depth` spec):
-  - The reader TOC component tree (`adapters/ui/components/sidebar/toc/**`,
-    23 files) was **deleted, not flattened** — it was dead code. The sidebar
-    TOC tab was retired when the TOC moved to the bar mode (which uses
-    `Core::Services::TocTreeService`), but the tab's render tree, its
-    `TocNavigation` input chain, the unbound `:open_toc_sidebar`/`:toggle_sidebar`
-    intents, four `sidebar_toc_*` state fields, and the mouse scroll/drag/click
-    paths all survived unreachably. The schema even still defaulted
-    `sidebar_active_tab` to `:toc`. All of it is excised; the sidebar tab
-    default is `:annotations`; valid tabs are `[annotations, bookmarks]`.
-  - The composition assembler tree (`.../controller_builder/ui_graph_builder/**`)
-    collapsed into the single flat `ui_graph_builder.rb` wiring file — §IV's
-    endorsed "few longer, boring wiring files" shape.
-  - **Require-climb mechanism clarified:** "move the file" applies to climbs
-    within a file's own area. Cross-layer references from legitimately-placed
-    files cannot satisfy ≤2 climbs by moving, so far references use load-path
-    requires (`require 'shoko/...'`); the lib root is on `$LOAD_PATH` from
-    every entry point (bin/shoko, lib/shoko.rb, spec_helper, the
-    isolated-require harness), and Ruby dedupes `require`/`require_relative`
-    by realpath so the styles coexist safely. All 526 pre-rule climbing
-    requires were converted; the guardrail enforces ≤2 with no allowlist.
-
-- **2026-06-10 — §V executed: guardrail suite consolidated to 12 rule specs.**
-  The 47-file / 4,100-LOC suite is now 12 rule-named files (~2,400 LOC):
-  `layer_dependency`, `no_include_once_mixin`, `naming_banlist`,
-  `directory_depth`, `rescue_conventions`, `ports_contract`,
-  `state_conventions`, `composition_wiring`, `constructor_dependency_budget`,
-  `no_reflection_probing`, `boot_surface`, `domain_invariants`.
-  - The mood specs (`hexagonal_migration/hardening/coherence`,
-    `no_legacy_artifacts`, `zero_fallback_completion`, `command_dispatch`,
-    `command_bus`, …) are deleted; their *general* rules moved into the rule
-    specs above, their moment-pins and tombstones died with them.
-  - `naming_banlist` (§III) and `directory_depth` (§IV) are live as
-    **ratchets**: nothing new may take a banned suffix or nest deeper than 4
-    levels; the pre-rule holdouts are explicit allowlists that shrink as
-    files are renamed/flattened. The §IV require-climb rule (≤2 levels) is
-    deferred until the census-P2 flattening of the composition assembler and
-    reader TOC trees — the two allowlisted deep prefixes — actually lands.
-  - The `*_support.rb` per-directory tracking list (layered_state) is
-    superseded by the global `naming_banlist` ratchet.
-
-- **2026-06-10 — R4 (resilient boundaries) added; rescue-narrowing regression fixed.**
-  The guardrail consolidation had mechanically narrowed swallowing
-  `rescue StandardError` boundaries to `rescue Shoko::Error` to satisfy the
-  rescue-conventions spec, leaving inert `# resilient-boundary` comments above
-  rescues that no longer contained what the comment promised (stdlib and bug
-  errors escaped every isolation point). §VIII now codifies the two rescue
-  roles. Converted back to `StandardError` with named handlers: both event
-  buses (application + core domain), state-store observer notification,
-  background-worker job execution, pagination job submission (now with
-  spinner/in-flight rollback on failed submit), config persistence (corrupt
-  `config.json` degrades to defaults again), the menu run loop and its three
-  terminal-cleanup paths, reader-launch document load and cache validation,
-  cached-pagination preload, CLI pagination prebuild, and theme refresh.
-  Log-and-rethrow sites lost their misleading markers; dead rescues
-  (state-store `dup`, terminal monotonic clock) were deleted. New enforcement:
-  the marker may only annotate `rescue StandardError` (rescue_conventions),
-  and the hardening-scope example that originally forced markers onto *every*
-  broad rescue — the pressure that caused the narrowing — now requires them
-  only on swallowing rescues, exempting re-raising translation sites.
-
-- **2026-06-01 — R1 reaches baseline 0; nine documented allowlist exceptions.** Every
-  include-once mixin in the codebase has been inlined into its host or promoted to a
-  collaborator object, EXCEPT nine files kept as justified exceptions in the ratchet
-  scanner's `ALLOWLIST`:
-  - `selection_mouse_handler` — bidirectionally coupled to `MouseableReader`'s mouse-state
-    machine (shares `@suppress_popup_release_once`/`@selected_text`, ~13 deps). Needs a
-    return-based-protocol redesign, not a mechanical extraction.
-  - dictionary `setup_flow_support` + `language_pair_support` — the install wizard,
-    bidirectionally coupled to `DictionaryController` (calls back into ~8 display/mode
-    methods, shares `@setup_session`). Same redesign caveat.
-  - the 5 composition-root wiring modules (`infrastructure_registration`,
-    `port_and_repository_registration`, `domain_application_registration`,
-    `controller_composition`, `controller_composition/menu_builder`) — these are §IV's
-    endorsed "few flat wiring files" of the DI graph, included once *by design* to group
-    registration/builder wiring. NOT the intra-adapter churn R1 targets.
-  - reader_launch `contracts` — typed interface contracts (`PathResolution`, …) that
-    implementers include and `ReaderLaunchService` checks via `is_a?` during dependency
-    validation. Interface/type markers, the same legitimate role as `application/ports`.
-  The ratchet now sits at **0 active violations**; these are tracked, justified, and either
-  await deliberate redesigns (selection, dictionary setup) or are accepted §IV/port-style
-  organization (composition wiring, contracts).
-
-- **2026-07-18 — The state store's "immutable" claim becomes an enforced
-  frozen-tree invariant.** The store called itself an "immutable-snapshot state
-  store" while returning its live internal tree unfrozen from
-  `peek`/`peek_at`/`get`: any caller could mutate state in place, bypassing
-  validation, locking, change sets, and observers — and identity-cached
-  snapshot adapters would then serve stale data. Copy-on-write also duplicated
-  only Hash nodes, structurally sharing arrays, and schema fragments
-  contributed shallow-dup'd `DEFAULTS`, so independently built containers
-  shared the same mutable default arrays. Now: the composed initial tree is
-  deep-frozen; `apply_updates` deep-dups and freezes inserted values (callers
-  keep ownership of their arguments) and freezes every path-copied node before
-  commit, keeping the whole tree frozen at O(path + value) cost; schema
-  fragments freeze their mutable literal defaults; snapshot defaults are
-  deep-frozen in `SnapshotFactory.define_snapshot`. Non-data leaf objects
-  (anything that is not Hash/Array/String) are opaque: the store never freezes
-  domain objects. The shared primitive is `Shoko::Shared::DeepStructure`. The
-  `state_conventions` guardrail enforces the invariant end-to-end: every data
-  node frozen after build and update, out-of-band mutation raises, inserted
-  values are dup'd, no mutable structure shared between stores, fragment
-  defaults deep-frozen.
-
-- **2026-07-18 — R1 closes the `extend` hole; TextMetrics reunified.** R1's
-  text and scanner covered only `include`/`prepend`, so `TextMetrics` had been
-  split into five modules (`RuntimeControls`, `Caching`, `Measurement`,
-  `Truncation`, `Wrapping`) each `extend`ed into exactly one host — singleton-
-  class mixin fragmentation, functionally identical to what R1 forbids and
-  invisible to its enforcement. R1 now names `extend` explicitly, the scanner
-  matches it (`extend self` stays exempt as the module-function idiom, and the
-  widened scan found no other offenders), and the five fragments are inlined
-  back into `shared/terminal/text_metrics.rb` as one flat module with private
-  internals (R2: its ~570 lines are not a reason to split). The rule text now
-  also names the scanner ALLOWLIST as its own exemption list, so the law and
-  its executable enforcement can no longer drift apart silently.
-
-- **2026-07-18 — §III's one-constant-per-file rule gets its missing
-  enforcement.** The rule ("a file is named after the single class/module it
-  defines") had no guardrail; the naming spec checked only banned suffixes and
-  shorthand declarations. Fifteen files had accumulated sibling constants —
-  worst, `archive/zip_reader.rb` held the entire 22-constant `Shoko::Zip`
-  subsystem while the actual `ZipReader` facade hid in a file named
-  `facade.rb`. Now `SingleConstantFileScanner` (naming_banlist spec) enforces:
-  one root constant per file, short name matching the basename
-  (case-insensitive, so `CLI`/`EOCDParser` need no acronym table;
-  directory-scoped prefixes like `opf/navigation_selector.rb` →
-  `OPFNavigationSelector` allowed), everything else nested inside it.
-  Namespace reopenings, require-only aggregators, and values-only files
-  (version.rb, route tables) are out of scope. **Codified exemption:**
-  `shared/errors.rb` — the sealed error taxonomy is one domain concept;
-  eighteen three-line files would be noise, not decomposition. The offenders
-  were split file-per-constant (`Shoko::Zip` → `archive/zip/`, the reader
-  dependency records, the terminal input decoder collaborators, the core
-  model siblings, overlay/pagination/search types), private `*SnapshotInternal`
-  scaffolding modules became local variables, and `ui_constants.rb`/`facade.rb`
-  were renamed to match what they define.
-
-- **2026-07-18 — The plain require surface becomes lazy, with a budget.**
-  `require 'shoko'` eagerly loaded 369 files (~0.2-0.3 s) because
-  `lib/shoko.rb` required the container factory's registration wall; even
-  `--help` paid the full cost, and `bin/shoko` called
-  `ContainerFactory.build_process_control` before parsing a single option.
-  Now `lib/shoko.rb` requires only version, errors, and the CLI adapter, and
-  declares `autoload` for the composition/application entry constants
-  (`ContainerFactory`, `RuntimeComposition`, `FormatRegistryComposition`,
-  `UnifiedApplication`) — the full graph loads on first reference, exactly as
-  before in behavior but only when actually used. Measured: 7 files / ~9 ms
-  on plain require; `shoko --help` ~55 ms end-to-end; a container build pulls
-  the graph on demand; `SHOKO_TEST_MODE`/`SHOKO_EAGER_BOOT` still eager-boot
-  the manifest (the spec suite runs fully eager). Format registration moved
-  from require time into `create_default_container` (idempotent), the CLI
-  defaults its own `process_control`, and the dead `build_process_control`
-  seam is gone. The boot-surface guardrail now enforces a **total budget**
-  (≤20 files on plain require) alongside the existing denylist, so
-  re-eagering the graph fails the suite by an order of magnitude instead of
-  needing a listed filename.
-
-- **2026-07-18 — Aggregate coupling becomes measurable; dependency bags stop
-  concealing it; "outbound" regains its meaning.** Typed dependency records
-  had made constructor budgets look healthy while hiding aggregate coupling:
-  the menu controller took 3 records carrying 22 leaf dependencies (two of
-  them — file_probe, path_ops — write-only dead fields), acted as a service
-  locator (menu_builder read settings_service/annotation_service/catalog back
-  off the controller's public readers; MainMenuComponent pulled
-  observer_registry/catalog off the controller instead of its own
-  dependencies), and ReaderUiDependencies (21 fields) existed only to be
-  repackaged by the render coordinator into the 16-field RenderDependencies
-  at draw time, with 4 fields dead in transit. Changes:
-  - Menu controller: dead fields removed; services the controller never used
-    rerouted from the composition context; observer wiring moved to the
-    composition root (controller drops observer_registry and clock); the
-    component-factory-plus-13-field-bag pass-through replaced by a closure
-    built in menu_builder. Aggregate: 22 → 17, with the locator surface
-    (settings_service/annotation_service/observer_registry readers) gone.
-  - Reader side: ReaderUiDependencies deleted. RenderDependencies is built
-    fully formed at the composition root and injected; the render
-    coordinator no longer repackages, and the assembler passes
-    view_model_builder_factory explicitly.
-  - The constructor-budget guardrail now ALSO ratchets **aggregate leaf
-    dependencies** per coordinating class (records summed + direct extras),
-    frozen at post-refactor actuals (Menu::Controller 17, MouseableReader 44,
-    UIController 19, MenuUiDependencies 14, RenderDependencies 16) —
-    shrink-only. Satisfying per-record caps by re-bagging no longer works.
-  - **Port doctrine:** an outbound port is a contract implemented by an
-    adapter. Contracts implemented only by application-layer objects are
-    internal role interfaces and live under `application/ports/internal/`
-    (ReaderDocument, DocumentLoader, DocumentWarmup moved). The
-    ports-contract guardrail enforces both directions: an outbound port
-    without an adapter implementer and an internal port with one are each
-    violations.
-
-- **2026-07-18 — Completeness pass: the 2026-07-18 remediation's claims are
-  made true where they were only mostly true.** An external re-audit found
-  gaps between declared and enforced properties; each is now closed:
-  - **State admissibility.** `DeepStructure` recursively copies/freezes
-    `Struct` (member-copied, no initializer re-run) and freezes `Data`
-    instances and their members in place; mutable Structs such as
-    `SearchMatch` can no longer ride into state unfrozen. Opaque leaves must
-    be frozen or expose no public writers — the state-conventions guardrail
-    walks Struct/Data members and enforces the writer ban.
-  - **Network ceilings at every boundary.** The dictionary catalog (index +
-    downloads), Libgen (mirror pages + downloads), and LibreTranslate
-    (success and error bodies) gained byte ceilings; the translation-model
-    limit is now `min(catalog-declared, absolute)` so a compromised catalog
-    cannot grant itself a bigger budget. Every `Net::HTTP` user in lib is
-    bounded.
-  - **Relay bookkeeping.** Each `AsyncResultRelay` submission carries a
-    once-only finisher; an executor that runs the block inline and then
-    raises from `#submit` can no longer consume another job's pending count.
-  - **Scanner soundness.** The R1 scanner matches parenthesized and
-    `::`-qualified mixin sites; the single-constant scanner treats CamelCase
-    assignments as definitions (a misnamed `Data.define` is an offense) and
-    only accepts exact or parent-directory-prefixed names. Both have parsing
-    unit tests inside their rule specs. The ports guardrail matches every
-    qualification spelling of a port include; the unconsumed
-    `DynamicPageSource` marker interface (one app-layer includer, zero
-    consumers) is deleted.
-  - **Aggregate ratchet.** Counts are transitive (nested dependency records
-    flatten to their leaves — MouseableReader is honestly 46, not 44) and
-    pins are exact: any drift fails, and pins may only ever be edited
-    downward. `MenuUiDependencies` dropped its three consumerless fields
-    (rss_reader_service, reader_launch_state, document): 14 → 11.
-  - **TextMetrics.** Re-decomposed per R3 into collaborator objects —
-    `RuntimeControls`, two cache classes, `Measurer`, `Truncator`,
-    `Wrapper`, each with isolated unit specs — behind the stable
-    `TextMetrics` facade. Distinct state and roles, no single-host mixins,
-    no 570-line module.
-  - **Zip hygiene.** The two spurious `require_relative 'file'` edges (an
-    artifact of the mechanical split matching `::File`) are gone, and
-    `File.close_safely` rescues what close can actually raise
-    (IOError/SystemCallError) instead of the impossible `Shoko::Error`.
-  - The plain-require boot budget tightened from 20 to 10 files.
-
-- **2026-07-18 — Second completeness pass: a further re-audit found the first
-  one still overstated three properties; each is now closed or honestly
-  scoped.**
-  - **State admissibility is a closed contract.** `DeepStructure.admit` (the
-    store's write transform) copies Hash KEYS as well as values, rebuilds
-    `Data` values via `new(**to_h)` so the caller's instance and members stay
-    untouched (the previous in-place member freezing violated the
-    callers-keep-ownership contract), and REJECTS unfrozen opaque leaves with
-    `InadmissibleValueError` — a reader-only wrapper around a mutable array
-    can no longer ride into state. `frozen?` is the strongest lib-side check
-    without reflection; the guardrail additionally reflection-walks admitted
-    value objects verifying deep frozenness. The dictionary value objects
-    (DictionaryEntry/DictionaryResult/FuzzyMatch) are born frozen — the only
-    production classes stored as opaque leaves.
-  - **Ceilings are hard.** Every bounded reader and download loop checks
-    `current + chunk` BEFORE appending or writing, matching the
-    model-catalog downloader's ordering — no chunk of overshoot is ever
-    buffered or written.
-  - **Scanners are AST-backed where line regexes lied.** Mixin sites (R1)
-    and port includes come from the Ripper-based `MixinSiteExtractor`:
-    multi-argument (`include A, B`), parenthesized, multiline, and
-    `::`-anchored spellings are seen exactly as Ruby sees them, and
-    top-level anchoring is honored during resolution. The single-constant
-    scanner counts `CONST = Data.define/Struct.new/...` as a definition
-    regardless of casing (`URL = Data.define` is no longer invisible).
-  - **The menu locator surface is gone below the component too.** Every menu
-    screen now declares its exact collaborators as keywords
-    (`menu_state_reader:`, `menu_hit_registry:`, …); the 11-field
-    `MenuUiDependencies` bag stops at `MainMenuComponent`, and no screen
-    holds a bag or reaches through `dependencies&.`.
-  - **The aggregate ratchet states its scope**: enumerated classes with an
-    explicit nested-record map and exact pins — a curated review ratchet,
-    not universal constructor analysis. The wrap cache is a true LRU (hits
-    refresh recency) and returns the same frozen value on miss and hit;
-    RuntimeControls and both caches have isolated unit specs, making the
-    "every collaborator unit-tested" claim true. `Zip::File.close_safely`
-    has a regression spec. The constitution's own "oracle"/"DONE" language
-    is scoped to architectural shape — conformance is not correctness, and
-    green guardrails do not replace adversarial review.
-
-- **2026-07-18 — Third completeness pass: enforcement now matches the closed
-  contracts rather than their earlier approximations.**
-  - **State values are structurally closed at both entrances.** Initial schema
-    output and every update now go through the same `DeepStructure.admit`
-    transform. It accepts only exact intrinsic primitives, unadorned plain
-    String/Array/Hash containers, and Struct/Data values whose complete
-    instance state is in declared members; all keys, elements, and members are
-    copied recursively and the result is independently verified frozen.
-    Opaque objects (frozen or not), mutable Numeric subclasses, hidden ivars or
-    singleton behavior, special-semantics Hashes, and cycles are rejected.
-    Data reconstruction reads `Data#to_h` directly rather than a domain
-    serialization override. DictionaryEntry, DictionaryResult, and FuzzyMatch
-    are Data value objects, so no opaque-leaf exception remains.
-  - **Mixin enforcement resolves what it counts.** The Ripper inventory covers
-    direct and explicit-receiver include/prepend/extend calls, multiple
-    arguments, parentheses, multiline calls, literal-array splats, the common
-    `send` forms, constant aliases, and top-level anchoring. A statically
-    unresolved target is a violation rather than a silently omitted site.
-    Widening that inventory exposed the dynamic one-use AliasReaders mixin;
-    `Reader::ControllerInterface` was removed and its sole-host delegation
-    contract now lives directly on ReaderController under R1/R2/R3. The ports
-    guardrail consumes the same canonical inventory instead of applying a
-    second regex interpretation. Constant assignments in the one-constant
-    scanner are also Ripper-derived, including qualified and multiline aliases
-    and top-level-qualified/multiline type constructors.
-  - **One-use UI state is not disguised as a collaborator.** The sole-host
-    AnnotationEditState projection was folded into
-    AnnotationEditScreenComponent as private behavior, with edit, save,
-    refresh, and return-mode regression coverage.
-  - **Ceiling ordering is executable behavior, not just source ordering.**
-    Focused tests feed non-appendable oversized chunks to every bounded buffer
-    and both decompression paths, and writer/hash spies to every download
-    stream. They prove the failing chunk reaches neither memory buffers, disk,
-    nor the model digest before the error.
-  - **The wrap memo owns every object it retains and returns.** Its LRU key is
-    copied/frozen before both lookup and reinsertion; disabled and oversized
-    bypasses return the same deep-frozen line shape as hits and misses.
+# Shoko architecture policy
+
+This file is the active policy. It states invariants, not the story of how they
+were discovered. Historical context and decisions live under
+`docs/architecture/history/` and `docs/architecture/decisions/`.
+
+## 1. Dependency direction
+
+Shoko uses four production areas:
+
+- `core/` contains domain data and deterministic domain behavior. It depends on
+  Ruby and `shared/`, never on application, adapters, or composition.
+- `application/` owns use cases, workflows, state coordination, and ports. It
+  may depend on core and shared, never on concrete adapters or composition.
+- `adapters/` translate files, terminals, networks, clocks, storage, and UI
+  events. They may implement application ports. Cross-adapter dependencies must
+  represent an intentional subsystem relationship rather than convenience.
+- `composition/` is the only place that chooses concrete implementations and
+  assembles the object graph.
+
+Dependencies point inward. A rename, require, or constant reference counts as a
+dependency even when hidden behind a helper.
+
+## 2. Ports
+
+Create a nominal port only when at least one of these is true:
+
+- the application needs an external capability;
+- multiple independently replaceable implementations exist or are expected;
+- a process, persistence, network, clock, terminal, or UI boundary is crossed;
+- the interface is a stable application entry point.
+
+Do not create ports merely to rename an internal method call, satisfy a diagram,
+or make every constructor argument nominal. Internal role interfaces belong in
+`ports/internal`; external capabilities in `ports/outbound`; application entry
+points in `ports/inbound`. Every nominal port has a production implementation.
+
+## 3. Decomposition
+
+Decompose by ownership of state and change:
+
+- A collaborator owns a coherent state machine, policy, resource lifecycle, or
+  transformation and exposes a small callable surface.
+- A module is appropriate for genuine shared protocol behavior. A one-host
+  module is normally evidence that the behavior belongs in its host or in a
+  collaborator object, but it is not forbidden by cardinality alone.
+- File size, directory depth, constructor arity, and dependency count are review
+  signals. They are not substitutes for cohesion analysis.
+- Dependency records group capabilities that change together. They must not be
+  used to conceal an incoherent object graph.
+
+Prefer explicit delegation over shared private instance variables. Avoid class
+reopening across files when an ordinary nested constant or collaborator works.
+
+## 4. Imported data and resources
+
+Treat every imported book, feed, cache file, archive entry, XML tree, compressed
+stream, image, and metadata field as hostile input.
+
+- Enforce a source-size limit before parsing.
+- Bound each decompressed item and the aggregate expansion for one import.
+- Bound structural work such as records, XML events, nesting, dimensions, and
+  recursive references.
+- Reject the input when a limit is exceeded; never silently truncate structural
+  data into a plausibly valid document.
+- Validate paths before filesystem access and keep archive entries inside their
+  intended root.
+
+Limits live in one format-facing budget policy and are exercised by adversarial
+tests. A parser-specific lower bound is allowed; an unbounded parser is not.
+
+## 5. Errors and resilient boundaries
+
+Catch the narrowest exception set that the operation can recover from. Catch
+`StandardError` only at a deliberate containment boundary and mark that branch
+with `# resilient-boundary`.
+
+A containment boundary must:
+
+- preserve fatal external-input errors when continuing would be unsafe;
+- return an explicit fallback or failure result;
+- keep diagnostics best-effort and non-throwing;
+- complete synchronization bookkeeping in `ensure`;
+- prevent one observer, logger, cleanup hook, or background job from starving
+  unrelated work.
+
+Never rescue `Exception`, `Object`, or `BasicObject`.
+
+## 6. Concurrency and lifecycle
+
+- UI state is applied on the UI thread.
+- Worker results cross through an injected relay or executor contract.
+- Request generations invalidate stale asynchronous results.
+- Notification queues acknowledge every envelope exactly once, including when
+  observers or diagnostics fail.
+- Terminal modes, mouse tracking, files, locks, workers, and child processes are
+  released in `ensure` or an equivalent idempotent lifecycle object.
+
+## 7. Composition
+
+Composition is explicit, deterministic, and side-effect-light:
+
+- registration files or their adjacent boot manifest own the requires for the
+  concrete services they register;
+- the top-level factory shows registration order and application entry points;
+- lazy loading is used only for a measured boot-surface reason;
+- no runtime service locator is passed into domain or application objects;
+- construction failures fail fast with the missing contract named.
+
+## 8. Dependencies
+
+Third-party runtime gems are permitted when they improve correctness, security,
+maintenance, or interoperability over an in-house implementation. Each runtime
+dependency requires a record in `runtime-dependencies.yml` with its requirement,
+rationale, owner, and review date. "Zero dependencies" is a current property,
+not an architectural objective.
+
+## 9. Guardrails
+
+Architecture tests enforce a small number of high-value invariants:
+
+- all scanned files are readable and parseable; scanner errors fail the suite;
+- dependency direction and core/application purity hold;
+- ports are placed correctly, implemented, and aligned with intent handlers;
+- constructors stay reviewable;
+- state ownership and composition wiring remain explicit;
+- resilient boundaries follow section 5;
+- production code does not use reflection to make dependencies optional.
+
+Do not add scanners for naming taste, raw line count, directory depth, semantic
+similarity, or a one-time migration. Add a guardrail only for a durable failure
+mode, with a regression fixture proving it detects the bad case. Remove a rule
+when its premise is no longer policy.
+
+## 10. Completion
+
+A change is complete when relevant focused tests, architecture tests, lint, and
+the full required suite pass. Tests must cover the failure mode, not private
+implementation trivia. Update policy only when the durable rule changes; record
+the reason in an ADR rather than appending amendments here.

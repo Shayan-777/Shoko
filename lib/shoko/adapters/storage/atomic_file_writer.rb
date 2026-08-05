@@ -65,12 +65,14 @@ module Shoko
 
           begin
             tempfile.close unless tempfile.closed?
+          # resilient-boundary
           rescue StandardError => e
             return storage_error('atomic_write_cleanup_close', path, e)
           end
 
           begin
             tempfile.unlink if tempfile.path && File.exist?(tempfile.path)
+          # resilient-boundary
           rescue StandardError => e
             return storage_error('atomic_write_cleanup_unlink', path, e)
           end

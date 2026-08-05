@@ -1,0 +1,121 @@
+# Reviewed 2026-08-05. Every application port is listed once. Group rationale
+# explains why the contracts are boundaries rather than interface-for-interface's-sake.
+groups:
+  inbound_entry_points:
+    rationale: Stable calls into application use cases from input adapters.
+    ports:
+      - inbound/menu_catalog.rb
+      - inbound/menu_intent_handler.rb
+      - inbound/reader_intent_handler.rb
+  internal_roles:
+    rationale: Shared application/domain protocols with multiple orchestration consumers; not external capabilities.
+    ports:
+      - internal/document_loader.rb
+      - internal/document_warmup.rb
+      - internal/reader_document.rb
+  persistence_and_external_io:
+    rationale: Replaceable filesystem, storage, network-adjacent, process, time, and host capabilities.
+    ports:
+      - outbound/annotation_repository.rb
+      - outbound/app_config_store.rb
+      - outbound/async_executor.rb
+      - outbound/background_worker_builder.rb
+      - outbound/book_cache_store.rb
+      - outbound/book_importer_resolver.rb
+      - outbound/book_resource_warmup.rb
+      - outbound/bookmark_repository.rb
+      - outbound/cache_availability.rb
+      - outbound/cache_manager.rb
+      - outbound/cache_pointer_resolver.rb
+      - outbound/clock.rb
+      - outbound/config_storage.rb
+      - outbound/data_cleanup.rb
+      - outbound/dictionary_availability.rb
+      - outbound/dictionary_repository.rb
+      - outbound/dictionary_storage.rb
+      - outbound/display_metadata_cache.rb
+      - outbound/file_probe.rb
+      - outbound/folder_importer.rb
+      - outbound/folder_scanner.rb
+      - outbound/id_generator.rb
+      - outbound/library_scanner.rb
+      - outbound/logging.rb
+      - outbound/metadata_reader.rb
+      - outbound/path_ops.rb
+      - outbound/prepagination_batch_runner.rb
+      - outbound/process_control.rb
+      - outbound/progress_repository.rb
+      - outbound/recent_files_repository.rb
+      - outbound/runtime_config.rb
+      - outbound/translation_repository.rb
+      - outbound/wall_clock.rb
+  session_state_boundaries:
+    rationale: Application-owned state contracts implemented by runtime state adapters and snapshot projections.
+    ports:
+      - outbound/menu_launch_state.rb
+      - outbound/menu_session_store.rb
+      - outbound/menu_transient_store.rb
+      - outbound/notification_writer.rb
+      - outbound/observer_registry.rb
+      - outbound/prepagination_progress_writer.rb
+      - outbound/reader_launch_state.rb
+      - outbound/reader_pagination_store.rb
+      - outbound/reader_runtime_context.rb
+      - outbound/reader_session_store.rb
+      - outbound/reader_view_mutator.rb
+      - outbound/reader_view_state_store.rb
+      - outbound/rendered_content_reader.rb
+      - outbound/state/config_snapshot.rb
+      - outbound/state/display_capabilities_snapshot.rb
+      - outbound/state/menu_session_snapshot.rb
+      - outbound/state/menu_snapshot.rb
+      - outbound/state/menu_state_partition.rb
+      - outbound/state/menu_transient_snapshot.rb
+      - outbound/state/reader_pagination_snapshot.rb
+      - outbound/state/reader_session_snapshot.rb
+      - outbound/state/reader_snapshot.rb
+      - outbound/state/reader_view_snapshot.rb
+      - outbound/state/terminal_size.rb
+  presentation_and_runtime_capabilities:
+    rationale: Application actions cross into terminal, rendering, menu, reader, or application-lifecycle adapters.
+    ports:
+      - outbound/annotation_editor_launcher.rb
+      - outbound/annotation_selection_reader.rb
+      - outbound/annotation_view_refresher.rb
+      - outbound/app_mode_runner.rb
+      - outbound/application_exit_control.rb
+      - outbound/catalog_refresh_control.rb
+      - outbound/display_capabilities.rb
+      - outbound/instrumentation.rb
+      - outbound/layout_metrics.rb
+      - outbound/menu_annotation_control.rb
+      - outbound/menu_book_selection.rb
+      - outbound/menu_browse_inspection.rb
+      - outbound/menu_download_selection.rb
+      - outbound/menu_mode_switcher.rb
+      - outbound/menu_progress_presenters.rb
+      - outbound/menu_reader_runtime.rb
+      - outbound/menu_translator_control.rb
+      - outbound/reader_annotation_editor_control.rb
+      - outbound/reader_dictionary_control.rb
+      - outbound/reader_lifecycle_control.rb
+      - outbound/reader_notes_control.rb
+      - outbound/reader_overlay_control.rb
+      - outbound/reader_popup_control.rb
+      - outbound/reader_render_requester.rb
+      - outbound/reader_runner.rb
+      - outbound/reader_search_control.rb
+      - outbound/reader_toc_control.rb
+      - outbound/reader_translator_control.rb
+      - outbound/terminal_capabilities.rb
+      - outbound/terminal_session.rb
+      - outbound/text_metrics.rb
+  domain_and_format_services:
+    rationale: Replaceable adapter implementations consumed by application/core workflows across a genuine format or service seam.
+    ports:
+      - outbound/chapter_formatter.rb
+      - outbound/formatting/display_line.rb
+      - outbound/line_wrapper.rb
+      - outbound/reader_document_locator.rb
+      - outbound/text_sanitizer.rb
+      - outbound/wrapped_lines_provider.rb

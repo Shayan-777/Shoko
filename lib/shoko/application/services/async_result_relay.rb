@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/resilient_diagnostics'
+
 module Shoko
   module Application
     module Services
@@ -147,7 +149,8 @@ module Shoko
         end
 
         def swallow_submit_error(error)
-          @logger&.debug(
+          Shoko::Shared::ResilientDiagnostics.debug(
+            @logger,
             'async_result_relay.submit_failed',
             error: error.class.name,
             message: error.message
@@ -155,7 +158,8 @@ module Shoko
         end
 
         def swallow_job_error(error)
-          @logger&.debug(
+          Shoko::Shared::ResilientDiagnostics.debug(
+            @logger,
             'async_result_relay.job_failed',
             error: error.class.name,
             message: error.message

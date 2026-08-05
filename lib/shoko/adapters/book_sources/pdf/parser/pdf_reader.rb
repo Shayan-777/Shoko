@@ -2,6 +2,7 @@
 
 require_relative 'stream_offset'
 require 'zlib'
+require 'shoko/adapters/book_sources/import_budget'
 
 require_relative 'reader/dictionary_value_parser'
 require_relative 'reader/stream_length_resolver'
@@ -18,7 +19,8 @@ module Shoko
         class PdfReader
           attr_reader :data, :xref, :trailer
 
-          def initialize(data)
+          def initialize(data, import_budget: nil)
+            @import_budget = import_budget || Adapters::BookSources::ImportBudget.new(path: '<PDF stream>')
             @data = data.to_s.dup
             @data.force_encoding(Encoding::BINARY)
             @xref = {}
@@ -79,7 +81,7 @@ module Shoko
             pages_num = resolve_ref(dict_value(root, 'Pages'))
             return [] unless pages_num
 
-            collect_pages(pages_num, {})
+            collect_pages(pages_num, {}, 0)
           end
 
           private
@@ -91,7 +93,9 @@ module Shoko
             endobj_idx = @data.index('endobj', offset)
             return nil unless endobj_idx
 
-            @data[offset..(endobj_idx + 5)]
+            object = @data[offset..(endobj_idx + 5)]
+            import_budget.check_resource_item!(object.bytesize, label: "PDF object #{obj_num}")
+            object
           end
 
           # An object stored inside a compressed object stream. The container
@@ -121,6 +125,8 @@ module Shoko
             count = dict_value(header, 'N').to_i
             first = dict_value(header, 'First').to_i
             return {} unless count.positive? && first.positive?
+
+            import_budget.consume_structure!(count, label: 'PDF object stream')
 
             body = read_stream(objstm_num)
             return {} unless body
@@ -187,9 +193,11 @@ module Shoko
           # +seen+ guards against malformed page trees whose /Kids cycle back to
           # an ancestor (or share a node): without it the recursion never
           # terminates. Each node is expanded at most once.
-          def collect_pages(obj_num, seen)
+          def collect_pages(obj_num, seen, depth = 0)
             return [] if seen[obj_num]
 
+            import_budget.check_nesting!(depth + 1, label: 'PDF page tree nesting')
+            import_budget.consume_structure!(1, label: 'PDF page tree')
             seen[obj_num] = true
             raw = read_object_raw(obj_num)
             return [] unless raw
@@ -198,23 +206,24 @@ module Shoko
             when 'Page'
               [obj_num]
             when 'Pages'
-              collect_page_kids(raw, seen)
+              collect_page_kids(raw, seen, depth)
             else
               []
             end
           end
 
-          def collect_page_kids(raw, seen)
+          def collect_page_kids(raw, seen, depth)
             kids_text = resolved_kids_text(raw)
             return [] unless kids_text
 
             refs = kids_text.scan(/(\d+)\s+\d+\s+R/)
-            refs.flat_map { |ref| collect_pages(ref[0].to_i, seen) }
+            refs.flat_map { |ref| collect_pages(ref[0].to_i, seen, depth + 1) }
           end
 
           def resolved_kids_text(raw)
             kids_text = dict_value(raw, 'Kids')
             return nil unless kids_text
+            return kids_text if raw.match?(%r{/Kids\s*\[})
             return kids_text unless kids_text.match?(/\A\d+\s+\d+\s+R\z/)
 
             kids_obj_num = resolve_ref(kids_text)
@@ -224,7 +233,7 @@ module Shoko
           end
 
           def decompress(raw)
-            Zlib::Inflate.inflate(raw)
+            import_budget.inflate(raw, label: 'PDF stream')
           rescue Zlib::DataError, Zlib::BufError
             decompress_raw(raw)
           end
@@ -233,9 +242,9 @@ module Shoko
           # is corrupt. Translate the zlib failure into a Shoko book-parse error
           # at its source so the extractor/import boundaries (which rescue
           # Shoko::Error) skip the page or reject the file cleanly, instead of a
-          # raw Zlib::DataError escaping the whole import (R4 / §VIII).
+          # raw Zlib::DataError escaping the whole import (constitution section 4).
           def decompress_raw(raw)
-            Zlib::Inflate.new(-Zlib::MAX_WBITS).inflate(raw)
+            import_budget.inflate(raw, window_bits: -Zlib::MAX_WBITS, label: 'raw PDF stream')
           rescue Zlib::DataError, Zlib::BufError => e
             raise Shoko::BookParseError.new("corrupt PDF stream: #{e.message}", '')
           end
@@ -244,13 +253,18 @@ module Shoko
             length = stream_length_from_header(header)
             if length && length >= 0
               raw = @data.byteslice(stream_data_start, length)
-              return raw if raw && raw.bytesize == length
+              return checked_stream_bytes(raw) if raw && raw.bytesize == length
             end
 
             endstream_idx = @data.index('endstream', stream_data_start)
             return nil unless endstream_idx
 
-            @data[stream_data_start...endstream_idx]
+            checked_stream_bytes(@data[stream_data_start...endstream_idx])
+          end
+
+          def checked_stream_bytes(raw)
+            import_budget.check_resource_item!(raw.bytesize, label: 'PDF encoded stream')
+            raw
           end
 
           def stream_length_from_header(header)
@@ -272,7 +286,8 @@ module Shoko
               data: @data,
               xref: @xref,
               trailer: @trailer,
-              dict_value: method(:dict_value)
+              dict_value: method(:dict_value),
+              import_budget: import_budget
             )
           end
 
@@ -285,12 +300,20 @@ module Shoko
               dict_value: method(:dict_value),
               read_stream_bytes: method(:read_stream_bytes),
               decompress: method(:decompress),
-              predictor: stream_predictor
+              predictor: stream_predictor,
+              import_budget: import_budget
             )
           end
 
           def stream_predictor
-            @stream_predictor ||= Reader::StreamPredictor.new(dict_value: method(:dict_value))
+            @stream_predictor ||= Reader::StreamPredictor.new(
+              dict_value: method(:dict_value),
+              import_budget: import_budget
+            )
+          end
+
+          def import_budget
+            @import_budget ||= Adapters::BookSources::ImportBudget.new(path: '<PDF stream>')
           end
 
           def stream_length_resolver

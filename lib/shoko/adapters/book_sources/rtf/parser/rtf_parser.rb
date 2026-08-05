@@ -55,9 +55,10 @@ module Shoko
 
           # @param rtf_string [String] raw RTF content
           # @param codepage [Integer] default codepage (overridden by \ansicpg)
-          def initialize(rtf_string, codepage: 1252)
+          def initialize(rtf_string, codepage: 1252, import_budget: nil)
             @rtf = rtf_string.to_s
             @codepage = codepage
+            @import_budget = import_budget
             @pos = 0
             @len = @rtf.length
 
@@ -210,6 +211,7 @@ module Shoko
           def flush_text
             return if @current_text.empty?
 
+            consume_structure!('RTF text runs')
             @current_runs << self.class::TextRun.new(
               text: @current_text,
               bold: @bold,
@@ -249,6 +251,7 @@ module Shoko
           end
 
           def append_paragraph
+            consume_structure!('RTF paragraphs')
             @paragraphs << self.class::Paragraph.new(
               runs: @current_runs,
               alignment: @alignment,
@@ -279,6 +282,8 @@ module Shoko
           end
 
           def push_state
+            @import_budget&.check_nesting!(@state_stack.length + 1, label: 'RTF group nesting')
+            consume_structure!('RTF groups')
             @state_stack << [
               @bold,
               @italic,
@@ -306,6 +311,10 @@ module Shoko
               @font_size,
               @color_index,
               @uc_skip = @state_stack.pop
+          end
+
+          def consume_structure!(label)
+            @import_budget&.consume_structure!(1, label: label)
           end
 
           def finish_font_entry

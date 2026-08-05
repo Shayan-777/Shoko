@@ -8,6 +8,7 @@ require 'shoko/adapters/support/html_processor'
 require 'shoko/adapters/support/rexml_safe_parser'
 require 'shoko/adapters/book_sources/epub/parser/opf_processor'
 require 'shoko/adapters/book_sources/epub/parser/xml_text_normalizer'
+require 'shoko/adapters/book_sources/import_budget'
 require 'shoko/core/models/book_data'
 require 'shoko/core/models/chapter'
 require 'shoko/core/models/toc_entry'
@@ -44,6 +45,8 @@ module Shoko
 
           def import(epub_path)
             @epub_path = validated_epub_path(epub_path)
+            @import_budget = Adapters::BookSources::ImportBudget.new(path: @epub_path)
+            @import_budget.check_source_file!
 
             report('Opening EPUB archive...', progress: 0.0)
             @archive_reader.open(@epub_path, runtime_config: @runtime_config) { |zip| import_archive(zip) }
@@ -181,7 +184,7 @@ module Shoko
           # Archive access, entry reads, and OPF location helpers.
           def read_container(zip)
             instrument('epub.read_container') do
-              normalize_text(zip.read(CONTAINER_PATH))
+              read_text_entry(zip, CONTAINER_PATH)
             end
           rescue Zip::Error
             raise Shoko::BookParseError.new('Missing META-INF/container.xml', @epub_path)
@@ -234,13 +237,21 @@ module Shoko
           def read_text_entry(zip, path)
             instrument('epub.read_text_entry') do
               content = zip.read(path)
-              normalize_text(content)
+              @import_budget.consume_expanded!(content.bytesize, label: "EPUB entry #{path}")
+              normalized = normalize_text(content)
+              @import_budget.preflight_xml!(normalized, label: "EPUB XML #{path}") if xml_entry?(path)
+              normalized
             end
+          end
+
+          def xml_entry?(path)
+            %w[.xml .opf .ncx .xhtml .html .htm].include?(File.extname(path.to_s).downcase)
           end
 
           def read_binary_entry(zip, path)
             instrument('epub.read_binary_entry') do
               data = zip.read(path)
+              @import_budget.consume_resource!(data.bytesize, label: "EPUB resource #{path}")
               data.force_encoding(Encoding::BINARY)
             end
           end

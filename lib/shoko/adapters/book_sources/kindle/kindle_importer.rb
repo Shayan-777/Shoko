@@ -13,6 +13,7 @@ require 'shoko/adapters/book_sources/kindle/parser/huff_cdic_decompressor'
 require 'shoko/adapters/book_sources/kindle/parser/kindle_metadata_extractor'
 require 'shoko/adapters/book_sources/kindle/parser/metadata_parser'
 require 'shoko/adapters/book_sources/format_registry'
+require 'shoko/adapters/book_sources/import_budget'
 require_relative '../../support/importer_lifecycle'
 
 module Shoko
@@ -90,6 +91,7 @@ module Shoko
           # @return [Core::Models::BookData]
           def import(path)
             @kindle_path = validated_kindle_path(path)
+            @import_budget = Adapters::BookSources::ImportBudget.new(path: @kindle_path)
             raw_data = read_kindle_data
             record0 = parse_headers(raw_data)
             metadata = instrumented_kindle_metadata(record0)
@@ -113,7 +115,7 @@ module Shoko
 
           def read_kindle_data
             report('Reading Kindle file...', progress: 0.0)
-            instrument('kindle.read') { File.binread(@kindle_path) }
+            instrument('kindle.read') { @import_budget.read_binary }
           end
 
           def parse_headers(raw_data)
@@ -136,7 +138,10 @@ module Shoko
             report('Decompressing text...', progress: 0.2)
             html = instrument('kindle.decompress') { decompress_text }
             report('Encoding text...', progress: 0.4)
-            clean_kindle_markup(encode_text(html))
+            encoded = clean_kindle_markup(encode_text(html))
+            tags = encoded.to_enum(:scan, %r{<(?!!--)[A-Za-z/-]}).count
+            @import_budget.consume_structure!(tags, label: 'Kindle markup')
+            encoded
           end
 
           # Remove presentation-only CSS and normalize image references so the
@@ -329,10 +334,12 @@ module Shoko
           # ── Decompression & Chapter Splitting ──────────────────────────────
 
           def decompress_text
-            record_indices.each_with_object([]) do |record_index, text_parts|
+            record_indices.each_with_object(+''.b) do |record_index, text|
               report_record_progress(record_index)
-              text_parts << decompressed_record(record_index)
-            end.join
+              part = decompressed_record(record_index)
+              @import_budget.consume_expanded!(part.bytesize, label: "Kindle text record #{record_index}")
+              text << part
+            end
           end
 
           def record_indices
@@ -353,16 +360,28 @@ module Shoko
           end
 
           def decompressed_record(record_index)
-            record_data = @pdb.record_data(record_index)
-            stripped = Adapters::BookSources::Kindle::PalmdocDecompressor.strip_trailing_data(
-              record_data,
-              @mobi.extra_data_flags
-            )
-            return Adapters::BookSources::Kindle::PalmdocDecompressor.decompress(stripped) if @mobi.palmdoc_compressed?
-            return huffcdic_decompressor.decompress(stripped) if @mobi.huffcdic_compressed?
+            stripped = stripped_record(record_index)
+            max_output = @import_budget.max_expanded_item_bytes
+            if @mobi.palmdoc_compressed?
+              @import_budget.consume_decode_operations!(stripped.bytesize, label: 'PalmDOC data')
+              return Adapters::BookSources::Kindle::PalmdocDecompressor.decompress(
+                stripped,
+                max_output_bytes: max_output
+              )
+            end
+            if @mobi.huffcdic_compressed?
+              @import_budget.consume_decode_operations!(stripped.bytesize * 8, label: 'HUFF/CDIC data')
+              return huffcdic_decompressor.decompress(stripped, max_output_bytes: max_output)
+            end
             return stripped if @mobi.uncompressed?
 
             raise Shoko::BookParseError.new("Unsupported compression type: #{@mobi.compression_type}", @kindle_path)
+          end
+
+          def stripped_record(record_index)
+            Adapters::BookSources::Kindle::PalmdocDecompressor.strip_trailing_data(
+              @pdb.record_data(record_index), @mobi.extra_data_flags
+            )
           end
 
           # Built once per book and reused across every text record: the HUFF

@@ -108,6 +108,16 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfReader do
     expect(prev).to be_nil
   end
 
+  it 'rejects an oversized xref subsection before iterating its declared rows' do
+    data = "xref\n0 3\n0000000000 65535 f \n".b
+    reader = build_reader(data, {})
+    budget = Shoko::Adapters::BookSources::ImportBudget.new(path: 'hostile.pdf', max_structural_units: 2)
+    reader.instance_variable_set(:@import_budget, budget)
+
+    expect { reader.send(:parse_traditional_xref, 0) }
+      .to raise_error(Shoko::BookParseError, /PDF xref table exceeds 2 units/)
+  end
+
   it 'parses xref stream entries into object offsets' do
     reader = build_reader(''.b, {})
 
@@ -173,6 +183,29 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfReader do
     pages = Timeout.timeout(5) { reader.send(:collect_pages, 8, {}) }
 
     expect(pages).to eq([])
+  end
+
+  it 'collects a single page reference from an inline Kids array' do
+    node8 = "8 0 obj\n<< /Type /Pages /Kids [9 0 R] /Count 1 >>\nendobj\n"
+    off9 = node8.bytesize
+    node9 = "9 0 obj\n<< /Type /Page >>\nendobj\n"
+    reader = build_reader(node8 + node9, { 8 => 0, 9 => off9 })
+
+    expect(reader.send(:collect_pages, 8, {})).to eq([9])
+  end
+
+  it 'rejects page trees deeper than the import nesting budget' do
+    node8 = "8 0 obj\n<< /Type /Pages /Kids [9 0 R] /Count 1 >>\nendobj\n"
+    off9 = node8.bytesize
+    node9 = "9 0 obj\n<< /Type /Pages /Kids [10 0 R] /Count 1 >>\nendobj\n"
+    off10 = off9 + node9.bytesize
+    node10 = "10 0 obj\n<< /Type /Page >>\nendobj\n"
+    reader = build_reader(node8 + node9 + node10, { 8 => 0, 9 => off9, 10 => off10 })
+    budget = Shoko::Adapters::BookSources::ImportBudget.new(path: 'nested.pdf', max_nesting: 2)
+    reader.instance_variable_set(:@import_budget, budget)
+
+    expect { reader.send(:collect_pages, 8, {}) }
+      .to raise_error(Shoko::BookParseError, /PDF page tree nesting exceeds 2/)
   end
 
   it 'falls back to endstream scanning when referenced Length object is invalid' do

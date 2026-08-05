@@ -92,14 +92,18 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfImporter do
   end
 
   describe '#import metadata defaults and extraction contract' do
-    let(:path) { '/tmp/no_metadata.pdf' }
+    let(:source_file) do
+      Tempfile.new(['no_metadata', '.pdf']).tap do |file|
+        file.binmode
+        file.write('%PDF-1.7')
+        file.flush
+      end
+    end
+    let(:path) { source_file.path }
     let(:reader) { instance_double(Shoko::Adapters::BookSources::Pdf::PdfReader) }
     let(:extractor) { instance_double(Shoko::Adapters::BookSources::Pdf::PdfTextExtractor) }
 
     before do
-      allow(File).to receive(:file?).with(File.expand_path(path)).and_return(true)
-      allow(File).to receive(:binread).with(File.expand_path(path)).and_return('%PDF-1.7')
-
       allow(Shoko::Adapters::BookSources::Pdf::PdfReader).to receive(:new).and_return(reader)
       allow(Shoko::Adapters::BookSources::Pdf::PdfTextExtractor).to receive(:new).with(reader).and_return(extractor)
 
@@ -111,6 +115,8 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfImporter do
       allow(extractor).to receive(:extract_page_layout).with(11).and_return([])
       allow(extractor).to receive(:extract_page_text).with(11).and_return('Only page')
     end
+
+    after { source_file.close! }
 
     it 'uses default language when metadata is missing' do
       book = importer.import(path)

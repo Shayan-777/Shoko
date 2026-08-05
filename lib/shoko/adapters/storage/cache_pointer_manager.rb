@@ -54,7 +54,7 @@ module Shoko
         # Pointer files are read/written best-effort: a corrupt or unreadable
         # pointer must degrade to "no cache pointer" rather than crash. The
         # failures here (JSON::ParserError, Errno::*, bugs) are not
-        # Shoko::Error, so the boundary is StandardError (constitution §VIII).
+        # Shoko::Error, so the boundary is StandardError (constitution section 5).
         def record_pointer_error(operation, error)
           @logger&.debug("CachePointerManager: #{operation}",
                          path:, error_class: error.class.name, error: error.message)

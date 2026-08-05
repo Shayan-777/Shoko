@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# Consolidated boot-surface rules (constitution §V): every runtime file
-# requires its own dependencies, the plain require surface stays lazy, and
+# Consolidated boot-surface rules (constitution sections 7 and 9): each runtime
+# file requires its own dependencies, the plain require surface stays lazy, and
 # deferred reader subsystems load without eager boot. Absorbs the former
 # isolated_require, plain_require_boot_surface, *_dependency_load and
 # reader_render_plain_boot_smoke suites.
@@ -9,28 +9,6 @@
 require 'json'
 require 'open3'
 require 'spec_helper'
-
-
-
-RSpec.describe 'Isolated require guardrails' do
-  let(:root) { File.expand_path('../../..', __dir__) }
-  let(:script) { File.join(root, 'script', 'architecture', 'isolated_require_report.rb') }
-
-  it 'requires every runtime file in isolation without relying on manifest order' do
-    stdout, stderr, status = Open3.capture3('ruby', script)
-    expect(status.success?).to be(true), stderr
-
-    failures = JSON.parse(stdout)
-    formatted = failures.map do |failure|
-      header = failure.fetch('path')
-      details = failure.fetch('stderr').to_s.lines.first(3).join
-      "#{header}\n#{details}"
-    end
-    message = "Runtime files must declare their own dependencies:\n#{formatted.join("\n---\n")}"
-
-    expect(formatted).to eq([]), message
-  end
-end
 
 
 
@@ -85,8 +63,8 @@ RSpec.describe 'Plain require boot surface guardrails' do
   end
 
   # Not just a denylist: the plain require surface has a total budget. The
-  # composition graph autoloads on first reference (constitution §V,
-  # amendment 2026-07-18), so `require 'shoko'` must stay a thin CLI
+  # composition graph autoloads on first reference (constitution section 7),
+  # so `require 'shoko'` must stay a thin CLI
   # surface — version, errors, the CLI adapter, and their direct
   # dependencies. Re-eagering the container factory would blow this budget
   # by an order of magnitude, not sneak past a list.

@@ -5,6 +5,15 @@ require_relative '../../../../../lib/shoko/adapters/book_sources/pdf/parser/read
 require_relative '../../../../../lib/shoko/adapters/book_sources/pdf/parser/reader/dictionary_value_parser'
 
 RSpec.describe Shoko::Adapters::BookSources::Pdf::Reader::StreamPredictor do
+  it 'rejects attacker-controlled predictor geometry before allocation' do
+    budget = Shoko::Adapters::BookSources::ImportBudget.new(path: 'wide.pdf', max_dimension_bytes: 8)
+    predictor = described_class.new(dict_value: dict_value, import_budget: budget)
+    header = '<< /DecodeParms << /Predictor 12 /Columns 1000000 /Colors 4 /BitsPerComponent 8 >> >>'
+
+    expect { predictor.apply("\x00".b, header) }
+      .to raise_error(Shoko::BookParseError, /PDF predictor (?:pixel|row) exceeds 8/)
+  end
+
   let(:dict_value) { Shoko::Adapters::BookSources::Pdf::Reader::DictionaryValueParser.new.method(:parse) }
   let(:predictor) { described_class.new(dict_value: dict_value) }
 

@@ -2,9 +2,8 @@
 
 require 'spec_helper'
 
-# Consolidated layer-boundary rules (constitution §I: the dependency rule;
-# §V: one spec per rule family). Absorbs the former adapter_boundary,
-# strict_hexagonal_wiring, layer_policy_consistency,
+# Consolidated layer-boundary rules (constitution sections 1 and 9). Absorbs
+# the former adapter_boundary, strict_hexagonal_wiring, layer_policy_consistency,
 # no_cross_adapter_runtime_coupling specs and the general layer-purity
 # examples of the retired hexagonal_* and application_workflow suites.
 RSpec.describe 'Layer dependency boundaries' do
@@ -14,8 +13,6 @@ RSpec.describe 'Layer dependency boundaries' do
 
   def non_comment_content(path)
     File.readlines(path).reject { |line| line.strip.start_with?('#') }.join
-  rescue StandardError
-    ''
   end
 
   def non_comment_lines(path)
@@ -24,8 +21,6 @@ RSpec.describe 'Layer dependency boundaries' do
 
       [index + 1, line]
     end
-  rescue StandardError
-    []
   end
 
   def layer_for(relative_path)
@@ -71,8 +66,6 @@ RSpec.describe 'Layer dependency boundaries' do
 
       [index + 1, relative(expanded)]
     end
-  rescue StandardError
-    []
   end
 
   describe 'layer matrix' do
@@ -161,7 +154,7 @@ RSpec.describe 'Layer dependency boundaries' do
     # The rule, not a list of the four method names that happened to violate
     # it: a controller is an input-adapter object, so the application layer
     # must not call ANY method on one. Naming the methods pinned a moment and
-    # let the fifth coupling method through (constitution §V).
+    # let the fifth coupling method through (constitution section 9).
     it 'forbids the application layer from calling controller methods' do
       files = Dir[File.join(lib_root, 'application', '**', '*.rb')]
       pattern = /(?<![\w.])@?controller\.[a-z_][\w!?]*/

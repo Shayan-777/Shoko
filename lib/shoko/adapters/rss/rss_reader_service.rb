@@ -2,6 +2,8 @@
 
 require 'digest'
 require_relative 'article_block_sanitizer'
+require_relative 'article_body_hydrator'
+require_relative 'rss_projection'
 require 'shoko/core/models/content_block_payload'
 
 require_relative '../../core/models/rss_article'
@@ -23,8 +25,6 @@ module Shoko
         MAX_TITLE_LENGTH = 220
         MAX_AUTHOR_LENGTH = 120
         MAX_ERROR_LENGTH = 160
-        FULL_CONTENT_MIN_LENGTH = 1000
-        FULL_CONTENT_GAIN_THRESHOLD = 200
 
         def initialize(repository:, feed_fetcher:, wall_clock:, article_content_fetcher: nil, text_sanitizer: nil,
                        logger: nil)
@@ -36,9 +36,15 @@ module Shoko
           @repository = repository
           @feed_fetcher = feed_fetcher
           @wall_clock = wall_clock
-          @article_content_fetcher = article_content_fetcher
           @text_sanitizer = text_sanitizer
           @block_sanitizer = ArticleBlockSanitizer.new(max_text_length: self.class::MAX_CONTENT_LENGTH)
+          @article_hydrator = ArticleBodyHydrator.new(
+            fetcher: article_content_fetcher,
+            wall_clock: wall_clock,
+            text_sanitizer: text_sanitizer,
+            logger: logger
+          )
+          @projection = RssProjection.new(all_feeds_key: self.class::ALL_FEEDS_KEY)
         end
 
         def snapshot
@@ -65,24 +71,18 @@ module Shoko
 
         # Feed/article projection helpers used by the menu-side RSS reader workflow.
         def feed_projection(snapshot:, scope:)
-          normalized_scope = normalize_scope(scope)
-          [all_feeds_entry(snapshot[:articles], normalized_scope), *visible_feed_entries(snapshot, normalized_scope)]
+          @projection.feeds(snapshot: snapshot, scope: scope)
         end
 
         def article_projection(snapshot:, selected_feed_key:, scope:, query:)
-          filters = projection_filters(selected_feed_key, scope, query)
-          feed_titles = feed_title_index(snapshot)
-
-          filtered_articles(snapshot, filters, feed_titles).map do |article|
-            article_projection_entry(article, feed_titles[article.feed_id])
-          end
+          @projection.articles(snapshot: snapshot, selected_feed_key: selected_feed_key, scope: scope, query: query)
         end
 
         def reader_article_projection(article_id, snapshot: self.snapshot)
           article = Array(snapshot[:articles]).find { |candidate| candidate.id == article_id.to_s }
           return nil unless article
 
-          reader_projection_entry(article, snapshot)
+          @projection.reader_entry(article, snapshot)
         end
 
         def hydrate_article(article_id)
@@ -91,34 +91,23 @@ module Shoko
           article = article_for_hydration(target_id, initial)
           return nil unless article
 
-          hydrated = hydrate_article_payload(hydration_payload_for(article))
-          candidate = merge_hydrated_body(article, hydrated)
-          return reader_projection_entry(article, initial) unless body_changed?(article, candidate)
+          body = @article_hydrator.hydrate(article)
+          return @projection.reader_entry(article, initial) unless @article_hydrator.changed?(article, body)
 
-          merged = persist_hydrated_article(target_id, hydrated)
+          merged = persist_hydrated_article(target_id, body)
           reader_article_projection(target_id, snapshot: merged)
         end
 
         def normalize_feed_key(feeds:, preferred_key:)
-          keys = Array(feeds).map { |feed| feed[:key].to_s }
-          preferred = preferred_key.to_s.strip
-          return all_feeds_key if keys.empty?
-          return preferred if keys.include?(preferred)
-
-          keys.first
+          @projection.normalize_feed_key(feeds: feeds, preferred_key: preferred_key)
         end
 
         def normalize_article_id(articles:, preferred_id:)
-          ids = Array(articles).map { |article| article[:id].to_s }
-          preferred = preferred_id.to_s.strip
-          return nil if ids.empty?
-          return preferred if ids.include?(preferred)
-
-          ids.first
+          @projection.normalize_article_id(articles: articles, preferred_id: preferred_id)
         end
 
         def last_synced_at(snapshot)
-          Array(snapshot[:feeds]).filter_map(&:last_synced_at).max
+          @projection.last_synced_at(snapshot)
         end
 
         # Feed subscription and sync orchestration for the RSS reader service.
@@ -160,28 +149,13 @@ module Shoko
           @repository.load_article(article_id) || article
         end
 
-        def hydration_payload_for(article)
-          payload = article.to_h
-          # Storage keeps summary as a renderable content fallback. Treat that
-          # exact fallback as no dedicated body when considering enrichment.
-          payload[:content] = '' if article.content == article.summary
-          payload
-        end
-
-        def persist_hydrated_article(article_id, hydrated)
+        def persist_hydrated_article(article_id, body)
           @repository.update do |current|
             articles = Array(current[:articles]).map do |article|
-              article.id == article_id ? merge_hydrated_body(article, hydrated) : article
+              article.id == article_id ? @article_hydrator.apply(article, body) : article
             end
             { feeds: current[:feeds], articles: articles }
           end
-        end
-
-        def reader_projection_entry(article, snapshot)
-          article_projection_entry(article, feed_title_index(snapshot)[article.feed_id]).merge(
-            content: article.content.to_s.empty? ? article.summary : article.content,
-            content_blocks: article.content_blocks
-          )
         end
 
         def update_article(article_id)
@@ -198,7 +172,7 @@ module Shoko
         def merge_feed_articles(existing_articles, parsed_articles, feed_id_value)
           refreshed = refreshed_articles(existing_articles, parsed_articles, feed_id_value)
           merged = refreshed + retained_existing_articles(existing_articles, refreshed)
-          retained_articles(merged).sort_by { |article| article_sort_tuple(article) }
+          retained_articles(merged).sort_by { |article| @projection.sort_tuple(article) }
         end
 
         def build_article_record(feed_id_value, payload, existing_index)
@@ -335,98 +309,6 @@ module Shoko
           }
         end
 
-        # Full-article hydration helpers for the RSS reader service.
-        def merge_hydrated_body(article, hydrated)
-          summary = sanitized_article_summary(hydrated)
-          article.with(
-            summary: summary,
-            content: sanitized_article_content(hydrated, summary),
-            content_blocks: sanitized_article_blocks(hydrated),
-            fetched_at: timestamp
-          )
-        end
-
-        def body_changed?(left, right)
-          left.summary != right.summary ||
-            left.content != right.content ||
-            left.content_blocks != right.content_blocks
-        end
-
-        def hydrate_article_payload(payload)
-          article = payload.dup
-          return article unless should_fetch_full_content?(article)
-
-          fetched = @article_content_fetcher.fetch(article[:url])
-          return article unless full_content_more_complete?(article, fetched.text)
-
-          article.merge(
-            content: fetched.text,
-            content_blocks: fetched.blocks,
-            summary: derive_summary(article[:summary], fetched.text)
-          )
-        # Resilient boundary (R4): full-article hydration is a best-effort
-        # enrichment that runs arbitrary third-party HTML through the fetcher,
-        # the extractor, and the entity decoder. The error set there is
-        # unbounded — malformed markup, mislabelled encodings, and plain bugs
-        # are not Shoko errors — and a single unreadable article must never
-        # abort subscribing to the feed. The article keeps its feed-supplied
-        # summary and the subscription proceeds.
-        # resilient-boundary
-        rescue StandardError => e
-          record_article_hydration_error(article, e)
-          article
-        end
-
-        def record_article_hydration_error(article, error)
-          log_debug(
-            'rss_reader.article_content_fetch_failed',
-            url: article[:url],
-            error_class: error.class.name,
-            error: error.message
-          )
-          nil
-        end
-
-        def should_fetch_full_content?(payload)
-          return false unless @article_content_fetcher
-
-          url = payload[:url].to_s.strip
-          return false if url.empty?
-
-          existing = best_existing_text(payload)
-          existing.empty? || truncated_content?(existing, payload[:summary].to_s.strip)
-        end
-
-        # The richest text the feed already handed us: a dedicated content element when
-        # present, otherwise the description/summary (many feeds ship the full article
-        # body there and never populate content:encoded).
-        def best_existing_text(payload)
-          content = payload[:content].to_s.strip
-          content.empty? ? payload[:summary].to_s.strip : content
-        end
-
-        def truncated_content?(content, summary)
-          content.length < self.class::FULL_CONTENT_MIN_LENGTH &&
-            content.length <= summary.length + self.class::FULL_CONTENT_GAIN_THRESHOLD
-        end
-
-        def full_content_more_complete?(payload, full_content)
-          fetched = full_content.to_s.strip
-          return false if fetched.empty?
-
-          existing = best_existing_text(payload)
-          return fetched.length > existing.length if payload[:content].to_s.strip.empty?
-
-          fetched.length > existing.length + self.class::FULL_CONTENT_GAIN_THRESHOLD
-        end
-
-        def derive_summary(current_summary, full_content)
-          summary = current_summary.to_s.strip
-          return summary unless summary.empty?
-
-          excerpt_from(full_content)
-        end
-
         # Feed record builders and feed identity helpers for the RSS reader service.
         def build_feed_record(url:, fetched:)
           Shoko::Core::Models::RssFeed.new(**feed_record_attributes(url, fetched))
@@ -514,34 +396,8 @@ module Shoko
           parsed_time(value)&.utc&.iso8601
         end
 
-        def time_to_epoch(value)
-          parsed_time(value)&.to_i
-        end
-
-        def published_label(value)
-          parsed = parsed_time(value)
-          return 'Unknown date' unless parsed
-
-          parsed.localtime.strftime('%Y-%m-%d %H:%M')
-        end
-
-        def normalize_scope(scope)
-          case scope&.to_sym
-          when :unread then :unread
-          when :starred then :starred
-          else :all
-          end
-        end
-
         def timestamp
           @wall_clock.utc_now.iso8601
-        end
-
-        def excerpt_from(text)
-          excerpt = text.to_s.strip.gsub(/\s+/, ' ')[0, 320].to_s.strip
-          return nil if excerpt.empty?
-
-          excerpt
         end
 
         def parsed_time(value)
@@ -555,136 +411,6 @@ module Shoko
 
         def invalid_parsed_time
           nil
-        end
-
-        def visible_feed_entries(snapshot, scope)
-          articles_by_feed = Array(snapshot[:articles]).group_by(&:feed_id)
-          Array(snapshot[:feeds]).sort_by { |feed| feed.title.downcase }.filter_map do |feed|
-            build_feed_projection_entry(feed, articles_by_feed[feed.id], scope)
-          end
-        end
-
-        def build_feed_projection_entry(feed, feed_articles, scope)
-          counts = article_counts(feed_articles)
-          return if hidden_by_scope?(counts, scope)
-
-          {
-            key: feed.id,
-            kind: :feed,
-            title: feed.title,
-            url: feed.url,
-            site_url: feed.site_url,
-            count: scope_count(counts, scope),
-            unread_count: counts[:unread],
-            starred_count: counts[:starred],
-            article_count: counts[:all],
-            sync_error: feed.sync_error,
-            last_synced_at: feed.last_synced_at,
-          }
-        end
-
-        def filtered_articles(snapshot, filters, feed_titles)
-          Array(snapshot[:articles])
-            .select { |article| filters[:selected_feed] == all_feeds_key || article.feed_id == filters[:selected_feed] }
-            .select { |article| include_article_for_scope?(article, filters[:scope]) }
-            .select { |article| matches_query?(article, feed_titles[article.feed_id], filters[:query]) }
-            .sort_by { |article| article_sort_tuple(article) }
-        end
-
-        def article_projection_entry(article, feed_title)
-          {
-            id: article.id,
-            feed_id: article.feed_id,
-            feed_title: feed_title.to_s,
-            title: article.title,
-            author: article.author,
-            summary: article.summary,
-            url: article.url,
-            published_at: article.published_at,
-            published_label: published_label(article.published_at),
-            read: article.read,
-            starred: article.starred,
-          }
-        end
-
-        def feed_title_index(snapshot)
-          Array(snapshot[:feeds]).to_h { |feed| [feed.id, feed.title] }
-        end
-
-        def normalized_selected_feed_key(selected_feed_key)
-          selected_feed = selected_feed_key.to_s.strip
-          selected_feed.empty? ? all_feeds_key : selected_feed
-        end
-
-        def projection_filters(selected_feed_key, scope, query)
-          {
-            selected_feed: normalized_selected_feed_key(selected_feed_key),
-            scope: normalize_scope(scope),
-            query: query,
-          }
-        end
-
-        def article_counts(articles)
-          {
-            all: Array(articles).length,
-            unread: Array(articles).count { |article| article.read != true },
-            starred: Array(articles).count(&:starred),
-          }
-        end
-
-        def scope_count(counts, scope)
-          case scope
-          when :unread then counts[:unread]
-          when :starred then counts[:starred]
-          else counts[:all]
-          end
-        end
-
-        def hidden_by_scope?(counts, scope)
-          return false if scope == :all
-
-          scope_count(counts, scope).zero?
-        end
-
-        def all_feeds_entry(articles, scope)
-          counts = article_counts(articles)
-          {
-            key: all_feeds_key,
-            kind: :all,
-            title: 'All Feeds',
-            url: nil,
-            site_url: nil,
-            count: scope_count(counts, scope),
-            unread_count: counts[:unread],
-            starred_count: counts[:starred],
-            article_count: counts[:all],
-            sync_error: nil,
-            last_synced_at: nil,
-          }
-        end
-
-        def include_article_for_scope?(article, scope)
-          case scope
-          when :unread then article.read != true
-          when :starred then article.starred == true
-          else true
-          end
-        end
-
-        def matches_query?(article, feed_title, query)
-          normalized = query.to_s.strip.downcase
-          return true if normalized.empty?
-
-          haystack = [article.title, article.author, article.summary, article.content, feed_title].join("\n").downcase
-          normalized.split(/\s+/).all? { |token| haystack.include?(token) }
-        end
-
-        def article_sort_tuple(article)
-          [-(time_to_epoch(article.published_at) || 0), article.title.downcase]
-        end
-
-        def all_feeds_key
-          self.class::ALL_FEEDS_KEY
         end
 
         def fetched_feed_payload(url)

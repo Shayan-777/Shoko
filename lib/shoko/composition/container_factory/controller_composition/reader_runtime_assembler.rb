@@ -23,7 +23,7 @@ module Shoko
         # Assembles the reader runtime component graph around a reader
         # controller instance: pagination coordinator, state controller, the
         # UI controller graph, render coordinator, and observer wiring.
-        # Deliberately one flat, boring wiring file (constitution §IV): each
+        # Deliberately one flat, boring wiring file (constitution section 7): each
         # build_* function names the concrete collaborator it constructs and
         # the dependency hash it feeds in.
         module ReaderRuntimeAssembler

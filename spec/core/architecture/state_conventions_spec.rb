@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-# Consolidated state-system rules (constitution §V): schema partition purity,
+# Consolidated state-system rules (constitution sections 6 and 9): schema partition purity,
 # state-store port discipline, scan-state ownership, canonical key reads, and
 # the adapter-owned render/UI-component registries. Absorbs the former
 # layered_state, state_store, catalog_scan_state, mixed-key, render_registry
@@ -13,8 +13,6 @@ RSpec.describe 'State conventions' do
 
   def non_comment_content(path)
     File.readlines(path).reject { |line| line.strip.start_with?('#') }.join
-  rescue StandardError
-    ''
   end
 
   def rel(path)

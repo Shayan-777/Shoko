@@ -1,3 +1,0 @@
-# Include-once mixin baseline (R1, FQN-based). Ratchet: only shrinks to zero.
-# 2026-06-01 — 0 entries. R1 fully enforced; documented exceptions in scanner ALLOWLIST.
-

@@ -10,6 +10,7 @@ require 'shoko/adapters/book_sources/pdf/parser/pdf_text_extractor'
 require 'shoko/adapters/book_sources/pdf/parser/pdf_metadata_extractor'
 require 'shoko/adapters/book_sources/pdf/parser/metadata_parser'
 require 'shoko/adapters/book_sources/format_registry'
+require 'shoko/adapters/book_sources/import_budget'
 require_relative '../../support/importer_lifecycle'
 require_relative 'importer/metadata_normalizer'
 require_relative 'importer/page_extraction_coordinator'
@@ -30,6 +31,8 @@ module Shoko
 
           DEFAULT_LANGUAGE = 'en_US'
           PAGES_PER_AUTO_CHAPTER = 20
+          OutlineWalkState = Data.define(:entries, :page_index, :seen)
+          private_constant :OutlineWalkState
 
           # `runtime_config` is part of the uniform importer construction
           # contract (see Ports::Outbound::BookImporterResolver); PDF has no
@@ -65,7 +68,11 @@ module Shoko
             raise Shoko::FileNotFoundError, path unless File.file?(@pdf_path)
 
             report('Reading PDF file...', progress: 0.0)
-            @reader = instrument('pdf.reader') { Adapters::BookSources::Pdf::PdfReader.new(File.binread(@pdf_path)) }
+            @import_budget = Adapters::BookSources::ImportBudget.new(path: @pdf_path)
+            pdf_data = instrument('pdf.read') { @import_budget.read_binary }
+            @reader = instrument('pdf.reader') do
+              Adapters::BookSources::Pdf::PdfReader.new(pdf_data, import_budget: @import_budget)
+            end
             @extractor = Adapters::BookSources::Pdf::PdfTextExtractor.new(@reader)
             @pages = @reader.page_object_numbers
             @page_extraction = nil
@@ -105,7 +112,8 @@ module Shoko
 
             page_index = build_page_index
             entries = []
-            walk_outlines(first_num, 0, entries, page_index)
+            state = OutlineWalkState.new(entries: entries, page_index: page_index, seen: {})
+            walk_outlines(first_num, 0, state)
             entries
           end
 
@@ -128,16 +136,21 @@ module Shoko
             index
           end
 
-          def walk_outlines(obj_num, depth, entries, page_index)
+          def walk_outlines(obj_num, depth, state)
+            @import_budget.check_nesting!(depth + 1, label: 'PDF outline nesting')
             safety = 0
             current_num = obj_num
             while current_num && safety < 500
+              break if state.seen[current_num]
+
               safety += 1
+              state.seen[current_num] = true
+              @import_budget.consume_structure!(1, label: 'PDF outlines')
               raw = @reader.read_object_raw(current_num)
               break unless raw
 
-              entries << outline_entry(raw, depth, page_index)
-              walk_outline_children(raw, depth, entries, page_index)
+              state.entries << outline_entry(raw, depth, state.page_index)
+              walk_outline_children(raw, depth, state)
               current_num = @reader.resolve_ref(@reader.dict_value(raw, 'Next'))
             end
           end
@@ -151,9 +164,9 @@ module Shoko
             }
           end
 
-          def walk_outline_children(raw, depth, entries, page_index)
+          def walk_outline_children(raw, depth, state)
             child_num = @reader.resolve_ref(@reader.dict_value(raw, 'First'))
-            walk_outlines(child_num, depth + 1, entries, page_index) if child_num
+            walk_outlines(child_num, depth + 1, state) if child_num
           end
 
           def resolve_outline_destination(raw)

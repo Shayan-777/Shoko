@@ -8,6 +8,7 @@ require_relative 'schema_registry'
 require_relative 'change_set'
 require_relative 'transition_validator'
 require_relative 'config_persistence'
+require 'shoko/shared/resilient_diagnostics'
 
 module Shoko
   module Application
@@ -330,8 +331,14 @@ module Shoko
             envelope = next_notification
             return unless envelope
 
-            notify_observers_for_change_set(envelope[:change_set])
-            complete_notification(envelope)
+            begin
+              notify_observers_for_change_set(envelope[:change_set])
+            # resilient-boundary
+            rescue StandardError => e
+              record_notification_drain_error(e)
+            ensure
+              complete_notification(envelope)
+            end
           end
         ensure
           release_notification_drainer_if_empty
@@ -415,10 +422,21 @@ module Shoko
         end
 
         def record_observer_notification_error(observer, path, error)
-          log_debug(
+          Shoko::Shared::ResilientDiagnostics.debug(
+            @logger,
             'observer.notify failed',
             observer: observer.class.name,
             path: path,
+            error_class: error.class.name,
+            error: error.message
+          )
+          nil
+        end
+
+        def record_notification_drain_error(error)
+          Shoko::Shared::ResilientDiagnostics.error(
+            @logger,
+            'observer notification drain failed',
             error_class: error.class.name,
             error: error.message
           )

@@ -3,6 +3,14 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfParser do
+  it 'rejects excessive group nesting before growing the parser stack further' do
+    budget = Shoko::Adapters::BookSources::ImportBudget.new(path: 'nested.rtf', max_nesting: 2)
+    source = '{\\rtf1{{{text}}}}'
+
+    expect { described_class.new(source, import_budget: budget).parse }
+      .to raise_error(Shoko::BookParseError, /RTF group nesting exceeds 2/)
+  end
+
   describe '#parse' do
     it 'parses minimal RTF document' do
       rtf = '{\rtf1 Hello world}'

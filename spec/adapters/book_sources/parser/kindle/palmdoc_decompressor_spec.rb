@@ -3,6 +3,13 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::Kindle::PalmdocDecompressor do
+  it 'rejects a record whose decompressed output exceeds its budget' do
+    compressed = ([0xC1] * 8).pack('C*')
+
+    expect { described_class.decompress(compressed, max_output_bytes: 8) }
+      .to raise_error(Shoko::BookParseError, /PalmDOC record exceeds 8/)
+  end
+
   describe '.decompress' do
     it 'passes through literal ASCII bytes unchanged' do
       # Bytes 0x09-0x7F are literal

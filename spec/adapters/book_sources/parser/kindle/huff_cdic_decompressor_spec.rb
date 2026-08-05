@@ -16,6 +16,12 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::HuffCdicDecompressor do
     magic + offsets + padding + cache_table + base_table
   end
 
+
+  def literal_cdic_record(text)
+    magic = "CDIC\x00\x00\x00\x10".b
+    magic + [1, 0].pack('N2') + [2].pack('n') + [0x8000 | text.bytesize].pack('n') + text.b
+  end
+
   describe 'malformed input is rejected as a parse error (never a raw crash)' do
     it 'rejects a HUFF record with the wrong magic' do
       expect do
@@ -35,6 +41,14 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::HuffCdicDecompressor do
       expect do
         described_class.new(valid_huff_record, ['NOTACDIC and some payload'.b])
       end.to raise_error(Shoko::BookParseError, /CDIC/)
+    end
+
+
+    it 'rejects phrase expansion before a record exceeds its output ceiling' do
+      decompressor = described_class.new(valid_huff_record, [literal_cdic_record('a')])
+
+      expect { decompressor.decompress("\x00".b, max_output_bytes: 4) }
+        .to raise_error(Shoko::BookParseError, /record exceeds 4 decompressed bytes/)
     end
   end
 

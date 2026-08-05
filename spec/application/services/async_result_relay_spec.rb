@@ -125,6 +125,17 @@ RSpec.describe Shoko::Application::Services::AsyncResultRelay do
         .with('async_result_relay.submit_failed', anything)
       expect(relay.busy?).to be(false)
     end
+
+    it 'contains a job failure even when its diagnostic logger also fails' do
+      synchronous_executor = Object.new
+      synchronous_executor.define_singleton_method(:submit) { |&job| job.call }
+      logger = instance_double(Shoko::Application::Ports::Outbound::Logging)
+      allow(logger).to receive(:debug).and_raise(IOError, 'logger unavailable')
+      relay = described_class.new(async_executor: synchronous_executor, logger: logger)
+
+      expect(relay.submit { raise StandardError, 'job failed' }).to be(true)
+      expect(relay.busy?).to be(false)
+    end
   end
 
   it 'builds its executor lazily from the factory on first submit' do

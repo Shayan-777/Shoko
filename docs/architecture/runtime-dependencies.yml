@@ -1,0 +1,5 @@
+# Runtime dependencies are allowed when they beat an in-house implementation
+# on correctness, security, maintenance, or interoperability. Every declared
+# gem must have a matching review record here. Development dependencies do not
+# belong in this inventory.
+dependencies: {}

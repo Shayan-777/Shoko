@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
-require 'shoko/core/policies/dictionary_language_setting'
-
-require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/errors'
 require_relative 'constants'
 require_relative '../support/session_outcome_access'
 require_relative '../support/message_notifier'
+require_relative 'language_planner'
+require_relative 'dataset_installer'
 
 module Shoko
   module Adapters
@@ -35,9 +34,37 @@ module Shoko
               assign_state_dependencies(dependencies.state)
               assign_controller_dependencies(dependencies.controllers)
               @dictionary_ui_session = dependencies.ui.dictionary_ui_session
-              @manual_source_lang_by_book = {}
+              @language_planner = build_language_planner
+              @dataset_installer = build_dataset_installer
               @setup_session = nil
             end
+
+            def build_language_planner
+              LanguagePlanner.new(
+                dictionary_service: @dictionary_service,
+                config_reader: @config_reader,
+                document: @document,
+                reader_state: @reader_state
+              )
+            end
+            private :build_language_planner
+
+            def build_dataset_installer
+              DatasetInstaller.new(
+                catalog: @dictionary_catalog_service,
+                storage: @dictionary_storage,
+                config_reader: @config_reader,
+                clock: @clock,
+                callbacks: {
+                  publish: ->(**attributes) { update_download_setup_popup(**attributes) },
+                  draw: -> { draw_dictionary_screen },
+                  complete: ->(source, target) { complete_lookup_after_setup(source, target) },
+                  error: ->(message) { setup_error(message, stage: :prompt_target) },
+                  normalize: ->(value) { normalize_dictionary_language(value) },
+                }
+              )
+            end
+            private :build_dataset_installer
 
             # ---- Public surface used by DictionaryController ----
 
@@ -54,7 +81,7 @@ module Shoko
 
             # The configured/derived source+target pair for the current book.
             def resolve_pair
-              resolve_dictionary_pair(@dictionary_service)
+              @language_planner.resolve_pair
             end
 
             def handle_change(result) = handle_setup_change(result)
@@ -94,7 +121,7 @@ module Shoko
             # ===== setup flow =====
 
             def begin_lookup_with_setup(query:)
-              pair_info = resolve_dictionary_pair(@dictionary_service)
+              pair_info = @language_planner.resolve_pair
               return lookup_available_pair(query, pair_info) if pair_info[:available]
 
               start_lookup_setup(
@@ -110,16 +137,11 @@ module Shoko
             end
 
             def configured_target_for_setup(fallback_target)
-              normalize_dictionary_language(@config_reader.dictionary_target_lang) ||
-                normalize_dictionary_language(fallback_target) ||
-                @dictionary_service.configured_target_lang
+              @language_planner.configured_target(fallback_target)
             end
 
             def setup_source_language_hint
-              explicit = normalize_dictionary_language(dictionary_book_metadata_language)
-              return explicit if explicit
-
-              remembered_manual_source_for_current_book
+              @language_planner.source_hint
             end
 
             def start_lookup_setup(query:, source_hint:, target_default:)
@@ -411,106 +433,7 @@ module Shoko
             end
 
             def download_pair_for_setup(source, target)
-              return unless catalog_available_for_setup?
-
-              show_download_lookup_status(source, target)
-              entry = catalog_entry_for_setup(source, target)
-              return unless entry
-
-              name = catalog_entry_name(entry, source, target)
-              download_catalog_entry(entry, name, source, target)
-              finalize_download_setup(name, source, target)
-            rescue Shoko::Error => e
-              setup_error("Download failed: #{e.message}", stage: :prompt_target)
-            end
-
-            def find_catalog_entry(remote_items, source:, target:)
-              Array(remote_items).find do |item|
-                src = item[:source]
-                tgt = item[:target]
-                normalize_dictionary_language(src) == source &&
-                  normalize_dictionary_language(tgt) == target
-              end
-            end
-
-            def dictionary_storage_path
-              @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
-            end
-
-            def monotonic_now
-              @clock.monotonic_now
-            end
-
-            def catalog_available_for_setup?
-              return true if @dictionary_catalog_service
-
-              setup_error('Dictionary catalog unavailable.', stage: :prompt_target)
-              false
-            end
-
-            def show_download_lookup_status(source, target)
-              update_download_setup_popup(
-                source: source,
-                target: target,
-                status: "Looking for #{source}-#{target} dataset...",
-                progress: 0.0,
-                prompt: '',
-                input_value: ''
-              )
-            end
-
-            def catalog_entry_for_setup(source, target)
-              remote_items = @dictionary_catalog_service.list_remote
-              entry = find_catalog_entry(remote_items, source: source, target: target)
-              return entry if entry
-
-              setup_error("No dictionary dataset found for #{source}-#{target}.", stage: :prompt_target)
-              nil
-            end
-
-            def catalog_entry_name(entry, source, target)
-              entry[:name] || "#{source}-#{target}.sqlite3"
-            end
-
-            def download_catalog_entry(entry, name, source, target)
-              last_draw = monotonic_now
-              @dictionary_catalog_service.download(entry, dictionary_storage_path) do |done, total|
-                progress, message = download_progress(done, total, name)
-                update_download_setup_popup(
-                  source: source,
-                  target: target,
-                  status: message,
-                  progress: progress,
-                  redraw: false
-                )
-                last_draw = redraw_download_screen(progress, last_draw)
-              end
-            end
-
-            def download_progress(done, total, name)
-              progress = total.to_i.positive? ? done.to_f / total : 0.0
-              percent = total.to_i.positive? ? (progress * 100).round : nil
-              message = percent ? "Downloading #{name}... #{percent}%" : "Downloading #{name}..."
-              [progress, message]
-            end
-
-            def redraw_download_screen(progress, last_draw)
-              now = monotonic_now
-              return last_draw if (now - last_draw) < 0.08 && progress < 1.0
-
-              draw_dictionary_screen
-              now
-            end
-
-            def finalize_download_setup(name, source, target)
-              update_download_setup_popup(
-                source: source,
-                target: target,
-                status: "Installed #{name}",
-                status_level: :success,
-                progress: 1.0
-              )
-              complete_lookup_after_setup(source, target)
+              @dataset_installer.install(source: source, target: target)
             end
 
             def update_download_setup_popup(source:, target:, status:, progress:, status_level: nil,
@@ -649,199 +572,12 @@ module Shoko
 
             # ===== language normalization, pair selection, suggestions =====
 
-            def resolve_dictionary_pair(dictionary_service)
-              available_pairs = dictionary_available_pairs(dictionary_service)
-              selected = select_dictionary_pair(
-                resolved_dictionary_source(dictionary_service),
-                resolved_dictionary_target(dictionary_service),
-                available_pairs
-              )
-              selected[:available_pairs] = available_pairs
-              selected
-            end
-
-            def dictionary_available_pairs(dictionary_service)
-              pairs = dictionary_service.available_language_pairs
-              Array(pairs).filter_map do |pair|
-                normalized = normalize_pair_hash(pair)
-                source = normalized[:source]
-                target = normalized[:target]
-                next if source.nil? || target.nil?
-
-                {
-                  source: normalize_dictionary_language(source),
-                  target: normalize_dictionary_language(target),
-                }
-              end.uniq
-            end
-
-            def select_dictionary_pair(source, target, pairs)
-              exact_dictionary_pair(source, target, pairs) ||
-                source_fallback_dictionary_pair(source, target, pairs) ||
-                unavailable_dictionary_pair(source, target)
-            end
-
             def normalize_dictionary_language(value)
-              return nil if value.nil?
-
-              raw = value.to_s.strip
-              return nil if raw.empty?
-
-              code = raw.downcase.tr(' ', '_').split(/[-_]/).first.to_s
-              mapped = Dictionary::Constants::LANGUAGE_CODE_MAP[code]
-              return mapped if mapped
-
-              return code if code.match?(/\A[a-z]{2,3}\z/)
-
-              nil
+              @language_planner.normalize(value)
             end
 
             def setup_suggestions_for(stage:, source_lang:, input_value:)
-              codes = case stage.to_sym
-                      when :prompt_source
-                        source_setup_candidate_codes
-                      when :prompt_target
-                        target_setup_candidate_codes(source_lang)
-                      else
-                        []
-                      end
-              filtered = filter_setup_candidate_codes(codes, input_value)
-              filtered.first(8).map { |code| { code: code, label: setup_language_label(code) } }
-            end
-
-            def normalize_pair_hash(pair)
-              unless pair.is_a?(Hash)
-                raise Shoko::MalformedDictionaryInputError, "language pair must be Hash, got #{pair.class}"
-              end
-
-              Shoko::Shared::HashNormalizer.symbolize_keys(pair)
-            end
-
-            def source_setup_candidate_codes
-              configured_source = @config_reader.dictionary_source_lang
-              configured_source = nil if Shoko::Core::Policies::DictionaryLanguageSetting.auto?(configured_source)
-              normalize_code_list(
-                [
-                  dictionary_book_metadata_language,
-                  remembered_manual_source_for_current_book,
-                  configured_source,
-                  @dictionary_service&.configured_source_lang,
-                ] +
-                dictionary_available_pairs(@dictionary_service).map { |pair| pair[:source] } +
-                Dictionary::Constants::COMMON_SETUP_LANGS
-              )
-            end
-
-            def target_setup_candidate_codes(source_lang)
-              pairs = dictionary_available_pairs(@dictionary_service)
-              source = normalize_dictionary_language(source_lang)
-              for_source = pairs.select { |pair| pair[:source] == source }.map { |pair| pair[:target] }
-              fallbacks = pairs.map { |pair| pair[:target] }
-
-              normalize_code_list(
-                [
-                  @config_reader.dictionary_target_lang,
-                  @dictionary_service&.configured_target_lang,
-                ] +
-                for_source +
-                fallbacks +
-                Dictionary::Constants::COMMON_SETUP_LANGS
-              )
-            end
-
-            def filter_setup_candidate_codes(codes, input_value)
-              text, normalized = normalized_setup_filter(input_value)
-              return codes if text.empty?
-
-              matching = codes.select { |code| setup_candidate_matches?(code, text, normalized) }
-              ranked_setup_candidate_codes(matching.empty? ? codes : matching, text, normalized)
-            end
-
-            def setup_language_label(code)
-              Dictionary::Constants::LANGUAGE_LABELS[code.to_s.downcase] || code.to_s.upcase
-            end
-
-            def normalize_code_list(values)
-              Array(values).filter_map { |value| normalize_dictionary_language(value) }.uniq
-            end
-
-            def resolved_dictionary_source(dictionary_service)
-              value = dictionary_configured_source_value
-              normalize_dictionary_language(value) || dictionary_service.configured_source_lang
-            end
-
-            def resolved_dictionary_target(dictionary_service)
-              value = dictionary_configured_target_value
-              normalize_dictionary_language(value) || dictionary_service.configured_target_lang
-            end
-
-            def dictionary_configured_source_value
-              source_setting = @config_reader.dictionary_source_lang
-              return dictionary_book_language if Shoko::Core::Policies::DictionaryLanguageSetting.auto?(source_setting)
-
-              source_setting
-            end
-
-            def dictionary_configured_target_value
-              target_setting = @config_reader.dictionary_target_lang
-              Shoko::Core::Policies::DictionaryLanguageSetting.auto?(target_setting) ? nil : target_setting
-            end
-
-            def exact_dictionary_pair(source, target, pairs)
-              return unless source && target
-              return unless pairs.any? { |pair| pair[:source] == source && pair[:target] == target }
-
-              available_dictionary_pair(source, target, fallback: false)
-            end
-
-            def source_fallback_dictionary_pair(source, target, pairs)
-              return unless source
-
-              source_pairs = pairs.select { |pair| pair[:source] == source }
-              return if source_pairs.empty?
-
-              chosen_target = choose_dictionary_target(target, source_pairs)
-              available_dictionary_pair(source, chosen_target, fallback: chosen_target != target)
-            end
-
-            def choose_dictionary_target(target, source_pairs)
-              candidate_targets = source_pairs.map { |pair| pair[:target] }
-              return target if target && candidate_targets.include?(target)
-
-              candidate_targets.min
-            end
-
-            def available_dictionary_pair(source, target, fallback:)
-              { source: source, target: target, available: true, fallback: fallback }
-            end
-
-            def unavailable_dictionary_pair(source, target)
-              { source: source, target: target, available: false, fallback: false }
-            end
-
-            def normalized_setup_filter(input_value)
-              text = input_value.to_s.strip.downcase
-              [text, normalize_dictionary_language(text).to_s]
-            end
-
-            def setup_candidate_matches?(code, text, normalized)
-              label = setup_language_label(code).downcase
-              code.start_with?(text, normalized) ||
-                label.start_with?(text) ||
-                label.include?(text)
-            end
-
-            def ranked_setup_candidate_codes(codes, text, normalized)
-              codes.sort_by { |code| [setup_candidate_rank(code, text, normalized), code] }
-            end
-
-            def setup_candidate_rank(code, text, normalized)
-              label = setup_language_label(code).downcase
-              return 0 if code == normalized || code == text
-              return 1 if code.start_with?(text, normalized)
-              return 2 if label.start_with?(text)
-
-              3
+              @language_planner.suggestions(stage: stage, source_lang: source_lang, input_value: input_value)
             end
 
             # ===== book context + UI hooks (owned by the wizard) =====
@@ -863,41 +599,12 @@ module Shoko
               @input_controller&.enter_modal_mode(:dictionary)
             end
 
-            def dictionary_book_metadata_language
-              metadata = @document&.metadata
-              return nil unless metadata.is_a?(Hash)
-
-              value = metadata[:language]
-              raw = value.to_s.strip
-              return nil if raw.empty?
-
-              raw
-            end
-
-            def dictionary_book_language
-              @document&.language
-            end
-
             def remembered_manual_source_for_current_book
-              key = current_book_memory_key
-              return nil unless key
-
-              @manual_source_lang_by_book[key]
+              @language_planner.remembered_source
             end
 
             def remember_manual_source_for_current_book(source_lang)
-              key = current_book_memory_key
-              return unless key
-
-              @manual_source_lang_by_book[key] = source_lang
-            end
-
-            def current_book_memory_key
-              path = @reader_state.book_path || @document&.source_path
-              text = path.to_s.strip
-              return nil if text.empty?
-
-              text
+              @language_planner.remember_source(source_lang)
             end
           end
         end

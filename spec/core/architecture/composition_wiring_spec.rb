@@ -2,8 +2,8 @@
 
 require 'spec_helper'
 
-# Consolidated composition rules (constitution §I: only composition names and
-# wires concrete classes; §IV: the composition root is plain wiring). Absorbs
+# Consolidated composition rules (constitution sections 1 and 7: only
+# composition names and wires concrete classes). Absorbs
 # the container-access examples of the former adapter_boundary suite, the
 # controller_composition suite, and the live wiring rules of the
 # reader_render_session_view suite.
@@ -15,8 +15,6 @@ RSpec.describe 'Composition is the only concrete wiring' do
 
   def non_comment_content(path)
     File.readlines(path).reject { |line| line.strip.start_with?('#') }.join
-  rescue StandardError
-    ''
   end
 
   def relative(path)
@@ -37,6 +35,7 @@ RSpec.describe 'Composition is the only concrete wiring' do
       'composition/container_factory/domain_application_registration.rb',
       'composition/container_factory/infrastructure_registration.rb',
       'composition/container_factory/port_and_repository_registration.rb',
+      'composition/container_factory/registration_pipeline.rb',
     ]
   end
 

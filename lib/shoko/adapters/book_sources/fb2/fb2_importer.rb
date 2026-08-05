@@ -14,6 +14,7 @@ require 'shoko/adapters/book_sources/fb2/parser/fb2_metadata_extractor'
 require 'shoko/adapters/book_sources/fb2/parser/metadata_parser'
 require 'shoko/adapters/book_sources/fb2/parser/fb2_inline_parser'
 require 'shoko/adapters/book_sources/format_registry'
+require 'shoko/adapters/book_sources/import_budget'
 require_relative '../../support/importer_lifecycle'
 
 module Shoko
@@ -43,6 +44,8 @@ module Shoko
           # @return [Core::Models::BookData]
           def import(path)
             @fb2_path = SourcePath.validated(path)
+            @import_budget = Adapters::BookSources::ImportBudget.new(path: @fb2_path)
+            @import_budget.check_source_file!
             doc = parsed_fb2_document
             metadata = instrumented_fb2_metadata(doc)
             chapters = instrumented_fb2_chapters(doc)
@@ -101,7 +104,7 @@ module Shoko
           def read_fb2_xml(path)
             return read_from_zip(path) if path.downcase.end_with?('.fb2.zip')
 
-            normalize_encoding(File.read(path))
+            normalize_encoding(@import_budget.read_binary(path))
           end
 
           def read_from_zip(path)
@@ -109,7 +112,9 @@ module Shoko
               entry = zip.entries.find { |candidate| candidate.name.downcase.end_with?('.fb2') }
               raise Shoko::BookParseError.new('No .fb2 file found inside archive', path) unless entry
 
-              normalize_encoding(zip.read(entry.name))
+              content = zip.read(entry.name)
+              @import_budget.consume_expanded!(content.bytesize, label: 'FB2 archive document')
+              normalize_encoding(content)
             end
           end
 
@@ -127,6 +132,7 @@ module Shoko
 
           def parse_xml(xml)
             stripped = xml.gsub(/\s+xmlns\s*=\s*["'][^"']*["']/, '')
+            @import_budget.preflight_xml!(stripped, label: 'FB2 document')
             REXML::Document.new(stripped)
           end
 
@@ -281,7 +287,10 @@ module Shoko
             base64_data = element.text.to_s.gsub(/\s+/, '')
             return nil if base64_data.empty?
 
+            estimated_bytes = ((base64_data.bytesize + 3) / 4) * 3
+            @import_budget.check_resource_item!(estimated_bytes, label: "FB2 resource #{id}")
             decoded = Base64.decode64(base64_data)
+            @import_budget.consume_resource!(decoded.bytesize, label: "FB2 resource #{id}")
             decoded.force_encoding(Encoding::BINARY)
             { id: id, data: decoded }
           end

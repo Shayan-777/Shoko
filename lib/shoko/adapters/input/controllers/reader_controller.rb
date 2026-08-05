@@ -12,6 +12,7 @@ require_relative 'reader/inline_link_navigator'
 require_relative 'reader/render_mailbox'
 require_relative 'reader/bar_overlay_mouse_router'
 require_relative 'reader/selection_interaction'
+require_relative 'reader/mouse_session'
 
 require_relative 'reader/input_router'
 require_relative 'reader/event_loop'
@@ -152,6 +153,7 @@ module Shoko
                       :rendered_content_reader,
                       :reader_state_reader,
                       :reader_session_mutator,
+                      :ui_state_reader,
                       :config_reader,
                       :references,
                       :navigation_service,
@@ -296,7 +298,7 @@ module Shoko
           end
 
           def clear_selection!
-            selection_interaction.clear
+            mouse_session.clear_selection
           end
 
           private
@@ -376,42 +378,23 @@ module Shoko
           # ===== mouse state machine =====
 
           def bootstrap_mouse!(mouse_support, mouse_handler, render_state_writer)
-            assign_mouse_dependencies(mouse_support, mouse_handler, render_state_writer)
-            validate_mouse_dependencies!
-            bootstrap_mouse_state
-          end
-
-          def assign_mouse_dependencies(mouse_support, mouse_handler, render_state_writer)
-            @render_state_writer = render_state_writer
             @mouse_handler = mouse_handler
             @dictionary_availability = mouse_support.dictionary_availability
             @ui_component_factory = mouse_support.ui_component_factory
-            @inline_link_navigator = build_inline_link_navigator(mouse_support)
-          end
-
-          def validate_mouse_dependencies!
-            raise ArgumentError, 'render_state_writer is required' if @render_state_writer.nil?
-            raise ArgumentError, 'annotation_service is required' if @annotation_service.nil?
-          end
-
-          def bootstrap_mouse_state
-            selection_interaction.clear
-            @render_state_writer.clear_rendered_lines
-            refresh_annotations
+            @mouse_session = Reader::MouseSession.new(
+              controller: self,
+              mouse_handler: mouse_handler,
+              mouse_support: mouse_support,
+              render_state_writer: render_state_writer
+            ).bootstrap!
           end
 
           def filter_mouse_sequences(keys)
-            input_sequence_filter.filter(keys)
+            mouse_session.filter(keys)
           end
 
           def handle_mouse_input(input)
-            event = @mouse_handler.parse_mouse_event(input)
-            return unless event
-
-            return if handle_bar_overlay_mouse(event)
-            return if handle_overlay_click(event)
-
-            handle_content_mouse_event(event)
+            mouse_session.handle(input)
           end
 
           # The five bar-anchored overlays (in-book search, dictionary, TOC,
@@ -428,170 +411,53 @@ module Shoko
           # While an overlay owns the screen it consumes every mouse event so
           # nothing bleeds through to text selection.
           def handle_bar_overlay_mouse(event)
-            bar_overlay_mouse_router.handle(event)
+            mouse_session.handle_bar_overlay(event)
           end
 
           def handle_overlay_click(event)
-            selection_interaction.handle_overlay?(event)
+            mouse_session.handle_overlay?(event)
           end
 
           def handle_content_mouse_event(event)
-            return if content_mouse_blocked?
-
-            hover_changed = sync_inline_link_hover(event)
-            if consume_inline_link_click(event)
-              draw_screen
-              return
-            end
-
-            result = @mouse_handler.handle_event(event)
-            unless result
-              draw_screen if hover_changed
-              return
-            end
-
-            handle_content_mouse_result(result)
-          end
-
-          def bar_overlay_mouse_router
-            @bar_overlay_mouse_router ||= Reader::BarOverlayMouseRouter.new(
-              reader_state_reader: @reader_state_reader,
-              reader_session_mutator: @reader_session_mutator,
-              coordinate_service: @coordinate_service,
-              dispatch_keys: ->(keys) { dispatch_input_keys(keys) },
-              dispatch_intent: ->(intent, payload) { input_controller&.dispatch_reader_intent(intent, payload) },
-              draw: -> { draw_screen }
-            )
-          end
-
-          def consume_inline_link_click(event)
-            inline_link_interaction.consume_click(event, mouse_handler: @mouse_handler)
+            mouse_session.handle_content_event(event)
           end
 
           def build_inline_link_navigator(mouse_support)
-            Reader::InlineLinkNavigator.new(
-              coordinate_service: @coordinate_service,
-              rendered_content_reader: @rendered_content_reader,
-              reader_state_reader: @reader_state_reader,
-              document_reader: -> { doc },
-              state_controller: state_controller,
-              anchor_resolver: build_anchor_resolver(mouse_support),
-              logger: @logger
-            )
+            mouse_session.build_inline_link_navigator(mouse_support)
           end
 
           def sync_inline_link_hover(event)
-            inline_link_interaction.sync_hover(event)
-          end
-
-          def content_mouse_blocked?
-            selection_interaction.blocked?
-          end
-
-          def handle_content_mouse_result(result)
-            case result[:type]
-            when :selection_drag
-              selection_interaction.update_selection(@mouse_handler.selection_range)
-              refresh_highlighting
-            when :selection_end
-              selection_interaction.finish_selection
-              draw_screen
-            else
-              draw_screen
-            end
-          end
-
-          def build_anchor_resolver(mouse_support)
-            Reader::TocAnchorResolver.new(
-              document_reader: -> { doc },
-              formatting_service: mouse_support.formatting_service,
-              layout_service: mouse_support.layout_service,
-              ui_state_reader: mouse_support.ui_state_reader || @ui_state_reader,
-              config_reader: @config_reader
-            )
-          end
-
-          def input_sequence_filter
-            @input_sequence_filter ||= InputSequenceFilter.new(
-              mouse_handler: @mouse_handler,
-              handle_mouse_input: ->(input) { handle_mouse_input(input) }
-            )
-          end
-
-          def inline_link_interaction
-            @inline_link_interaction ||= InlineLinkInteraction.new(
-              inline_link_navigator: @inline_link_navigator,
-              reader_state_reader: @reader_state_reader,
-              reader_session_mutator: @reader_session_mutator
-            )
-          end
-
-          def popup_ui_controller
-            controllers&.ui_controller
-          end
-
-          def refresh_annotations
-            annotations = @annotation_service.list_for_book(path)
-            @reader_session_mutator.update_reader(annotations: annotations)
+            mouse_session.sync_inline_link_hover(event)
           end
 
           # ===== text selection + right-click context menu =====
 
           def popup_context_click_handled?(event)
-            selection_interaction.context_click_handled?(event)
+            mouse_session.context_click_handled?(event)
           end
 
           def open_popup_menu(anchor_position: nil)
-            selection_interaction.open_popup(anchor_position: anchor_position)
+            mouse_session.open_popup(anchor_position: anchor_position)
           end
 
           def dictionary_lookup_available?
-            selection_interaction.dictionary_available?
+            mouse_session.dictionary_available?
           end
 
           def handle_selection_end
-            selection_interaction.finish_selection
+            mouse_session.finish_selection
           end
 
           def update_state_selection(mouse_range)
-            selection_interaction.update_selection(mouse_range)
+            mouse_session.update_selection(mouse_range)
           end
 
-          def selection_interaction
-            @selection_interaction ||= Reader::SelectionInteraction.new(
-              state: selection_state_dependencies,
-              services: selection_service_dependencies,
-              callbacks: selection_callbacks
-            )
-          end
-
-          def selection_state_dependencies
-            Reader::SelectionInteraction::StateDependencies.new(
-              reader_state_reader: @reader_state_reader,
-              reader_session_mutator: @reader_session_mutator,
-              rendered_content_reader: @rendered_content_reader,
-              config_reader: @config_reader
-            )
-          end
-
-          def selection_service_dependencies
-            Reader::SelectionInteraction::ServiceDependencies.new(
-              coordinate_service: @coordinate_service,
-              selection_service: @selection_service,
+          def mouse_session
+            @mouse_session ||= Reader::MouseSession.new(
+              controller: self,
               mouse_handler: @mouse_handler,
-              dictionary_availability: @dictionary_availability,
-              ui_component_factory: @ui_component_factory,
-              popup_position_service: @popup_position_service,
-              clipboard_service: services&.clipboard_service
-            )
-          end
-
-          def selection_callbacks
-            Reader::SelectionInteraction::Callbacks.new(
-              ui_controller: ->(_request) { popup_ui_controller },
-              draw: -> { draw_screen },
-              switch_mode: ->(mode) { switch_mode(mode) },
-              popup_action: ->(item) { handle_popup_action(item) }
+              inline_link_navigator: @inline_link_navigator,
+              selection_interaction: @selection_interaction
             )
           end
         end
@@ -599,8 +465,3 @@ module Shoko
     end
   end
 end
-
-# Required after the class body so the collaborators can reopen ReaderController
-# and nest under it (they are part of this reader's mouse state machine).
-require_relative 'reader_controller/input_sequence_filter'
-require_relative 'reader_controller/inline_link_interaction'

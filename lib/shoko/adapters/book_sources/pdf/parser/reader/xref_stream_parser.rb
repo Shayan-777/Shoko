@@ -8,7 +8,7 @@ module Shoko
           # Parses cross-reference streams (PDF 1.5+).
           class XrefStreamParser
             def initialize(data:, xref:, compressed:, trailer:, dict_value:, read_stream_bytes:, decompress:,
-                           predictor:)
+                           predictor:, import_budget:)
               @data = data
               @xref = xref
               @compressed = compressed
@@ -17,6 +17,7 @@ module Shoko
               @read_stream_bytes = read_stream_bytes
               @decompress = decompress
               @predictor = predictor
+              @import_budget = import_budget
             end
 
             def parse(offset)
@@ -47,6 +48,7 @@ module Shoko
               indices.each_slice(2) do |start_num, count|
                 break unless count
 
+                @import_budget.consume_structure!(count, label: 'PDF xref stream')
                 section_options = parse_options.merge(start_num: start_num, count: count)
                 offset = parse_subsection_entries(stream_data, offset, section_options)
               end

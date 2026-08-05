@@ -11,6 +11,7 @@ require_relative 'rss_reading_mouse_handler'
 require_relative 'mouse_router'
 require_relative 'workflow_render_observer'
 require_relative 'input_mode_observer'
+require_relative 'terminal_lifecycle'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/core/services/language_directory'
 
@@ -111,7 +112,7 @@ module Shoko
               # The reader disables terminal mouse tracking on its way out
               # (this is the path it hands control back through), so drop the
               # flag and let the next loop tick re-enable menu tracking.
-              @menu_mouse_tracking = false
+              terminal_lifecycle.returned_from_reader!
             end
 
             # Thin convenience API retained for non-input collaborators and focused specs.
@@ -147,28 +148,7 @@ module Shoko
             end
 
             def cleanup_and_exit(code, message, error = nil)
-              cleanup_terminal
-
-              emit_exit_message(message, error)
-              log_exit(message, error)
-              @process_control&.terminate(code)
-            end
-
-            # The terminal is restored at this point, so the message can land on
-            # the normal screen — exiting silently after an error (visible only
-            # in an off-by-default log) is how crashes go unreported.
-            def emit_exit_message(message, error)
-              return if message.to_s.empty?
-
-              $stdout.puts(message)
-              $stdout.puts('Run with --log PATH --log-level debug for details.') if error
-            # resilient-boundary
-            rescue StandardError => e
-              record_exit_message_error(e)
-            end
-
-            def record_exit_message_error(error)
-              @logger_ref&.debug('menu.exit_message_failed', error: error.class.name, message: error.message)
+              terminal_lifecycle.cleanup_and_exit(code, message, error)
             end
 
             # Relays carrying async workflow results (downloads, translation,
@@ -350,28 +330,6 @@ module Shoko
               )
             end
 
-            def cleanup_terminal
-              terminal = terminal_service
-              return unless terminal
-
-              cleanup_error = nil
-              begin
-                disable_menu_mouse_tracking
-                terminal.cleanup
-              # resilient-boundary
-              rescue StandardError => e
-                cleanup_error = e
-                record_terminal_cleanup_error(e)
-              ensure
-                force_cleanup_if_needed(terminal, cleanup_error)
-              end
-            end
-
-            def record_terminal_cleanup_error(error)
-              @logger_ref&.error('Menu terminal cleanup failed',
-                                 error_class: error.class.name, error: error.message)
-            end
-
             def catalog_metadata_refresh_needed?
               @catalog.metadata_work_pending? || catalog_metadata_refresh_pending?
             end
@@ -384,36 +342,12 @@ module Shoko
               @catalog.scan_status == :scanning
             end
 
-            def force_cleanup_if_needed(terminal, cleanup_error)
-              remaining_depth = terminal.session_depth || 0
-              needs_force = cleanup_error || remaining_depth.positive?
-              return unless needs_force
-
-              terminal.force_cleanup
-            # resilient-boundary
-            rescue StandardError => e
-              record_force_cleanup_error(e)
-            end
-
-            def record_force_cleanup_error(error)
-              @logger_ref&.error('Menu terminal force cleanup failed',
-                                 error_class: error.class.name, error: error.message)
-            end
-
-            def log_exit(message, error)
-              @logger_ref&.info('Exiting menu', message: message, status: error ? 'error' : 'ok')
-              return unless error
-
-              @logger_ref&.error('Menu exit error', error: error.message, backtrace: Array(error.backtrace))
-            end
-
             def log_fatal_external_input(error)
-              @logger_ref&.error(Shoko::FatalExternalInputError.event_id(error),
-                                 error: error.class.name, message: error.message)
+              terminal_lifecycle.log_fatal_external_input(error)
             end
 
             def bootstrap_catalog
-              @terminal_service.setup
+              terminal_lifecycle.setup
               @catalog.load_cached
               epubs = @catalog.entries || []
               @filtered_epubs = epubs
@@ -422,36 +356,22 @@ module Shoko
             end
 
             def ensure_terminal_cleanup
-              @terminal_service.force_cleanup
-            # resilient-boundary
-            rescue StandardError => e
-              record_ensure_cleanup_error(e)
-            end
-
-            def record_ensure_cleanup_error(error)
-              @logger_ref&.debug('menu.run.ensure_terminal_cleanup_failed',
-                                 error: error.class.name, message: error.message)
+              terminal_lifecycle.ensure_cleanup
             end
 
             # The whole menu is mouseable: tracking stays on for the entire
             # menu session and is released with the terminal on cleanup (the
             # reader manages its own tracking while a book is open).
             def sync_menu_mouse_tracking
-              enable_menu_mouse_tracking unless @menu_mouse_tracking
+              terminal_lifecycle.ensure_mouse_tracking
             end
 
-            def enable_menu_mouse_tracking
-              @terminal_service.enable_mouse
-              @menu_mouse_tracking = true
-            end
-
-            def disable_menu_mouse_tracking
-              return unless @menu_mouse_tracking
-
-              @terminal_service.disable_mouse
-              @menu_mouse_tracking = false
-            rescue Shoko::Error
-              @menu_mouse_tracking = false
+            def terminal_lifecycle
+              @terminal_lifecycle ||= TerminalLifecycle.new(
+                terminal: @terminal_service,
+                process_control: @process_control,
+                logger: @logger_ref
+              )
             end
 
             def consume_menu_mouse_input(keys)

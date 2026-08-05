@@ -105,7 +105,8 @@ module Shoko
           entry = build_log_entry(severity, message, metadata)
           @output.puts(entry)
         rescue StandardError => e
-          raise_logging_error('log_write', e)
+          report_logging_failure('log_write', e)
+          nil
         end
 
         def build_log_entry(severity, message, metadata)
@@ -159,6 +160,13 @@ module Shoko
           raise error if error.is_a?(Shoko::Error)
 
           raise Shoko::LoggingError.new(operation, error.message)
+        end
+
+        def report_logging_failure(operation, error)
+          Kernel.warn("Shoko logger #{operation} failed: #{error.class}: #{error.message}")
+        # resilient-boundary
+        rescue StandardError
+          nil
         end
       end
     end

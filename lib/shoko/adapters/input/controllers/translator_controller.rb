@@ -6,6 +6,8 @@ require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_access'
 require 'shoko/shared/text_sanitizer'
 require 'shoko/core/services/language_directory'
+require_relative 'translator_language_session'
+require_relative 'translator_request_runner'
 
 module Shoko
   module Adapters
@@ -42,8 +44,6 @@ module Shoko
           # (the popup "Translate" prefill), kept as one parameter so the
           # constructor stays within the dependency budget.
           SelectionTextSource = Data.define(:selection_service, :rendered_content_reader)
-          TranslationRequest = Data.define(:text, :source_lang, :target_lang, :announce, :request_id)
-
           BUTTON_FEEDBACK_SECONDS = 1.0 # how long the Pasted!/Copied! flash stays up
 
           # async_relay is the injected result relay (composition provides an
@@ -62,11 +62,24 @@ module Shoko
             @notification_service = notification_service
             @async_relay = async_relay
             @logger = logger
-            @request_generation = 0
-            @language_generation = 0
-            @languages_loading = false
             raise ArgumentError, 'notification_service is required' if @notification_service.nil?
             raise ArgumentError, 'async_relay is required' if @async_relay.nil?
+
+            @language_session = TranslatorLanguageSession.new(
+              reader_state: reader_state,
+              translator_ui_session: translator_ui_session,
+              translation_service: translation_service,
+              async_relay: async_relay,
+              on_message: method(:set_message),
+              on_pending_translation: method(:translate_text)
+            )
+            @request_runner = TranslatorRequestRunner.new(
+              reader_state: reader_state,
+              translation_service: translation_service,
+              ui_session: translator_ui_session,
+              async_relay: async_relay,
+              on_message: method(:set_message)
+            )
           end
 
           # Applies pending translation results on the UI thread; called from
@@ -102,8 +115,8 @@ module Shoko
             return close_picker if picker_open?
             return :pass unless @translator_ui_session.visible? || @reader_state.mode == :translator
 
-            invalidate_translation_requests
-            @pending_translation = nil
+            @request_runner.invalidate
+            @language_session.clear_pending
             outcome = @translator_ui_session.close
             return :pass unless session_ok?(outcome)
 
@@ -350,79 +363,17 @@ module Shoko
             text = text.to_s.strip
             return if text.empty?
 
-            if Array(@reader_state.translator_languages).empty? && Array(@loaded_languages).empty?
-              @pending_translation = { text: text, announce: announce }
+            unless @language_session.available?
+              @language_session.defer_translation(text: text, announce: announce)
               ensure_languages
               return
             end
 
-            request = build_translation_request(text, announce)
-            set_message('Translating…', 2)
-            submitted = @async_relay.submit { perform_translation(request) }
-            set_message('Translation worker is unavailable', 3) unless submitted
-          end
-
-          def build_translation_request(text, announce)
-            TranslationRequest.new(
-              text:,
-              source_lang: @reader_state.translator_source_lang.to_s,
-              target_lang: @reader_state.translator_target_lang.to_s,
-              announce:,
-              request_id: next_request_id
-            )
-          end
-
-          # Worker-side: compute only; the result applies on the UI thread.
-          def perform_translation(request)
-            result = @translation_service.translate(
-              request.text, source_lang: request.source_lang, target_lang: request.target_lang
-            )
-            @async_relay.enqueue do
-              next unless translation_context_current?(
-                request.request_id, request.text, request.source_lang, request.target_lang
-              )
-
-              @translator_ui_session.apply_result(result, query: request.text)
-              announce_translation(result) if request.announce
-            end
-          end
-          private :perform_translation
-
-          def next_request_id
-            @request_generation += 1
-          end
-
-          def current_request?(request_id)
-            request_id == @request_generation
-          end
-
-          def invalidate_translation_requests
-            @request_generation += 1
-          end
-
-          def translation_context_current?(request_id, text, source, target)
-            current_request?(request_id) &&
-              @translator_ui_session.visible? &&
-              @reader_state.translator_query.to_s.strip == text.to_s.strip &&
-              @reader_state.translator_source_lang.to_s == source.to_s &&
-              @reader_state.translator_target_lang.to_s == target.to_s
+            @request_runner.submit(text, announce: announce)
           end
 
           def retranslate_if_present
             translate_text(@reader_state.translator_query.to_s.strip)
-          end
-
-          def announce_translation(result)
-            if result.error?
-              set_message(translation_failure_message(result), 3)
-            else
-              set_message("Translated to #{LanguageDirectory.name_for(@reader_state.translator_target_lang)}", 2)
-            end
-          end
-
-          def translation_failure_message(result)
-            detail = result.error_message.to_s.strip
-            detail.empty? ? 'Translation failed' : "Translation failed — #{detail}"
           end
 
           # ----- language picker -----
@@ -517,75 +468,7 @@ module Shoko
           # ----- languages -----
 
           def ensure_languages
-            return unless Array(@reader_state.translator_languages).empty?
-            return if @languages_loading
-
-            @languages_loading = true
-            request_id = next_language_request_id
-            submitted = @async_relay.submit { perform_language_fetch(request_id) }
-            return if submitted
-
-            @languages_loading = false
-            set_message('Language worker is unavailable', 3)
-          end
-
-          def perform_language_fetch(request_id)
-            languages = @translation_service.available_languages.map(&:to_h)
-            @async_relay.enqueue { publish_languages(languages, request_id) }
-          rescue Shoko::Error => e
-            @async_relay.enqueue { publish_language_error(e, request_id) }
-          end
-          private :perform_language_fetch
-
-          def publish_languages(languages, request_id)
-            return unless current_language_request?(request_id)
-
-            @languages_loading = false
-            @loaded_languages = languages
-            @translator_ui_session.apply_languages(languages)
-            normalize_pair_for(languages)
-            return translate_pending_text if languages.any?
-
-            @pending_translation = nil
-            set_message('No translation languages are available', 3)
-          end
-
-          def publish_language_error(error, request_id)
-            return unless current_language_request?(request_id)
-
-            @languages_loading = false
-            @pending_translation = nil
-            set_message("Languages unavailable — #{error.message}", 3)
-          end
-
-          def translate_pending_text
-            pending = @pending_translation
-            @pending_translation = nil
-            translate_text(pending[:text], announce: pending[:announce]) if pending
-          end
-
-          def next_language_request_id
-            @language_generation += 1
-          end
-
-          def current_language_request?(request_id)
-            request_id == @language_generation
-          end
-
-          def normalize_pair_for(languages)
-            source_candidates = LanguageDirectory.candidates_for(
-              languages, side: :source, source_code: nil, query: ''
-            )
-            return if source_candidates.empty?
-
-            source = @reader_state.translator_source_lang.to_s
-            source = source_candidates.first[:code] unless source_candidates.any? { |item| item[:code] == source }
-            targets = LanguageDirectory.candidates_for(
-              languages, side: :target, source_code: source, query: ''
-            )
-            target = @reader_state.translator_target_lang.to_s
-            target = targets.first[:code] unless targets.any? { |item| item[:code] == target }
-            @translator_ui_session.apply_pair(source: source, target: target) if target
+            @language_session.ensure_loaded
           end
 
           # ----- prefill from a selection payload -----
@@ -595,7 +478,7 @@ module Shoko
             if text && !text.empty?
               @translator_ui_session.write_source(text: text, cursor: text.length)
               if Array(@reader_state.translator_languages).empty?
-                @pending_translation = { text: text, announce: true }
+                @language_session.defer_translation(text: text, announce: true)
                 ensure_languages
               else
                 translate_text(text, announce: true)

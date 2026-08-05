@@ -7,11 +7,12 @@ module Shoko
         module Reader
           # Parses traditional "xref ... trailer ..." sections.
           class XrefTableParser
-            def initialize(data:, xref:, trailer:, dict_value:)
+            def initialize(data:, xref:, trailer:, dict_value:, import_budget:)
               @data = data
               @xref = xref
               @trailer = trailer
               @dict_value = dict_value
+              @import_budget = import_budget
             end
 
             def parse_table(xref_offset)
@@ -69,6 +70,9 @@ module Shoko
             end
 
             def parse_subsection_entries(pos, start_num, count)
+              return pos unless count.positive?
+
+              @import_budget.consume_structure!(count, label: 'PDF xref table')
               count.times do |idx|
                 entry_line, line_end = read_line(pos)
                 break unless line_end

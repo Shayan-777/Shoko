@@ -27,6 +27,7 @@ module Shoko
           CDIC_MAGIC = "CDIC\x00\x00\x00\x10".b
           U32_MASK = 0xFFFF_FFFF
           MAX_CODE_LENGTH = 32
+          MAX_RECURSION_DEPTH = 64
 
           # MSB-first reader over a 64-bit window that slides four bytes at a
           # time. Eight trailing zero bytes let the final codes read past the
@@ -77,6 +78,7 @@ module Shoko
           def initialize(huff_record, cdic_records)
             load_huff(huff_record.to_s.b)
             @dictionary = []
+            @decoded_dictionary_bytes = 0
             Array(cdic_records).each { |cdic| load_cdic(cdic.to_s.b) }
           end
 
@@ -84,8 +86,8 @@ module Shoko
           #
           # @param data [String] compressed binary data for one record
           # @return [String] decompressed binary output
-          def decompress(data)
-            unpack(data.to_s.b)
+          def decompress(data, max_output_bytes: nil)
+            unpack(data.to_s.b, max_output_bytes: max_output_bytes, depth: 0)
           end
 
           private
@@ -165,18 +167,22 @@ module Shoko
           # Decodes one record by walking codes MSB-first through the bit
           # window, resolving each code to its length/range and then to a
           # dictionary phrase. Recursion-safe: each call owns its own reader.
-          def unpack(data)
+          def unpack(data, max_output_bytes:, depth:)
+            raise malformed('phrase recursion limit exceeded') if depth >= MAX_RECURSION_DEPTH
+
             reader = BitReader.new(data)
-            out = []
+            out = +''.b
             loop do
               code = reader.current_code
               codelen, maxcode = code_length_and_max(code)
               reader.advance(codelen)
               break if reader.spent?
 
-              out << dictionary_phrase((maxcode - code) >> (MAX_CODE_LENGTH - codelen))
+              index = (maxcode - code) >> (MAX_CODE_LENGTH - codelen)
+              phrase = dictionary_phrase(index, max_output_bytes: max_output_bytes, depth: depth)
+              append_phrase!(out, phrase, max_output_bytes)
             end
-            out.join
+            out
           end
 
           def code_length_and_max(code)
@@ -190,7 +196,7 @@ module Shoko
             [codelen, @maxcode[codelen]]
           end
 
-          def dictionary_phrase(index)
+          def dictionary_phrase(index, max_output_bytes:, depth:)
             entry = @dictionary[index]
             raise malformed('CDIC dictionary index out of range') if entry.nil?
 
@@ -202,9 +208,27 @@ module Shoko
             # nilling the slot first so a self-referential phrase can't recurse
             # forever on malformed input.
             @dictionary[index] = nil
-            decoded = unpack(slice)
-            @dictionary[index] = [decoded, 0x8000]
+            decoded = unpack(slice, max_output_bytes: max_output_bytes, depth: depth + 1)
+            cache_decoded_phrase!(index, decoded, max_output_bytes)
             decoded
+          end
+
+          def cache_decoded_phrase!(index, decoded, max_output_bytes)
+            projected = @decoded_dictionary_bytes + decoded.bytesize
+            if max_output_bytes && projected > max_output_bytes
+              raise malformed("decoded phrase cache exceeds #{max_output_bytes} bytes")
+            end
+
+            @dictionary[index] = [decoded, 0x8000]
+            @decoded_dictionary_bytes = projected
+          end
+
+          def append_phrase!(output, phrase, max_output_bytes)
+            if max_output_bytes && output.bytesize + phrase.bytesize > max_output_bytes
+              raise malformed("record exceeds #{max_output_bytes} decompressed bytes")
+            end
+
+            output << phrase
           end
 
           def malformed(reason)

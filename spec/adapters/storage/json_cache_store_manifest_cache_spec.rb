@@ -47,7 +47,7 @@ RSpec.describe Shoko::Adapters::Storage::JsonCacheStore do
       File.write(File.join(dir, described_class::MANIFEST_FILENAME), JSON.generate(rows))
 
       described_class.with_manifest_rows_cache(enabled: true) do
-        expect(described_class).to receive(:read_manifest_file).once.and_call_original
+        expect(Shoko::Adapters::Storage::JsonCacheManifestStore).to receive(:read_file).once.and_call_original
 
         3.times { described_class.manifest_rows(dir) }
       end
@@ -59,7 +59,8 @@ RSpec.describe Shoko::Adapters::Storage::JsonCacheStore do
       File.write(File.join(dir, described_class::MANIFEST_FILENAME), JSON.generate(rows))
 
       described_class.with_manifest_rows_cache(enabled: false) do
-        expect(described_class).to receive(:read_manifest_file).exactly(3).times.and_call_original
+        expect(Shoko::Adapters::Storage::JsonCacheManifestStore)
+          .to receive(:read_file).exactly(3).times.and_call_original
 
         3.times { described_class.manifest_rows(dir) }
       end
@@ -91,6 +92,17 @@ RSpec.describe Shoko::Adapters::Storage::JsonCacheStore do
       shas = described_class.manifest_rows(dir).map { |row| row['source_sha'] }
       expect(shas.length).to eq(2 * rows_per_writer)
       expect(shas.uniq.length).to eq(2 * rows_per_writer)
+    end
+  end
+
+  it 'contains both a manifest-write failure and a diagnostic failure' do
+    Dir.mktmpdir('json-cache-store-manifest-spec') do |dir|
+      logger = Object.new
+      logger.define_singleton_method(:debug) { |*, **| raise 'logger failed' }
+      store = Shoko::Adapters::Storage::JsonCacheManifestStore.new(cache_root: dir, logger: logger)
+      allow(Shoko::Adapters::Storage::AtomicFileWriter).to receive(:write).and_raise(IOError, 'disk failed')
+
+      expect(store.update({ 'source_sha' => 'a' * 64 }, cache_size_bytes: 1)).to be(false)
     end
   end
 end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/errors'
+
 module Shoko
   module Adapters
     module BookSources
@@ -23,16 +25,17 @@ module Shoko
             #
             # @param data [String] compressed binary data for one record
             # @return [String] decompressed binary output
-            def decompress(data)
+            def decompress(data, max_output_bytes: nil)
               input = data.b
               output = +''
               output.force_encoding(Encoding::BINARY)
               pos = 0
-              context = { input: input, length: input.bytesize }
+              context = { input: input, length: input.bytesize, max_output_bytes: max_output_bytes }
 
               while pos < context[:length]
                 byte = input.getbyte(pos)
                 pos = process_compressed_byte(context, output, byte, pos + 1)
+                enforce_output_limit!(output, context[:max_output_bytes])
               end
 
               output
@@ -109,6 +112,15 @@ module Shoko
               length.times do |index|
                 output << output.getbyte(start + index).chr(Encoding::BINARY)
               end
+            end
+
+            def enforce_output_limit!(output, max_output_bytes)
+              return unless max_output_bytes && output.bytesize > max_output_bytes
+
+              raise Shoko::BookParseError.new(
+                "PalmDOC record exceeds #{max_output_bytes} decompressed bytes",
+                ''
+              )
             end
 
             def strip_extra_trailing_entries(data, extra_data_flags)

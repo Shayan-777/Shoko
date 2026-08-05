@@ -6,7 +6,7 @@ require 'spec_helper'
 # to the reader's mouse handler and returns only the tokens that are real
 # keyboard input. These exercise it directly against a real MouseHandler, which
 # is where the stale-prefix behaviour actually lives.
-RSpec.describe Shoko::Adapters::Input::Controllers::ReaderController::InputSequenceFilter do
+RSpec.describe Shoko::Adapters::Input::Controllers::Reader::InputSequenceFilter do
   let(:mouse_handler) { Shoko::Adapters::Input::Annotations::MouseHandler.new }
   let(:handled) { [] }
   let(:filter) do

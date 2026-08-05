@@ -7,10 +7,8 @@ module Shoko
   module Adapters
     module Input
       module Controllers
-        # Reopened here (defined in reader_controller.rb, which requires this file
-        # after the class body so the nesting resolves).
-        class ReaderController
-          # Owns inline-link hover and click behavior for the reader's mouse interactions.
+        module Reader
+          # Owns inline-link hover and click state for reader pointer input.
           class InlineLinkInteraction
             def initialize(inline_link_navigator:, reader_state_reader:, reader_session_mutator:)
               @inline_link_navigator = inline_link_navigator
@@ -20,10 +18,8 @@ module Shoko
 
             def consume_click(event, mouse_handler:)
               return false unless @inline_link_navigator
-              return false unless inline_link_click_candidate?(event, mouse_handler)
-
-              navigated = @inline_link_navigator.navigate(event)
-              return false unless navigated
+              return false unless click_candidate?(event, mouse_handler)
+              return false unless @inline_link_navigator.navigate(event)
 
               @reader_session_mutator.update_reader(popup_menu: nil, hovered_inline_link: nil)
               @reader_session_mutator.clear_selection
@@ -34,8 +30,8 @@ module Shoko
             def sync_hover(event)
               return false unless @inline_link_navigator
 
-              next_hover = hovered_inline_link_payload(@inline_link_navigator.link_hit_for_event(event))
-              current_hover = normalize_hovered_inline_link(@reader_state_reader&.hovered_inline_link)
+              next_hover = hover_payload(@inline_link_navigator.link_hit_for_event(event))
+              current_hover = normalize_hover(@reader_state_reader&.hovered_inline_link)
               return false if current_hover == next_hover
 
               @reader_session_mutator.update_reader(hovered_inline_link: next_hover)
@@ -44,32 +40,26 @@ module Shoko
 
             private
 
-            def inline_link_click_candidate?(event, mouse_handler)
+            def click_candidate?(event, mouse_handler)
               mouse_handler&.selecting &&
                 Shoko::Shared::Terminal::MouseButton.left_release?(event) &&
                 collapsed_selection?(mouse_handler)
             end
 
-            def hovered_inline_link_payload(hit)
+            def hover_payload(hit)
               return nil unless hit.is_a?(Hash)
 
               start_char = hit[:start_char].to_i
               end_char = hit[:end_char].to_i
-              return nil if end_char <= start_char
-
               href = hit[:href].to_s.strip
-              return nil if href.empty?
+              return nil if end_char <= start_char || href.empty?
 
-              {
-                chapter_index: @reader_state_reader.current_chapter.to_i,
-                line_offset: hit[:line_offset].to_i,
-                start_char: start_char,
-                end_char: end_char,
-                href: href,
-              }
+              { chapter_index: @reader_state_reader.current_chapter.to_i,
+                line_offset: hit[:line_offset].to_i, start_char: start_char,
+                end_char: end_char, href: href }
             end
 
-            def normalize_hovered_inline_link(value)
+            def normalize_hover(value)
               return nil unless value.is_a?(Hash)
 
               normalized = Shoko::Shared::HashNormalizer.symbolize_keys(value)
@@ -78,21 +68,15 @@ module Shoko
               href = normalized[:href].to_s.strip
               return nil if end_char <= start_char || href.empty?
 
-              {
-                chapter_index: normalized[:chapter_index].to_i,
-                line_offset: normalized[:line_offset].to_i,
-                start_char: start_char,
-                end_char: end_char,
-                href: href,
-              }
+              { chapter_index: normalized[:chapter_index].to_i,
+                line_offset: normalized[:line_offset].to_i, start_char: start_char,
+                end_char: end_char, href: href }
             end
 
             def collapsed_selection?(mouse_handler)
               start_pos = mouse_handler.selection_start
               end_pos = mouse_handler.selection_end
-              return false unless start_pos && end_pos
-
-              start_pos[:x].to_i == end_pos[:x].to_i &&
+              start_pos && end_pos && start_pos[:x].to_i == end_pos[:x].to_i &&
                 start_pos[:y].to_i == end_pos[:y].to_i
             end
           end

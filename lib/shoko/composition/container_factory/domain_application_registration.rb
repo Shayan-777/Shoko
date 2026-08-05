@@ -8,7 +8,7 @@ module Shoko
     module ContainerFactory
       # Registers domain and application services in the DI container.
       # Flat by design: composition wiring kept in one readable place rather than a
-      # tree of single-use mixins (see constitution §IV).
+      # tree of single-use mixins (constitution section 3).
       module DomainApplicationRegistration
         # Register application-level services and adapters.
         def register_application_services(container)

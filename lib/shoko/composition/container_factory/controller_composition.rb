@@ -25,7 +25,7 @@ module Shoko
         # The reader graph loads lazily so the menu boot path never pays for
         # it (boot-surface guardrail).
         def ensure_reader_builder_loaded!
-          return if const_defined?(:ReaderBuilder, false)
+          return if ContainerFactory.const_defined?(:ReaderBuilder, false)
 
           require_relative 'controller_composition/reader_builder'
         end

@@ -194,6 +194,46 @@ RSpec.describe Shoko::Application::State::StateStore, 'observers' do
     expect(healthy).to have_received(:state_changed).at_least(:once)
   end
 
+  it 'completes concurrent notification envelopes when both an observer and logger fail' do
+    logger = instance_double(Shoko::Application::Ports::Outbound::Logging)
+    allow(logger).to receive(:debug).and_raise(IOError, 'logger unavailable')
+    store = described_class.new(
+      config_storage: config_storage,
+      terminal_capabilities: terminal_capabilities,
+      schema_registry: schema_registry,
+      logger: logger
+    )
+    entered = Queue.new
+    release = Queue.new
+    calls = 0
+    calls_mutex = Mutex.new
+    failing = Object.new
+    failing.define_singleton_method(:state_changed) do |*_args|
+      first_call = calls_mutex.synchronize do
+        calls += 1
+        calls == 1
+      end
+      if first_call
+        entered << true
+        release.pop
+      end
+      raise StandardError, 'observer failed'
+    end
+    store.add_observer(failing, %i[reader mode])
+
+    first = Thread.new { store.update(%i[reader mode] => :help) }
+    Timeout.timeout(1) { entered.pop }
+    second = Thread.new { store.update(%i[reader mode] => :annotations) }
+    Thread.pass until store.get(%i[reader mode]) == :annotations
+    release << true
+
+    Timeout.timeout(2) { [first, second].each(&:join) }
+    expect(store.get(%i[reader mode])).to eq(:annotations)
+  ensure
+    first&.kill
+    second&.kill
+  end
+
   it 'tolerates an observer without state_changed: the update still commits' do
     store = described_class.new(config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
 

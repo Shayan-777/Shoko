@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-# The small set of genuine app-specific invariants the constitution's §V
+# The small set of genuine app-specific invariants the constitution's section 9
 # target shape allows alongside the rule specs: single-owner seams that no
 # generic layer rule covers, and that no unit test can express — each says
 # "no OTHER file may do this", which is a property of the tree, not of a
@@ -20,8 +20,6 @@ RSpec.describe 'Domain invariants' do
 
   def non_comment_content(path)
     File.readlines(path).reject { |line| line.strip.start_with?('#') }.join
-  rescue StandardError
-    ''
   end
 
   it 'keeps set_message implementation centralized in message_notifier' do

@@ -83,7 +83,7 @@ module Shoko
     module ContainerFactory
       # Registers ports, adapters, and repositories in the DI container.
       # Flat by design: composition wiring is not domain logic and is kept in one
-      # readable place rather than a tree of single-use mixins (see constitution §IV).
+      # readable place rather than a tree of single-use mixins (constitution section 3).
       module PortAndRepositoryRegistration
         # Registers the shared adapter ports used across runtime composition.
         def register_core_ports(container)

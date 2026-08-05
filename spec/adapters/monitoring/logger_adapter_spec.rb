@@ -17,22 +17,22 @@ RSpec.describe Shoko::Adapters::Monitoring::LoggerAdapter do
     expect(line).to include('"severity":"INFO"')
   end
 
-  it 'raises logging error when output write fails' do
+  it 'never lets an output write failure escape the diagnostic call' do
     failing_output = instance_double(IO)
     allow(failing_output).to receive(:puts).and_raise(IOError, 'stream closed')
 
     logger = described_class.new(level: :debug, output: failing_output)
 
-    expect { logger.error('boom') }.to raise_error(Shoko::LoggingError, /log_write/)
+    expect { logger.error('boom') }.not_to raise_error
   end
 
-  it 'raises logging error when string normalization fails' do
+  it 'never lets string normalization failure escape the diagnostic call' do
     invalid_message = Object.new
     def invalid_message.to_s = raise 'bad to_s'
 
     logger = described_class.new(level: :debug, output: StringIO.new)
 
-    expect { logger.info(invalid_message) }.to raise_error(Shoko::LoggingError, /normalize_string/)
+    expect { logger.info(invalid_message) }.not_to raise_error
   end
 
   it 'accepts a String output path and appends JSON log lines' do
