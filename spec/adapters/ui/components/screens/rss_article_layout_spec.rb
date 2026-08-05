@@ -10,9 +10,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssArticleLayout do
   def palette = Shoko::Adapters::Ui::Components::StatusBar::Palette
 
   def blocks_for(html)
-    Shoko::Core::Models::ContentBlockPayload.dump(
-      Shoko::Adapters::Rss::ArticleBlockParser.new.parse(html)
-    )
+    Shoko::Adapters::Rss::ArticleBlockParser.new.parse(html)
   end
 
   def lines_for(html, width: 40)
@@ -152,7 +150,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssArticleLayout do
 
   describe 'stored payloads' do
     it 'renders blocks that have been through a JSON round trip' do
-      payload = JSON.parse(JSON.generate(blocks_for('<h2>Titel</h2><p>Text.</p>')))
+      encoded = Shoko::Adapters::Support::ContentBlockCodec.dump(blocks_for('<h2>Titel</h2><p>Text.</p>'))
+      payload = JSON.parse(JSON.generate(encoded))
 
       expect(texts(described_class.new(width: 40).call(payload))).to eq(['Titel', '', 'Text.'])
     end

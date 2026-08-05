@@ -350,7 +350,9 @@ module Shoko
             return unless chapter_index
 
             chapter = chapters[chapter_index]
-            chapter.title = title if chapter && chapter.title.to_s.strip.empty?
+            return unless chapter && chapter.title.to_s.strip.empty?
+
+            chapters[chapter_index] = chapter.with(title: title)
           end
 
           def resolve_toc_target(opf_path, entry)

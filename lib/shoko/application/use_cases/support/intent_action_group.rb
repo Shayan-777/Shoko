@@ -8,6 +8,11 @@ module Shoko
         module IntentActionGroup
           PRESERVE_RESULT = Object.new.freeze
           Route = Data.define(:payload_reader, :result, :callable)
+          PAYLOAD_READERS = {
+            none: :none_payload, delta: :positive_delta, text: :text_from,
+            mode: :mode_from, direction: :direction_from, edit_op: :edit_op_from,
+            raw: :raw_payload
+          }.freeze
 
           module_function
 
@@ -121,26 +126,20 @@ module Shoko
           end
 
           def route_payload(intent, payload, payload_reader)
-            case payload_reader
-            when :none
-              validate_payload!(intent, payload)
-              nil
-            when :delta
-              positive_delta(payload, intent)
-            when :text
-              text_from(payload, intent)
-            when :mode
-              mode_from(payload, intent)
-            when :direction
-              direction_from(payload, intent)
-            when :edit_op
-              edit_op_from(payload, intent)
-            when :raw
-              validate_payload!(intent, payload)
-              payload
-            else
-              raise ArgumentError, "unsupported route payload reader: #{payload_reader.inspect}"
-            end
+            reader = PAYLOAD_READERS[payload_reader]
+            raise ArgumentError, "unsupported route payload reader: #{payload_reader.inspect}" unless reader
+
+            method(reader).call(payload, intent)
+          end
+
+          def none_payload(payload, intent)
+            validate_payload!(intent, payload)
+            nil
+          end
+
+          def raw_payload(payload, intent)
+            validate_payload!(intent, payload)
+            payload
           end
         end
       end

@@ -58,9 +58,10 @@ module Shoko
           end
 
           def heading_ids(heading)
-            each_element_including_root(heading).each_with_object([]) do |element, ids|
-              ids.concat(attribute_values(element, *ID_ATTRIBUTES))
-            end.map(&:to_s).map(&:strip).reject(&:empty?).uniq
+            ids = each_element_including_root(heading).with_object([]) do |element, values|
+              values.concat(attribute_values(element, *ID_ATTRIBUTES))
+            end
+            ids.map { |id| id.to_s.strip }.reject(&:empty?).uniq
           end
 
           def parse_navigation_document(content)

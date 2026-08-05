@@ -7,6 +7,7 @@ module Shoko
   module Application
     module Ports
       module Outbound
+        # Immutable state snapshots exposed by outbound state ports.
         module State
           # Port-contract snapshot for the application configuration slice.
           # Data contract for `Application::Ports::Outbound::AppConfigStore`.

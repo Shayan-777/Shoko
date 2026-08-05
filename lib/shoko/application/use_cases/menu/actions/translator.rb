@@ -245,17 +245,17 @@ module Shoko
               { code: code.to_s, name: name.to_s, targets: Array(normalized[:targets]).map(&:to_s) }
             end
 
-            def update_input(op)
+            def update_input(operation)
               return unless translator_focus == :input && current_menu.mode == :translator
 
-              operator.call(op)
+              operator.call(operation)
             end
 
-            def update_dropdown_query(op)
+            def update_dropdown_query(operation)
               return unless dropdown_mode?
 
               query = current_menu.translator_dropdown_query.to_s
-              next_query, = Shoko::Core::Services::TextBufferEdit.apply(query, query.length, op)
+              next_query, = Shoko::Core::Services::TextBufferEdit.apply(query, query.length, operation)
               update_menu(translator_dropdown_query: next_query, translator_dropdown_selected: 0)
             end
 

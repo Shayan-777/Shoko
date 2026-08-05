@@ -164,7 +164,7 @@ module Shoko
                 process_scan_results_if_available
                 handle_user_input
                 process_workflow_events
-                consume_pending_resize
+                consume_pending_resize?
                 draw_screen
               end
             end
@@ -179,7 +179,7 @@ module Shoko
 
             # Refreshes the cached terminal size after SIGWINCH so the redraw
             # below lays the menu out against the new dimensions immediately.
-            def consume_pending_resize
+            def consume_pending_resize?
               @terminal_service.consume_resize_event?
             end
 
@@ -542,7 +542,7 @@ module Shoko
             def handle_rss_reading_mouse_event(event)
               bounds = translator_bounds
               local = event.merge(x: event[:x] - (bounds.x - 1), y: event[:y] - (bounds.y - 1))
-              @rss_reading_mouse_handler&.handle(local, bounds: bounds) ? true : false
+              @rss_reading_mouse_handler&.handle(local, bounds: bounds)
             end
 
             def translator_mouse_mode?

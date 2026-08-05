@@ -11,6 +11,7 @@ module ShokoBench
   # user's real config or cache and are reproducible run to run.
   class LibrarySandbox
     APP_ROOT = File.expand_path('../../..', __dir__)
+    DEFAULT_FIXTURE_ROOT = File.join(APP_ROOT, 'tmp', 'book-fixtures')
 
     # Mirrors a realistic mixed library: epub/fb2/rtf with many small
     # chapters, plus the formats whose imports yield huge chapters (PDF,
@@ -142,8 +143,11 @@ module ShokoBench
     private
 
     def copy_books
-      sources = @book_globs.flat_map { |glob| Dir.glob(File.join(APP_ROOT, 'testbooks', glob)) }
-      raise "no testbooks matched #{@book_globs.inspect}" if sources.empty?
+      fixture_root = File.expand_path(ENV.fetch('SHOKO_FIXTURES_DIR', DEFAULT_FIXTURE_ROOT))
+      sources = @book_globs.flat_map { |glob| Dir.glob(File.join(fixture_root, glob)) }
+      if sources.empty?
+        raise "no external book fixtures under #{fixture_root} matched #{@book_globs.inspect}"
+      end
 
       sources.each { |source| FileUtils.cp(source, @books_dir) }
       @log.puts "sandbox: copied #{sources.length} books"

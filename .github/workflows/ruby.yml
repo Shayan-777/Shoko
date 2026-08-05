@@ -48,6 +48,13 @@ jobs:
         bundler-cache: true
     - name: Run RuboCop
       run: bundle exec rubocop
+    - name: Reject tracked real-book fixtures
+      run: |
+        if test -n "$(git ls-files testbooks)"; then
+          echo "Real-book fixtures must be hosted as release assets, not tracked in Git."
+          git ls-files testbooks
+          exit 1
+        fi
 
   guardrails:
     runs-on: ubuntu-22.04
@@ -75,3 +82,38 @@ jobs:
         bundler-cache: true
     - name: Run required tests lane
       run: bundle exec rake test:required
+
+  coverage:
+    needs: guardrails
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4.9'
+        bundler-cache: true
+    - name: Enforce line and branch coverage
+      run: bundle exec rake test:coverage
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ruby-coverage
+        if-no-files-found: error
+        path: coverage
+
+  parser-properties:
+    needs: guardrails
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4.9'
+        bundler-cache: true
+    - name: Run parser fuzz and property tests
+      run: bundle exec rake test:parser_properties

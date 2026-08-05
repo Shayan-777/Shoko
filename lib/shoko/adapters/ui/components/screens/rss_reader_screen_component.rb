@@ -246,22 +246,26 @@ module Shoko
               list_height = [frame.body_bottom - list_top + 1, 0].max
               return render_note(frame, empty_articles_text) if article_entries.empty?
 
-              render_article_blocks(surface, bounds, frame, list_top, list_height)
+              render_article_blocks(surface, bounds, frame, top: list_top, height: list_height)
             end
 
-            def render_article_blocks(surface, bounds, frame, top, height)
+            def render_article_blocks(surface, bounds, frame, top:, height:)
               list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
               list.register_wheel(top: top, height: height, action: { type: :list_wheel, list: :rss_articles })
               capacity = [height / ARTICLE_BLOCK_ROWS, 1].max
               offset = window_offset(article_entries.length, capacity, current_article_index)
+              render_visible_articles(list, top, capacity, offset)
+              list.render_scrollbar(top: top, height: height, total: article_entries.length,
+                                    visible: capacity, offset: offset)
+            end
+
+            def render_visible_articles(list, top, capacity, offset)
               capacity.times do |slot|
                 article = article_entries[offset + slot]
                 break unless article
 
                 render_article_block(list, article, index: offset + slot, row: top + (slot * ARTICLE_BLOCK_ROWS))
               end
-              list.render_scrollbar(top: top, height: height, total: article_entries.length,
-                                    visible: capacity, offset: offset)
             end
 
             def render_article_block(list, article, index:, row:)
@@ -360,13 +364,17 @@ module Shoko
               anchor = Shoko::Shared::HashNormalizer.symbolize_keys(menu_state_reader&.rss_context_menu)
               return nil unless anchor
 
-              width = CONTEXT_ACTIONS.map { |action| action[:label].length }.max + CONTEXT_MENU_PAD
-              rows = CONTEXT_ACTIONS.length
+              width, rows = context_menu_dimensions
               {
                 row: anchor[:anchor_row].to_i.clamp(1, [bounds.height - rows, 1].max),
                 column: anchor[:anchor_column].to_i.clamp(1, [bounds.width - width, 1].max),
                 width: width,
               }
+            end
+
+            def context_menu_dimensions
+              [CONTEXT_ACTIONS.map { |action| action[:label].length }.max + CONTEXT_MENU_PAD,
+               CONTEXT_ACTIONS.length]
             end
 
             # The position badge is a full-width line on the last body row, so a
@@ -630,14 +638,18 @@ module Shoko
               list = MenuDesign::CanvasList.new(surface, bounds, frame: frame, hits: hits)
               list.register_wheel(top: list_top, height: height, action: { type: :list_wheel, list: :rss_feeds })
               offset = window_offset(feed_entries.length, height, current_feed_index)
+              render_visible_feeds(list, list_top, height, offset)
+              list.render_scrollbar(top: list_top, height: height, total: feed_entries.length,
+                                    visible: height, offset: offset)
+            end
+
+            def render_visible_feeds(list, list_top, height, offset)
               height.times do |slot|
                 feed = feed_entries[offset + slot]
                 break unless feed
 
                 render_feed_row(list, feed, index: offset + slot, row: list_top + slot)
               end
-              list.render_scrollbar(top: list_top, height: height, total: feed_entries.length,
-                                    visible: height, offset: offset)
             end
 
             def render_feed_row(list, feed, index:, row:)

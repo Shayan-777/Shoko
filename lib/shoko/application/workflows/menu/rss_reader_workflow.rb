@@ -247,15 +247,7 @@ module Shoko
           def perform_feed_add(url)
             result = @rss_reader_service.add_feed(url)
             message = "Added #{result[:added_count]} #{article_word(result[:added_count])} from the new feed"
-            @async_relay.enqueue do
-              apply_snapshot(
-                result[:snapshot],
-                status: :ready,
-                message: message,
-                preferred_feed_key: result[:feed_key],
-                reset_content: true
-              )
-            end
+            enqueue_added_feed(result, message)
           rescue Shoko::Error => e
             @async_relay.enqueue do
               log_error('rss_reader.add_feed_failed', e)
@@ -263,6 +255,14 @@ module Shoko
             end
           end
           private :perform_feed_add
+
+          def enqueue_added_feed(result, message)
+            @async_relay.enqueue do
+              apply_snapshot(result[:snapshot], status: :ready, message: message,
+                                                preferred_feed_key: result[:feed_key], reset_content: true)
+            end
+          end
+          private :enqueue_added_feed
 
           def remove_feed(feed_key)
             target = feed_key.to_s.strip

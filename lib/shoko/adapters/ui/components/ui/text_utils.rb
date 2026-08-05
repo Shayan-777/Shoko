@@ -68,7 +68,7 @@ module Shoko
               loop do
                 newline = source.index("\n", index)
                 line_end = newline || source.length
-                wrap_indexed_segment(rows, source, index, line_end, w)
+                wrap_indexed_segment(rows, source, index, line_end: line_end, width: w)
                 break unless newline
 
                 index = newline + 1
@@ -78,17 +78,17 @@ module Shoko
 
             # Wrap one physical line [start, line_end) into rows; always adds at
             # least one row (empty for a blank line).
-            def wrap_indexed_segment(rows, text, start, line_end, width)
+            def wrap_indexed_segment(rows, text, start, line_end:, width:)
               if start == line_end
                 rows << { text: '', start: start }
                 return
               end
 
               cursor = start
-              cursor = append_indexed_row(rows, text, cursor, width, line_end) while cursor < line_end
+              cursor = append_indexed_row(rows, text, cursor, width: width, line_end: line_end) while cursor < line_end
             end
 
-            def append_indexed_row(rows, text, cursor, width, line_end)
+            def append_indexed_row(rows, text, cursor, width:, line_end:)
               take = indexed_row_capacity(text, cursor, width, line_end)
               if cursor + take >= line_end
                 rows << { text: text[cursor...line_end], start: cursor }

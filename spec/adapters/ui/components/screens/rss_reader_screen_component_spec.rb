@@ -139,9 +139,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
 
     def long_article(paragraphs)
       body = (1..paragraphs).map { |i| "<p>Absatz #{i}. #{'Wort ' * 40}</p>" }.join
-      blocks = Shoko::Core::Models::ContentBlockPayload.dump(
-        Shoko::Adapters::Rss::ArticleBlockParser.new.parse(body)
-      )
+      blocks = Shoko::Adapters::Rss::ArticleBlockParser.new.parse(body)
       [{
         id: 'article-1', feed_id: 'feed-1', feed_title: 'Daily Planet', title: 'Morning Edition',
         author: 'Clark', summary: 'City hall story', content: 'City hall story.',
@@ -261,9 +259,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
     let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: width, height: height) }
 
     def article_with(html)
-      blocks = Shoko::Core::Models::ContentBlockPayload.dump(
-        Shoko::Adapters::Rss::ArticleBlockParser.new.parse(html)
-      )
+      blocks = Shoko::Adapters::Rss::ArticleBlockParser.new.parse(html)
       [{ id: 'article-1', feed_id: 'feed-1', feed_title: 'Daily Planet', title: 'Morning Edition',
          author: 'Clark', summary: 'excerpt', content: 'plain', content_blocks: blocks,
          url: 'https://example.com/story', published_label: '2026-04-06 08:00',

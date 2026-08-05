@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/core/services/text_buffer_edit'
+require 'shoko/core/services/grapheme_cursor'
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_access'
 require 'shoko/shared/text_sanitizer'
@@ -31,6 +32,7 @@ module Shoko
         # the state controller.
         class NotesLookupController
           TextBufferEdit = Shoko::Core::Services::TextBufferEdit
+          GraphemeCursor = Shoko::Core::Services::GraphemeCursor
 
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
           include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
@@ -118,13 +120,7 @@ module Shoko
             return :pass unless note
 
             text = note_value(note, :note).to_s
-            @notes_ui_session.begin_compose(
-              note: text, cursor: text.length,
-              editing_id: note_value(note, :id),
-              editing_text: note_value(note, :text).to_s,
-              editing_anchor: note_value(note, :anchor),
-              editing_chapter: note_value(note, :chapter_index)
-            )
+            @notes_ui_session.begin_compose(**edit_compose_payload(note, text))
             enter_compose_mode
             set_message(COMPOSE_EDIT_HINT, 3)
             :handled
@@ -166,7 +162,7 @@ module Shoko
             return :handled unless composing?
 
             text = @reader_state.notes_draft.to_s
-            cursor = clamp_cursor(@reader_state.notes_cursor.to_i, text.length)
+            cursor = clamp_cursor(text, @reader_state.notes_cursor)
             new_text, new_cursor = TextBufferEdit.apply(text, cursor, edit_op)
             @notes_ui_session.write_draft(text: new_text, cursor: new_cursor)
             :handled
@@ -180,14 +176,8 @@ module Shoko
             return :handled unless composing?
 
             text = @reader_state.notes_draft.to_s
-            cursor = clamp_cursor(@reader_state.notes_cursor.to_i, text.length)
-            target = case direction
-                     when :left  then [cursor - 1, 0].max
-                     when :right then [cursor + 1, text.length].min
-                     when :home  then 0
-                     when :end   then text.length
-                     else cursor
-                     end
+            cursor = clamp_cursor(text, @reader_state.notes_cursor)
+            target = note_cursor_target(text, cursor, direction)
             @notes_ui_session.write_cursor(target) if target != cursor
             :handled
           rescue Shoko::Error => e
@@ -197,6 +187,23 @@ module Shoko
 
           def refresh_theme(theme_context:)
             @notes_ui_session&.refresh_theme(color_mode: theme_context&.color_mode)
+          end
+
+          def edit_compose_payload(note, text)
+            {
+              note: text, cursor: text.length, editing_id: note_value(note, :id),
+              editing_text: note_value(note, :text).to_s, editing_anchor: note_value(note, :anchor),
+              editing_chapter: note_value(note, :chapter_index)
+            }
+          end
+
+          def note_cursor_target(text, cursor, direction)
+            return GraphemeCursor.previous(text, cursor) if direction == :left
+            return GraphemeCursor.next(text, cursor) if direction == :right
+            return 0 if direction == :home
+            return text.length if direction == :end
+
+            cursor
           end
 
           def notes_lookup_visible?
@@ -374,8 +381,8 @@ module Shoko
 
           # ----- compose: text editing -----
 
-          def clamp_cursor(cursor, length)
-            cursor.clamp(0, length)
+          def clamp_cursor(text, cursor)
+            GraphemeCursor.clamp(text, cursor)
           end
 
           # ----- mode plumbing -----

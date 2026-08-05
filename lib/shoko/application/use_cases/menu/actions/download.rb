@@ -129,7 +129,7 @@ module Shoko
               # Esc during an active download cancels it instead of leaving the
               # download view; a second Esc then closes as usual.
               return :handled if current_menu.download_status == :downloading &&
-                                 @download_workflow.cancel_active_download
+                                 @download_workflow.cancel_active_download?
 
               target_mode = mode || (current_menu.mode == :download_search ? :download : :menu)
               update_menu(mode: target_mode)

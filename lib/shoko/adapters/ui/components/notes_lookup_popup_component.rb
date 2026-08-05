@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/hash_normalizer'
+require 'shoko/core/services/grapheme_cursor'
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
@@ -106,17 +107,25 @@ module Shoko
 
           def sync_from_state
             reader = @reader_state_reader
+            sync_note_list_state(reader)
+            sync_note_editor_state(reader)
+            clamp_selection!
+            note_cursor_activity if @composing
+          end
+
+          def sync_note_list_state(reader)
             @composing = reader&.notes_composing == true
             @notes = normalize_notes(reader&.annotations)
             @selected_index = (reader&.notes_selected_index || 0).to_i
             @hover_index = reader&.overlay_hover_index
+          end
+
+          def sync_note_editor_state(reader)
             @draft = (reader&.notes_draft || '').to_s
-            @cursor = (reader&.notes_cursor || 0).to_i.clamp(0, @draft.length)
+            @cursor = Shoko::Core::Services::GraphemeCursor.clamp(@draft, reader&.notes_cursor)
             @editing_id = reader&.notes_editing_id
             @editing_text = (reader&.notes_editing_text || '').to_s
             @editing_chapter = reader&.notes_editing_chapter
-            clamp_selection!
-            note_cursor_activity if @composing
           end
 
           # Hold the caret solid for a beat whenever the draft or caret moves, then let
@@ -308,14 +317,23 @@ module Shoko
 
             # The compose well has no clickable rows; record the card so a click
             # in the book above it still reads as a dismiss (back to the list).
+            record_compose_geometry(layout, width)
+            render_compose_header(surface, bounds, layout: layout, width: width, text_width: text_width)
+            render_editor(surface, bounds, layout: layout, width: width, text_width: text_width, rows: rows)
+          end
+
+          def record_compose_geometry(layout, width)
             record_overlay_geometry(
               rule_row: layout[:rule_row], col: layout[:col], width: width,
               visible: 0, rows_per: 1, scroll: 0, count: 0
             )
-            render_rule(surface, bounds, layout[:rule_row], width, compose_title_spans, compose_meta)
-            surface.write(bounds, layout[:rule_row] + 1, layout[:col],
-                          body_line(compose_header(text_width), width, pad: PAD))
-            render_editor(surface, bounds, layout, width, text_width, rows)
+          end
+
+          def render_compose_header(surface, bounds, layout:, width:, text_width:)
+            render_rule(surface, bounds, row: layout[:rule_row], width: width,
+                                         left: compose_title_spans, right: compose_meta)
+            line = body_line(compose_header(text_width), width, pad: PAD)
+            surface.write(bounds, layout[:rule_row] + 1, layout[:col], line)
           end
 
           # Anchored at the bar and grown upward: rule · context line · editor well.
@@ -334,7 +352,7 @@ module Shoko
             { col: 1, width: width, bottom_row: bottom_row, rule_row: rule_row, source_rows: source_rows }
           end
 
-          def render_editor(surface, bounds, layout, width, text_width, rows)
+          def render_editor(surface, bounds, layout:, width:, text_width:, rows:)
             cursor_row, cursor_col = Ui::TextUtils.cursor_location(rows, cursor: @cursor)
             top = scroll_to_cursor(rows.length, layout[:source_rows], cursor_row)
             layout[:source_rows].times do |slot|

@@ -53,7 +53,7 @@ module Shoko
             # Top hairline rule from pre-styled [span, visible_length] pairs:
             # "── <left> ········· <right> ──". Pass right_cap: '' to let the
             # right span sit flush in the corner with no trailing hairline.
-            def render_rule(surface, bounds, row, width, left, right, right_cap: ' ──')
+            def render_rule(surface, bounds, row:, width:, left:, right:, right_cap: ' ──')
               return if row < 1
 
               left_span, left_len = left

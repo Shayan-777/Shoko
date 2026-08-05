@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/core/services/text_buffer_edit'
+
 module Shoko
   module Application
     module UseCases
@@ -10,42 +12,17 @@ module Shoko
 
           def apply_edit(current_text, cursor, operation, text: nil)
             safe_text = current_text.to_s
-            safe_cursor = cursor.to_i.clamp(0, safe_text.length)
-
             case operation
             when :insert
-              insert_text(safe_text, safe_cursor, text)
+              Shoko::Core::Services::TextBufferEdit.insert_at(safe_text, cursor, text.to_s, literal: true)
             when :backspace
-              backspace_text(safe_text, safe_cursor)
+              Shoko::Core::Services::TextBufferEdit.backspace_at(safe_text, cursor)
             when :delete
-              delete_text(safe_text, safe_cursor)
+              Shoko::Core::Services::TextBufferEdit.delete_at(safe_text, cursor)
             else
-              [safe_text, safe_cursor]
+              [safe_text, Shoko::Core::Services::GraphemeCursor.clamp(safe_text, cursor)]
             end
           end
-
-          def insert_text(current_text, cursor, text)
-            insert = text.to_s
-            return [current_text, cursor] if insert.empty?
-
-            [current_text[0, cursor].to_s + insert + current_text[cursor..].to_s, cursor + insert.length]
-          end
-          private_class_method :insert_text
-
-          def backspace_text(current_text, cursor)
-            return [current_text, cursor] if cursor <= 0
-
-            previous_cursor = cursor - 1
-            [current_text[0, previous_cursor].to_s + current_text[cursor..].to_s, previous_cursor]
-          end
-          private_class_method :backspace_text
-
-          def delete_text(current_text, cursor)
-            return [current_text, cursor] if cursor >= current_text.length
-
-            [current_text[0, cursor].to_s + current_text[(cursor + 1)..].to_s, cursor]
-          end
-          private_class_method :delete_text
         end
       end
     end

@@ -44,17 +44,24 @@ module Shoko
             def call
               view_model = @view_model_provider&.call
               return nil unless view_model
-              return nil if HIDDEN_MODES.include?(view_model.mode)
-              return search_context(view_model) if view_model.mode == :in_book_search
-              return dictionary_context(view_model) if view_model.mode == :dictionary
-              return toc_context(view_model) if view_model.mode == :toc
-              return translator_context(view_model) if view_model.mode == :translator
-              return notes_context(view_model) if view_model.mode == :notes
 
-              reading_context(view_model)
+              return nil if HIDDEN_MODES.include?(view_model.mode)
+
+              mode_context(view_model)
             end
 
             private
+
+            def mode_context(view_model)
+              case view_model.mode
+              when :in_book_search then search_context(view_model)
+              when :dictionary then dictionary_context(view_model)
+              when :toc then toc_context(view_model)
+              when :translator then translator_context(view_model)
+              when :notes then notes_context(view_model)
+              else reading_context(view_model)
+              end
+            end
 
             def reading_context(view_model)
               badge = FormatBadge.mode_badge('Reader', view_model.source_format)

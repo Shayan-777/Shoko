@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'grapheme_cursor'
+
 module Shoko
   module Core
     module Services
@@ -13,6 +15,7 @@ module Shoko
 
         def insert_character(text, cursor, char)
           updated = text.to_s.dup
+          cursor = GraphemeCursor.clamp(updated, cursor)
           updated.insert(cursor, char)
           new_cursor = cursor + char.length
 
@@ -31,6 +34,7 @@ module Shoko
 
         def insert_newline(text, cursor)
           updated = text.to_s.dup
+          cursor = GraphemeCursor.clamp(updated, cursor)
           line_start, _, line = line_bounds(updated, cursor)
 
           list_insert = continued_list_insert(updated, cursor, line_start, line)

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tempfile'
 
 RSpec.describe Shoko::Adapters::Output::Kitty::ImageCacheWarmup do
   def build_progress_collector
@@ -26,6 +27,14 @@ RSpec.describe Shoko::Adapters::Output::Kitty::ImageCacheWarmup do
 
   let(:renderer) { renderer_class.new([]) }
   let(:service) { described_class.new(kitty_image_renderer: renderer) }
+  let(:epub_file) do
+    Tempfile.new(['image-cache-warmup', '.epub']).tap do |file|
+      file.write('test archive placeholder')
+      file.flush
+    end
+  end
+
+  after { epub_file.close! }
 
   it 'extracts renderable EPUB image sources from chapter raw content' do
     chapter = Shoko::Core::Models::Chapter.new(
@@ -47,7 +56,7 @@ RSpec.describe Shoko::Adapters::Output::Kitty::ImageCacheWarmup do
     document = Struct.new(:chapters, :cache_sha, :canonical_path).new(
       [chapter],
       'a' * 64,
-      book_fixture_path('Class Struggle A Political and Philosophical History (Domenico Losurdo).epub')
+      epub_file.path
     )
 
     result = service.warm_document(document)
@@ -100,7 +109,7 @@ RSpec.describe Shoko::Adapters::Output::Kitty::ImageCacheWarmup do
     document = Struct.new(:chapters, :cache_sha, :canonical_path).new(
       [chapter],
       'a' * 64,
-      book_fixture_path('Class Struggle A Political and Philosophical History (Domenico Losurdo).epub')
+      epub_file.path
     )
 
     result = service.warm_document(document, progress_reporter: collector)

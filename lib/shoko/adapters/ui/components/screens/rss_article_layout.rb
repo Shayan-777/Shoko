@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/core/models/block_type'
-require 'shoko/core/models/content_block_payload'
+require 'shoko/adapters/support/content_block_codec'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/shared/terminal/text_metrics'
 require_relative '../status_bar/palette'
@@ -90,7 +90,7 @@ module Shoko
               built = []
               previous = nil
 
-              Shoko::Core::Models::ContentBlockPayload.load(blocks).each do |block|
+              Shoko::Adapters::Support::ContentBlockCodec.load(blocks).each do |block|
                 type = BlockType.canonical(block.type)
                 built << blank_row if blank_line_before?(previous, type)
                 built.concat(block_lines(block))

@@ -15,13 +15,8 @@ module Shoko
             end
 
             def dispatch_input_keys(keys)
-              return @input_controller.handle_annotations_overlay_input(keys) if annotation_overlay_input?(keys)
-              return @ui_controller.close_dictionary if dictionary_cancel?(keys)
-              return @ui_controller.close_in_book_search if in_book_search_cancel?(keys)
-              return @ui_controller.close_toc_lookup if toc_cancel?(keys)
-              return @ui_controller.close_translator_lookup if translator_cancel?(keys)
-              return @ui_controller.close_notes if notes_cancel?(keys)
-              return @input_controller.handle_popup_menu_input(keys) if popup_menu_visible?
+              intercepted = input_interceptions(keys).find(&:first)
+              return intercepted.last.call if intercepted
 
               keys.each { |key| @input_controller.handle_key(key) }
             end
@@ -31,6 +26,22 @@ module Shoko
             end
 
             private
+
+            def input_interceptions(keys)
+              popup = [popup_menu_visible?, -> { @input_controller.handle_popup_menu_input(keys) }]
+              modal_interceptions(keys) + [popup]
+            end
+
+            def modal_interceptions(keys)
+              [
+                [annotation_overlay_input?(keys), -> { @input_controller.handle_annotations_overlay_input(keys) }],
+                [dictionary_cancel?(keys), -> { @ui_controller.close_dictionary }],
+                [in_book_search_cancel?(keys), -> { @ui_controller.close_in_book_search }],
+                [toc_cancel?(keys), -> { @ui_controller.close_toc_lookup }],
+                [translator_cancel?(keys), -> { @ui_controller.close_translator_lookup }],
+                [notes_cancel?(keys), -> { @ui_controller.close_notes }],
+              ]
+            end
 
             def annotations_overlay_active?
               @ui_controller.annotations_overlay_visible?

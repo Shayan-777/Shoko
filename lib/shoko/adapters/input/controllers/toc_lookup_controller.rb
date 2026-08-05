@@ -3,6 +3,7 @@
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_access'
 require 'shoko/core/services/toc_tree_service'
+require 'shoko/core/services/text_buffer_edit'
 require 'shoko/shared/text_sanitizer'
 
 module Shoko
@@ -184,7 +185,7 @@ module Shoko
           def apply_edit(query, edit_op)
             case edit_op&.operation
             when :insert    then insert_text(query, edit_op.text)
-            when :backspace then query.to_s[0...-1].to_s
+            when :backspace then Shoko::Core::Services::TextBufferEdit.backspace_at(query.to_s, query.to_s.length).first
             else query.to_s
             end
           end

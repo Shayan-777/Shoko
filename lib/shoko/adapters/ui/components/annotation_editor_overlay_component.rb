@@ -8,6 +8,7 @@ require_relative 'ui/overlay_layout'
 require_relative 'ui/overlay_sizing'
 require_relative 'ui/annotation_markup'
 require 'shoko/core/services/annotation_list_input'
+require 'shoko/core/services/text_buffer_edit'
 require_relative 'ui/cursor_blink'
 require_relative 'ui/text_utils'
 require 'shoko/shared/terminal/text_metrics'
@@ -163,9 +164,8 @@ module Shoko
             current_cursor = cursor_pos
             return if current_cursor.zero?
 
-            current_note = note
-            updated_note = current_note[0...(current_cursor - 1)] + current_note[current_cursor..].to_s
-            write_note(updated_note, current_cursor - 1)
+            updated_note, updated_cursor = Shoko::Core::Services::TextBufferEdit.backspace_at(note, current_cursor)
+            write_note(updated_note, updated_cursor)
           end
 
           def handle_enter
@@ -569,15 +569,18 @@ module Shoko
             suggestion = Array(popup[:suggestions])[popup[:selected_index]]
             return dismiss_spell_suggestions if suggestion.to_s.empty?
 
-            current_note = note
-            updated_note = current_note[0...popup[:start]] + suggestion + current_note[popup[:end]..].to_s
-            updated_cursor = popup[:start] + suggestion.length
-            @reader_session_mutator&.update_reader(
-              annotation_editor_note: updated_note,
-              annotation_editor_cursor: updated_cursor
-            )
+            apply_spell_replacement(popup, suggestion)
             dismiss_spell_suggestions
             record_cursor_activity
+          end
+
+          def apply_spell_replacement(popup, suggestion)
+            current_note = note
+            updated_note = current_note[0...popup[:start]] + suggestion + current_note[popup[:end]..].to_s
+            @reader_session_mutator&.update_reader(
+              annotation_editor_note: updated_note,
+              annotation_editor_cursor: popup[:start] + suggestion.length
+            )
           end
 
           def move_spell_suggestion_selection(delta)

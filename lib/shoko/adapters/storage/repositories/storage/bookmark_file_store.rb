@@ -5,6 +5,7 @@ require 'shoko/shared/text_sanitizer'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/core/models/bookmark'
 require 'shoko/core/models/bookmark_data'
+require 'shoko/adapters/storage/codecs/bookmark_codec'
 require_relative 'base_file_store'
 
 module Shoko
@@ -39,7 +40,7 @@ module Shoko
               list.map do |h|
                 safe = h.is_a?(Hash) ? h.dup : {}
                 safe['text'] = sanitize_text(safe['text'])
-                Shoko::Core::Models::Bookmark.from_h(safe)
+                Shoko::Adapters::Storage::Codecs::BookmarkCodec.load(safe)
               end
             end
 
@@ -71,7 +72,7 @@ module Shoko
             def bookmark_predicate(bookmark)
               case bookmark
               when Shoko::Core::Models::Bookmark
-                target = bookmark.to_h
+                target = Shoko::Adapters::Storage::Codecs::BookmarkCodec.dump(bookmark)
                 ->(stored_entry) { equivalent?(stored_entry, target) }
               when Hash
                 normalized = Shoko::Shared::HashNormalizer.symbolize_keys(bookmark) || {}

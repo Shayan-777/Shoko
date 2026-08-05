@@ -54,19 +54,33 @@ module Shoko
             # The source-text workspace: open/close, text editing, the caret, the
             # translate action, and the clipboard Paste/Copy buttons.
             def editor_routes
+              translator_session_routes.merge(translator_edit_routes).merge(translator_clipboard_routes)
+            end
+
+            def translator_session_routes
               {
                 open_translator: route(payload: :raw, result: :handled) do |payload|
                   @reader_translator_control.open_translator_session(payload)
                 end,
                 close_translator: route(result: :handled) { @reader_translator_control.close_translator_session },
-                edit_translator: route(payload: :edit_op, result: :handled) do |op|
-                  @reader_translator_control.edit_translator_input(op)
-                end,
                 translator_confirm: route(result: :handled) { @reader_translator_control.confirm_translator },
                 translator_submit: route(result: :handled) { @reader_translator_control.submit_translator },
+              }
+            end
+
+            def translator_edit_routes
+              {
+                edit_translator: route(payload: :edit_op, result: :handled) do |operation|
+                  @reader_translator_control.edit_translator_input(operation)
+                end,
                 translator_cursor_move: route(payload: :direction, result: :handled) do |direction|
                   @reader_translator_control.move_translator_cursor(direction)
                 end,
+              }
+            end
+
+            def translator_clipboard_routes
+              {
                 translator_paste_source: route(result: :handled) do
                   @reader_translator_control.paste_translator_source
                 end,

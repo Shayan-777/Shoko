@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/hash_normalizer'
+require 'shoko/core/services/text_buffer_edit'
 require_relative 'base_component'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/overlay_sizing'
@@ -232,7 +233,8 @@ module Shoko
 
           def setup_edit_event(key)
             if Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:backspace].include?(key)
-              update_setup_input(setup_input[0...-1].to_s)
+              updated, = Shoko::Core::Services::TextBufferEdit.backspace_at(setup_input, setup_input.length)
+              update_setup_input(updated)
               return { type: :setup_change, stage: setup_stage, value: setup_input }
             end
 

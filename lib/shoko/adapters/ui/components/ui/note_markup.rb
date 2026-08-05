@@ -59,14 +59,14 @@ module Shoko
               index = 0
               while index < text.length
                 span = spans.first
-                out << emit_char(text, index, span, base_fg, marker_fg)
+                out << emit_char(text, index, span: span, base_fg: base_fg, marker_fg: marker_fg)
                 spans.shift if span && index == span[:close]
                 index += 1
               end
               out
             end
 
-            def emit_char(text, index, span, base_fg, marker_fg)
+            def emit_char(text, index, span:, base_fg:, marker_fg:)
               char = text[index]
               return "#{marker_fg}#{char}#{base_fg}#{span[:on]}" if span && index == span[:open]
               return "#{span[:off]}#{marker_fg}#{char}#{base_fg}" if span && index == span[:close]

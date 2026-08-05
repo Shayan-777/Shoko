@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/hash_normalizer'
+require 'shoko/core/services/grapheme_cursor'
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
@@ -127,20 +128,32 @@ module Shoko
 
           def sync_from_state
             reader = @reader_state_reader
+            sync_translation_state(reader)
+            sync_picker_state(reader)
+            sync_editor_view_state(reader)
+            note_cursor_activity
+          end
+
+          def sync_translation_state(reader)
             @result = reader&.translator_result
             @query = (reader&.translator_query || '').to_s
             @results_query = (reader&.translator_results_query || '').to_s
             @source_lang = (reader&.translator_source_lang || LanguageDirectory::AUTO).to_s
             @target_lang = (reader&.translator_target_lang || 'en').to_s
+          end
+
+          def sync_picker_state(reader)
             @languages = Array(reader&.translator_languages)
             @picker_side = normalize_side(reader&.translator_picker_side)
             @picker_query = (reader&.translator_picker_query || '').to_s
             @picker_index = (reader&.translator_picker_index || 0).to_i
             @hover_index = reader&.overlay_hover_index
+          end
+
+          def sync_editor_view_state(reader)
             @feedback = normalize_feedback(reader&.translator_feedback)
             @scroll = (reader&.translator_scroll || 0).to_i
-            @cursor = (reader&.translator_cursor || 0).to_i.clamp(0, @query.length)
-            note_cursor_activity
+            @cursor = Shoko::Core::Services::GraphemeCursor.clamp(@query, reader&.translator_cursor)
           end
 
           # Hold the caret solid for a beat whenever the text or caret moves (typing,
@@ -170,10 +183,11 @@ module Shoko
             return unless layout
 
             record_editor_hit_regions(layout, width)
-            render_rule(surface, bounds, layout[:rule_row], width, pair_spans, editor_meta, right_cap: '')
-            render_source(surface, bounds, layout, width, text_width, source_rows)
+            render_rule(surface, bounds, row: layout[:rule_row], width: width,
+                                         left: pair_spans, right: editor_meta, right_cap: '')
+            render_source(surface, bounds, layout: layout, width: width, text_width: text_width, rows: source_rows)
             render_divider(surface, bounds, layout[:divider_row], width)
-            render_target(surface, bounds, layout, width, target_lines)
+            render_target(surface, bounds, layout: layout, width: width, lines: target_lines)
           end
 
           # The editor face has no clickable rows; record it (count 0) so it is inert
@@ -219,7 +233,7 @@ module Shoko
 
           # ----- source well -----
 
-          def render_source(surface, bounds, layout, width, text_width, rows)
+          def render_source(surface, bounds, layout:, width:, text_width:, rows:)
             cursor_row, cursor_col = Ui::TextUtils.cursor_location(rows, cursor: @cursor)
             top = scroll_to_cursor(rows.length, layout[:source_rows], cursor_row)
             layout[:source_rows].times do |slot|
@@ -307,7 +321,7 @@ module Shoko
           # Fills the whole translation region (blank rows included) so the card reads
           # as one solid panel down to the bar, never leaving holes under a short
           # translation.
-          def render_target(surface, bounds, layout, width, lines)
+          def render_target(surface, bounds, layout:, width:, lines:)
             layout[:target_rows].times do |offset|
               line = lines[@scroll + offset]
               surface.write(bounds, layout[:divider_row] + 1 + offset, layout[:col],
@@ -323,12 +337,15 @@ module Shoko
 
             lines = Ui::TextUtils.wrap_prose(translated_text, width).map { |line| text_line(line) }
             lines << dim_line('Alt/Ctrl+Enter to re-translate') if stale?
-            note = detected_note
-            lines.push('', dim_line(note)) if note
-            route = route_note
-            lines.push('', dim_line(route)) if route
-            lines.push('', dim_line('Output limit reached; translation may be incomplete.')) if @result&.truncated?
+            append_translation_notes(lines)
             lines
+          end
+
+          def append_translation_notes(lines)
+            [detected_note, route_note].compact.each { |note| lines.push('', dim_line(note)) }
+            return unless @result&.truncated?
+
+            lines.push('', dim_line('Output limit reached; translation may be incomplete.'))
           end
 
           def translated_text
@@ -514,27 +531,35 @@ module Shoko
             return unless layout
 
             ensure_candidate_visible!(candidates.length, layout[:visible])
-            record_overlay_geometry(
-              rule_row: layout[:rule_row], col: layout[:col], width: width,
-              visible: layout[:visible], rows_per: 1,
-              scroll: @picker_scroll, count: candidates.length
-            )
+            record_picker_geometry(layout, width, candidates.length)
             record_language_regions(layout[:rule_row], SOURCE_LABEL, TARGET_LABEL)
-            render_rule(surface, bounds, layout[:rule_row], layout[:width],
-                        picker_headword_spans, picker_meta(candidates.length))
-            render_candidates(surface, bounds, layout, candidates, width)
+            render_rule(surface, bounds, row: layout[:rule_row], width: layout[:width],
+                                         left: picker_headword_spans, right: picker_meta(candidates.length))
+            render_candidates(surface, bounds, layout: layout, candidates: candidates, width: width)
           end
 
-          def render_candidates(surface, bounds, layout, candidates, width)
-            if candidates.empty?
-              empty = body_line(dim_line('No languages match'), width, pad: PAD)
-              surface.write(bounds, layout[:rule_row] + 1, layout[:col], empty)
-              return
-            end
+          def record_picker_geometry(layout, width, count)
+            record_overlay_geometry(
+              rule_row: layout[:rule_row], col: layout[:col], width: width,
+              visible: layout[:visible], rows_per: 1, scroll: @picker_scroll, count: count
+            )
+          end
+
+          def render_candidates(surface, bounds, layout:, candidates:, width:)
+            return render_empty_candidates(surface, bounds, layout, width) if candidates.empty?
 
             scrollbar = candidates.length > layout[:visible]
             render_picker_scrollbar(surface, bounds, layout, candidates.length) if scrollbar
             text_width = width - (scrollbar ? SCROLLBAR_WIDTH : 0)
+            render_candidate_rows(surface, bounds, layout: layout, candidates: candidates, text_width: text_width)
+          end
+
+          def render_empty_candidates(surface, bounds, layout, width)
+            empty = body_line(dim_line('No languages match'), width, pad: PAD)
+            surface.write(bounds, layout[:rule_row] + 1, layout[:col], empty)
+          end
+
+          def render_candidate_rows(surface, bounds, layout:, candidates:, text_width:)
             layout[:visible].times do |slot|
               idx = @picker_scroll + slot
               lang = candidates[idx]
@@ -562,14 +587,18 @@ module Shoko
             current = active_side_lang.casecmp?(lang[:code].to_s)
             mark = marker(selected, current)
             code = ljust(lang[:code].to_s.upcase, CODE_WIDTH)
-            name_room = [width - visible_length(mark) - CODE_WIDTH - 1 - RIGHT_GAP, 4].max
-            name = truncate(lang[:name].to_s, name_room)
-            pad = [name_room - visible_length(name), 0].max + RIGHT_GAP
+            name, pad = candidate_name_and_pad(lang, width, mark)
 
             "#{cell(mark, marker_fg(selected, current), background)}" \
               "#{cell(code, Palette::TRANS_CODE_FG, background)}#{cell(' ', Palette::TRANS_DIM_FG, background)}" \
               "#{cell(name, name_fg(current), background)}#{cell(' ' * pad, Palette::TRANS_DIM_FG, background)}" \
               "#{Palette::RESET}"
+          end
+
+          def candidate_name_and_pad(language, width, mark)
+            name_room = [width - visible_length(mark) - CODE_WIDTH - 1 - RIGHT_GAP, 4].max
+            name = truncate(language[:name].to_s, name_room)
+            [name, [name_room - visible_length(name), 0].max + RIGHT_GAP]
           end
 
           def marker(selected, current)

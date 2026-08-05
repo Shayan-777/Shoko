@@ -121,13 +121,20 @@ module Shoko
           def normalize_encoding(content)
             return content if content.nil?
 
-            content.force_encoding('UTF-8')
-            return content if content.valid_encoding?
+            binary = content.b
+            utf8 = binary.dup.force_encoding(Encoding::UTF_8)
+            return utf8 if utf8.valid_encoding?
 
-            xml_encoding = content.match(/encoding=["']([^"']+)["']/i)&.captures&.first
-            return content.encode('UTF-8', xml_encoding) if xml_encoding
+            xml_encoding = binary.match(/encoding=["']([^"']+)["']/ni)&.captures&.first
+            source_encoding = Encoding.find(xml_encoding.to_s) unless xml_encoding.to_s.empty?
+            if source_encoding
+              return binary.force_encoding(source_encoding).encode('UTF-8', invalid: :replace, undef: :replace,
+                                                                            replace: '')
+            end
 
-            content.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
+            utf8.scrub('')
+          rescue ArgumentError
+            utf8.scrub('')
           end
 
           def parse_xml(xml)

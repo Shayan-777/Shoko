@@ -115,7 +115,7 @@ module Shoko
             # width's wrapped-line cache when a fresh rebuild actually started, so
             # the clear happens once per resize rather than every poll frame while
             # the (now animated) spinner is up.
-            started = deps.pagination.refresh_after_resize(width: width, height: height)
+            started = deps.pagination.refresh_after_resize?(width: width, height: height)
             clear_wrapping_cache if started
           end
 

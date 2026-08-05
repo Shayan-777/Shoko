@@ -96,12 +96,13 @@ module Shoko
           # ----- entry (definition) mode -----
 
           def render_entry(surface, bounds)
-            render_card(surface, bounds, entry_headword, entry_meta, body_lines(card_width(bounds)))
+            render_card(surface, bounds, headword: entry_headword, meta: entry_meta,
+                                         lines: body_lines(card_width(bounds)))
           end
 
           # A scrolling text card: the headword on the rule, then a window of
           # formatted body lines anchored to the bar, growing upward.
-          def render_card(surface, bounds, headword, meta, lines)
+          def render_card(surface, bounds, headword:, meta:, lines:)
             width = card_width(bounds)
             layout = dock_layout(bounds, lines.length)
             return unless layout
@@ -113,12 +114,16 @@ module Shoko
               visible: 0, rows_per: 1, scroll: 0, count: 0
             )
             clamp_scroll!(lines.length, layout[:visible])
-            render_rule(surface, bounds, layout, headword, meta)
+            render_rule(surface, bounds, layout, headword: headword, meta: meta)
             window = lines[@scroll, layout[:visible]] || []
+            render_card_window(surface, bounds, layout: layout, width: width, window: window)
+            render_scroll_markers(surface, bounds, layout, lines.length)
+          end
+
+          def render_card_window(surface, bounds, layout:, width:, window:)
             window.each_with_index do |line, offset|
               surface.write(bounds, layout[:rule_row] + 1 + offset, layout[:col], body_line(line, width))
             end
-            render_scroll_markers(surface, bounds, layout, lines.length)
           end
 
           def body_lines(width)
@@ -174,10 +179,7 @@ module Shoko
           # ----- fuzzy candidate mode -----
 
           def render_fuzzy(surface, bounds)
-            if @fuzzy_matches.empty?
-              render_card(surface, bounds, @query, 'no similar', [dim_line('No similar words found')])
-              return
-            end
+            return render_empty_fuzzy(surface, bounds) if @fuzzy_matches.empty?
 
             width = card_width(bounds)
             layout = dock_layout(bounds, @fuzzy_matches.length)
@@ -189,7 +191,16 @@ module Shoko
               visible: layout[:visible], rows_per: 1,
               scroll: @fuzzy_scroll, count: @fuzzy_matches.length
             )
-            render_rule(surface, bounds, layout, @query, "#{@fuzzy_matches.length} similar")
+            render_rule(surface, bounds, layout, headword: @query, meta: "#{@fuzzy_matches.length} similar")
+            render_fuzzy_rows(surface, bounds, layout, width)
+          end
+
+          def render_empty_fuzzy(surface, bounds)
+            render_card(surface, bounds, headword: @query, meta: 'no similar',
+                                         lines: [dim_line('No similar words found')])
+          end
+
+          def render_fuzzy_rows(surface, bounds, layout, width)
             layout[:visible].times do |offset|
               idx = @fuzzy_scroll + offset
               match = @fuzzy_matches[idx]
@@ -203,12 +214,16 @@ module Shoko
           def candidate_line(match, width, selected, hovered)
             bg = candidate_background(selected, hovered)
             pct = "#{(match.similarity * 100).round}%"
-            word_width = [width - visible_length(POINTER) - visible_length(pct) - 2, 4].max
-            word = truncate(match.word.to_s, word_width)
-            gap = [width - visible_length(POINTER) - visible_length(word) - visible_length(pct), 1].max
+            word, gap = candidate_word_and_gap(match, width, pct)
 
             "#{candidate_pointer(selected, bg)}#{cell(word, Palette::DICT_HEADWORD_FG, bg)}" \
               "#{cell(' ' * gap, Palette::DICT_DIM_FG, bg)}#{cell(pct, Palette::DICT_NUM_FG, bg)}#{Palette::RESET}"
+          end
+
+          def candidate_word_and_gap(match, width, percentage)
+            fixed_width = visible_length(POINTER) + visible_length(percentage)
+            word = truncate(match.word.to_s, [width - fixed_width - 2, 4].max)
+            [word, [width - fixed_width - visible_length(word), 1].max]
           end
 
           def candidate_background(selected, hovered)
@@ -241,7 +256,7 @@ module Shoko
           end
 
           # Top hairline rule: "── headword ·········· pair · n/total ──".
-          def render_rule(surface, bounds, layout, headword, meta)
+          def render_rule(surface, bounds, layout, headword:, meta:)
             row = layout[:rule_row]
             return if row < 1
 
@@ -251,13 +266,18 @@ module Shoko
           def rule_text(headword, meta, width)
             prefix = '── '
             suffix = ' ──'
-            head = truncate(headword, [width - visible_length(prefix) - visible_length(suffix) - 8, 4].max)
-            fill = [width - visible_length(prefix) - visible_length(head) - visible_length(meta) -
-              visible_length(suffix) - 2, 1].max
+            head, fill = rule_head_and_fill(headword, meta, width, prefix: prefix, suffix: suffix)
             rule_fg = Palette::DICT_RULE_FG
 
             "#{seg(prefix, rule_fg)}#{seg(head, "#{Palette::BOLD}#{Palette::DICT_HEADWORD_FG}")}" \
               "#{seg(" #{'·' * fill} ", rule_fg)}#{seg(meta, Palette::DICT_DIM_FG)}#{seg(suffix, rule_fg)}#{Palette::RESET}"
+          end
+
+          def rule_head_and_fill(headword, meta, width, prefix:, suffix:)
+            fixed_width = visible_length(prefix) + visible_length(suffix)
+            head = truncate(headword, [width - fixed_width - 8, 4].max)
+            fill = [width - fixed_width - visible_length(head) - visible_length(meta) - 2, 1].max
+            [head, fill]
           end
 
           def render_scroll_markers(surface, bounds, layout, total)

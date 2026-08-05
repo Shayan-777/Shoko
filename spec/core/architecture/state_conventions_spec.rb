@@ -299,7 +299,8 @@ RSpec.describe 'State conventions' do
     it 'deep-freezes Struct and Data leaves so mutable value objects cannot bypass the write path' do
       Dir.mktmpdir do |dir|
         store = build_store(dir)
-        match = Shoko::Core::Services::InBookSearchService::SearchMatch.new(0, 'Title', 1, 'before', 'match', 'after')
+        match = Struct.new(:chapter_index, :chapter_title, :line_index, :before, :match, :after)
+                      .new(0, 'Title', 1, 'before', 'match', 'after')
 
         store.update(%i[ui search_results] => [match])
 

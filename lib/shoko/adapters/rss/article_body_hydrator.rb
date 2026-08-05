@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/core/models/content_block'
-require 'shoko/core/models/content_block_payload'
+require 'shoko/adapters/support/content_block_codec'
 require 'shoko/shared/resilient_diagnostics'
 require 'shoko/shared/text_sanitizer'
 require_relative 'article_block_sanitizer'
@@ -137,9 +137,9 @@ module Shoko
           parsed = if Array(blocks).first.is_a?(Shoko::Core::Models::ContentBlock)
                      blocks
                    else
-                     Shoko::Core::Models::ContentBlockPayload.load(blocks)
+                     Shoko::Adapters::Support::ContentBlockCodec.load(blocks)
                    end
-          Shoko::Core::Models::ContentBlockPayload.dump(@block_sanitizer.call(parsed))
+          @block_sanitizer.call(parsed)
         end
 
         def record_hydration_error(payload, error)

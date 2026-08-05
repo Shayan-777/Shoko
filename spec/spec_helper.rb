@@ -3,6 +3,9 @@
 if ENV['COVERAGE'] == '1'
   require 'simplecov'
   SimpleCov.start do
+    enable_coverage :branch
+    primary_coverage :line
+    minimum_coverage line: 84.0, branch: 53.9
     add_filter '/spec/'
   end
 end
@@ -26,6 +29,9 @@ module SpecBookFixtures
     'Pride Prejudice (Jane Austen).azw',
     'Pride and Prejudice (Jane Austen).azw3',
     'Pride And Prejudice (Austen Jane).rtf',
+    'The Invention of Hugo Cabret (Selznick Brian).azw3',
+    'The Decline of the West An Abridged Edition (Oswald Spengler) (an abridged edition)).pdf',
+    'class struggle A Political and Philosophical History (Domenico Losurdo).pdf',
   ].freeze
 
   def enabled?
@@ -34,7 +40,7 @@ module SpecBookFixtures
 
   def root
     raw = ENV['SHOKO_FIXTURES_DIR']
-    return File.expand_path('../testbooks', __dir__) if raw.nil? || raw.strip.empty?
+    return File.expand_path('../tmp/book-fixtures', __dir__) if raw.nil? || raw.strip.empty?
 
     File.expand_path(raw)
   end

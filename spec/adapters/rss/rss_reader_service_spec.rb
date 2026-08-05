@@ -145,7 +145,7 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
 
       service.add_feed('https://example.com/feed.xml')
       stored = repository.load[:articles].first
-      blocks = Shoko::Core::Models::ContentBlockPayload.load(stored.content_blocks)
+      blocks = stored.content_blocks
 
       expect(blocks.map(&:type)).to eq(%i[heading paragraph list_item])
       expect(blocks.first.text).to eq('Section')
@@ -176,7 +176,7 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
       expect(projected).not_to have_key(:content_blocks)
 
       reader_article = service.reader_article_projection(projected[:id], snapshot: result[:snapshot])
-      expect(reader_article[:content_blocks].first[:type]).to eq('paragraph')
+      expect(reader_article[:content_blocks].first.type).to eq(:paragraph)
     end
 
     it 'prefers the fetched page structure over the feed excerpt structure' do
@@ -203,7 +203,7 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
       service.hydrate_article(article_id)
       stored = repository.load[:articles].first
 
-      expect(Shoko::Core::Models::ContentBlockPayload.load(stored.content_blocks).first.text).to eq('Full')
+      expect(stored.content_blocks.first.text).to eq('Full')
     end
 
     it 'leaves an article with no structure renderable from its flat text' do

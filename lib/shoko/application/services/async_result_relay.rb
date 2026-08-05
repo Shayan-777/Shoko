@@ -37,7 +37,7 @@ module Shoko
           raise ArgumentError, 'job block required' unless job
 
           executor = resolve_executor
-          return run_inline(job) unless executor
+          return run_inline?(job) unless executor
 
           submit_to_executor(executor, job)
         end
@@ -126,7 +126,7 @@ module Shoko
           nil
         end
 
-        def run_inline(job)
+        def run_inline?(job)
           job.call
           drain!
           true

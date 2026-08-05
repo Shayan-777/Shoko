@@ -101,8 +101,19 @@ namespace :test do
 
   desc 'Run tests with coverage'
   task :coverage do
-    ENV['COVERAGE'] = '1'
-    Rake::Task['spec'].invoke
+    RSpecLane.run!(
+      name: 'coverage',
+      env: { 'COVERAGE' => '1' },
+      args: ['--tag', '~requires_book_fixtures', '--seed', '10101']
+    )
+  end
+
+  desc 'Run deterministic malformed-input and parser property tests'
+  task :parser_properties do
+    RSpecLane.run!(
+      name: 'parser-properties',
+      args: ['spec/property', 'spec/adapters/book_sources/import_budget_spec.rb', '--seed', '20260805']
+    )
   end
 end
 

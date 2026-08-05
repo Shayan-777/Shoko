@@ -62,7 +62,15 @@ module Shoko
 
           def apply_result(result)
             current_setup_popup&.hide
-            @reader_session_mutator.update_reader(
+            @reader_session_mutator.update_reader(**dictionary_result_state(result))
+            success_outcome(:handled, :dictionary_result_applied)
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.apply_result', e)
+            failure_outcome(:error, :dictionary_apply_result_failed, e.message)
+          end
+
+          def dictionary_result_state(result)
+            {
               dictionary_result: result,
               dictionary_results_query: result.query.to_s,
               dictionary_entry_index: 0,
@@ -72,12 +80,8 @@ module Shoko
               dictionary_setup_active: false,
               dictionary_popup: nil,
               dictionary_visible: true,
-              mode: :dictionary
-            )
-            success_outcome(:handled, :dictionary_result_applied)
-          rescue *RESCUABLE => e
-            log_error('dictionary.session.apply_result', e)
-            failure_outcome(:error, :dictionary_apply_result_failed, e.message)
+              mode: :dictionary,
+            }
           end
 
           def apply_fuzzy(matches)

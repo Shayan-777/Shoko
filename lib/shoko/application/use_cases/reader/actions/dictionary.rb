@@ -4,6 +4,7 @@ require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 require 'shoko/shared/text_sanitizer'
+require 'shoko/core/services/text_buffer_edit'
 
 module Shoko
   module Application
@@ -113,13 +114,18 @@ module Shoko
               @reader_dictionary_control.cycle_dictionary_result
             end
 
-            def apply_dictionary_edit(op)
-              return @reader_dictionary_control.edit_dictionary_setup(op) if setup_active?
+            def apply_dictionary_edit(operation)
+              return @reader_dictionary_control.edit_dictionary_setup(operation) if setup_active?
 
-              case op.operation
-              when :insert    then insert_query_text(op.text)
-              when :backspace then write_query(view_snapshot.dictionary_query.to_s[0...-1].to_s)
+              case operation.operation
+              when :insert    then insert_query_text(operation.text)
+              when :backspace then write_query(without_last_grapheme(view_snapshot.dictionary_query))
               end
+            end
+
+            def without_last_grapheme(query)
+              text = query.to_s
+              Shoko::Core::Services::TextBufferEdit.backspace_at(text, text.length).first
             end
 
             def setup_active?

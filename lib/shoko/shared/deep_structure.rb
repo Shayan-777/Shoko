@@ -120,9 +120,8 @@ module Shoko
       end
       private_class_method :copy_data
 
-      # Bypass domain serialization overrides of #to_h. Data's own method is
-      # the canonical member map; e.g. ReadingProgress#to_h intentionally uses
-      # the persisted key :chapter instead of its member :chapter_index.
+      # Bypass custom #to_h implementations. Data's own method is the
+      # canonical member map used to rebuild a declared value.
       def raw_data_members(value)
         Data.instance_method(:to_h).bind_call(value)
       end

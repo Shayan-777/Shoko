@@ -195,7 +195,7 @@ module Shoko
             return unless last && @blocks.length > first_index
 
             current = last.metadata[:spacing_after].to_i
-            last.metadata[:spacing_after] = [current, spacing_after].max
+            @blocks[-1] = last.with(metadata: last.metadata.merge(spacing_after: [current, spacing_after].max))
           end
 
           def container_child_context(name, element, context)
@@ -227,17 +227,20 @@ module Shoko
           def append_block(block)
             return unless block
 
-            attach_pending_anchors(block)
-            attach_pending_spacing(block)
+            block = attach_pending_anchors(block)
+            block = attach_pending_spacing(block)
             @blocks << block
           end
 
           def attach_pending_spacing(block)
-            return unless @pending_spacing_before
+            return block unless @pending_spacing_before
 
             current = block.metadata[:spacing_before].to_i
-            block.metadata[:spacing_before] = [current, @pending_spacing_before].max
+            block = block.with(metadata: block.metadata.merge(
+              spacing_before: [current, @pending_spacing_before].max
+            ))
             @pending_spacing_before = nil
+            block
           end
 
           def skip_element?(name)
@@ -256,11 +259,12 @@ module Shoko
           end
 
           def attach_pending_anchors(block)
-            return if @pending_anchors.empty?
+            return block if @pending_anchors.empty?
 
             anchors = Array(block.metadata[:anchors]) + @pending_anchors
-            block.metadata[:anchors] = anchors.uniq
+            block = block.with(metadata: block.metadata.merge(anchors: anchors.uniq))
             @pending_anchors = []
+            block
           end
         end
       end

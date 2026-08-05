@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/hash_normalizer'
-require_relative 'content_block_payload'
+require_relative 'content_block'
+require_relative 'value_normalizer'
 
 module Shoko
   module Core
@@ -44,39 +44,7 @@ module Shoko
           )
         end
 
-        # Every field is passed explicitly, including missing ones, so the
-        # constructor's own validation reports a missing id or title rather
-        # than Ruby reporting a missing keyword argument.
-        def self.from_h(payload)
-          data = normalize_hash(payload)
-          new(**members.to_h { |field| [field, data[field]] })
-        end
-
-        def to_h
-          {
-            id: id,
-            feed_id: feed_id,
-            guid: guid,
-            title: title,
-            author: author,
-            summary: summary,
-            content: content,
-            content_blocks: content_blocks,
-            url: url,
-            published_at: published_at,
-            read: read,
-            starred: starred,
-            fetched_at: fetched_at,
-          }
-        end
-
         private
-
-        def self.normalize_hash(payload)
-          raise ArgumentError, "rss article payload must be a Hash, got #{payload.class}" unless payload.is_a?(Hash)
-
-          Shoko::Shared::HashNormalizer.symbolize_keys(payload)
-        end
 
         def blank_to_nil(value)
           text = value.to_s.strip
@@ -86,7 +54,7 @@ module Shoko
         end
 
         def blank_to_empty(value)
-          text = value.to_s
+          text = value.to_s.dup
           return '' if text.empty?
 
           text.freeze
@@ -119,14 +87,13 @@ module Shoko
           }
         end
 
-        # Stored as plain payloads so the article stays JSON-serializable and
-        # admissible into the frozen state tree. Normalizing through the
-        # model's own round trip means a cache written by an older build (no
-        # blocks) and one written by a newer build both load to a valid value.
         def normalized_blocks(value)
-          return [].freeze if value.nil?
+          blocks = Array(value)
+          unless blocks.all?(ContentBlock)
+            raise ArgumentError, 'rss article content_blocks must contain ContentBlock values'
+          end
 
-          ContentBlockPayload.dump(ContentBlockPayload.load(value)).freeze
+          ValueNormalizer.immutable(blocks)
         end
 
         def required_text(value, message)

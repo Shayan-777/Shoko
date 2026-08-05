@@ -80,7 +80,10 @@ module Shoko
             chapter_lines(chapter, chapter_index).each_with_index do |line, line_index|
               next if line.empty?
 
-              yield SearchableLine.new(chapter_index, chapter_title, line_index, line)
+              yield SearchableLine.new(
+                chapter_index: chapter_index, chapter_title: chapter_title,
+                line_index: line_index, text: line
+              )
             end
           end
         end

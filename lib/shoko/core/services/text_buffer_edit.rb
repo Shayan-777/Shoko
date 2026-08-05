@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/shared/text_sanitizer'
+require_relative 'grapheme_cursor'
 
 module Shoko
   module Core
@@ -21,14 +22,19 @@ module Shoko
         def insert_at(text, cursor, char, literal: false)
           return [text, cursor] unless literal || Shoko::Shared::TextSanitizer.printable_char?(char)
 
-          ["#{text[0...cursor]}#{char}#{text[cursor..]}", cursor + char.length]
+          safe_text = text.to_s
+          safe_cursor = GraphemeCursor.clamp(safe_text, cursor)
+          ["#{safe_text[0...safe_cursor]}#{char}#{safe_text[safe_cursor..]}", safe_cursor + char.length]
         end
 
         # @return [Array(String, Integer)]
         def backspace_at(text, cursor)
-          return [text, cursor] if cursor <= 0
+          safe_text = text.to_s
+          safe_cursor = GraphemeCursor.clamp(safe_text, cursor)
+          return [safe_text, safe_cursor] if safe_cursor <= 0
 
-          ["#{text[0...(cursor - 1)]}#{text[cursor..]}", cursor - 1]
+          previous = GraphemeCursor.previous(safe_text, safe_cursor)
+          ["#{safe_text[0...previous]}#{safe_text[safe_cursor..]}", previous]
         end
 
         # Applies an editor operation (an EditOp-shaped object carrying
@@ -48,9 +54,12 @@ module Shoko
 
         # @return [Array(String, Integer)]
         def delete_at(text, cursor)
-          return [text, cursor] if cursor >= text.length
+          safe_text = text.to_s
+          safe_cursor = GraphemeCursor.clamp(safe_text, cursor)
+          return [safe_text, safe_cursor] if safe_cursor >= safe_text.length
 
-          ["#{text[0...cursor]}#{text[(cursor + 1)..]}", cursor]
+          following = GraphemeCursor.next(safe_text, safe_cursor)
+          ["#{safe_text[0...safe_cursor]}#{safe_text[following..]}", safe_cursor]
         end
       end
     end

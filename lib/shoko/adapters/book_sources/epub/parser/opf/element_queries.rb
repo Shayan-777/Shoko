@@ -24,7 +24,7 @@ module Shoko
             return [] unless element.is_a?(REXML::Element)
 
             normalized_names = names.map { |name| name.to_s.downcase }
-            element.attributes.each_attribute.each_with_object([]) do |attribute, values|
+            element.attributes.each_attribute.with_object([]) do |attribute, values|
               values << attribute.value if attribute_name_matches?(attribute, normalized_names)
             end
           end

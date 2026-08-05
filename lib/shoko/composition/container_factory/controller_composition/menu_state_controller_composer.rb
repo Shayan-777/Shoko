@@ -63,11 +63,16 @@ module Shoko
               reader_launch_service: reader_launch_service
             )
             relays = build_async_relays(context: context)
+            attach_state_controller(menu, context, reader_launch_service: reader_launch_service,
+                                                   workflow_ports: workflow_ports, relays: relays)
+          end
+
+          def attach_state_controller(menu, context, reader_launch_service:, workflow_ports:, relays:)
             menu.attach_workflow_relays(relays.values)
-            build_state_controller(context: context,
-                                   reader_launch_service: reader_launch_service,
-                                   workflow_ports: workflow_ports,
-                                   relays: relays)
+            build_state_controller(
+              context: context, reader_launch_service: reader_launch_service,
+              workflow_ports: workflow_ports, relays: relays
+            )
           end
 
           def build_state_controller(context:, reader_launch_service:, workflow_ports:, relays:)

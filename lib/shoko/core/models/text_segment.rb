@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
 require_relative '../../shared/hash_normalizer'
+require_relative 'value_normalizer'
 
 module Shoko
   module Core
     module Models
       # Represents a contiguous run of text with associated inline styles.
-      TextSegment = Struct.new(:text, :styles) do
+      TextSegment = Data.define(:text, :styles) do
         def initialize(text:, styles: nil)
-          super(text: text.to_s, styles: (Shoko::Shared::HashNormalizer.deep_symbolize(styles) || {}).freeze)
+          normalized_styles = Shoko::Shared::HashNormalizer.deep_symbolize(styles) || {}
+          super(text: ValueNormalizer.immutable(text.to_s), styles: ValueNormalizer.immutable(normalized_styles))
         end
 
         def length

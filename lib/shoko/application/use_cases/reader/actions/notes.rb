@@ -47,10 +47,12 @@ module Shoko
             private
 
             def routes
-              @routes ||= {
-                open_notes: route(payload: :raw, result: :handled) do |payload|
-                  @reader_notes_control.open_notes_lookup(payload)
-                end,
+              @routes ||= note_command_routes.merge(note_editor_routes).freeze
+            end
+
+            def note_command_routes
+              {
+                open_notes: open_notes_route,
                 close_notes: route(result: :handled) { @reader_notes_control.close_notes_lookup },
                 notes_move_up: route(payload: :delta, result: :handled) do |delta|
                   @reader_notes_control.move_notes_selection(delta)
@@ -62,13 +64,22 @@ module Shoko
                 notes_edit: route(result: :handled) { @reader_notes_control.edit_selected_note },
                 notes_new: route(result: :handled) { @reader_notes_control.new_note },
                 notes_delete: route(result: :handled) { @reader_notes_control.delete_selected_note },
+              }
+            end
+
+            def open_notes_route
+              route(payload: :raw, result: :handled) { |payload| @reader_notes_control.open_notes_lookup(payload) }
+            end
+
+            def note_editor_routes
+              {
                 edit_note: route(payload: :edit_op, result: :handled) do |op|
                   @reader_notes_control.edit_note_input(op)
                 end,
                 note_cursor_move: route(payload: :direction, result: :handled) do |direction|
                   @reader_notes_control.move_note_cursor(direction)
                 end,
-              }.freeze
+              }
             end
 
             def supported_payloads

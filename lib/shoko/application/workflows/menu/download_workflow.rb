@@ -102,7 +102,7 @@ module Shoko
 
           # Requests cancellation of the active download (Esc). The worker's
           # progress callback notices the flag and aborts the stream.
-          def cancel_active_download
+          def cancel_active_download?
             return false unless network_in_flight?
 
             @cancel_requested = true
@@ -163,8 +163,9 @@ module Shoko
           def relay_download_cancelled(title, source)
             @async_relay.enqueue do
               finish_network_request
+              message = "Cancelled download of #{title} from #{download_source_label(source)}"
               update_download_state(download_status: :idle,
-                                    download_message: "Cancelled download of #{title} from #{download_source_label(source)}",
+                                    download_message: message,
                                     download_progress: 0.0)
             end
           end

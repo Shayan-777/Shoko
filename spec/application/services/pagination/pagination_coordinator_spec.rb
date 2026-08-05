@@ -170,10 +170,10 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       coordinator.instance_variable_set(:@pagination_runtime, instance_double(Shoko::Application::Services::Pagination::PaginationRuntime))
       allow(async_executor).to receive(:submit) # leave the job in flight
 
-      expect(coordinator.refresh_after_resize(width: 100, height: 40)).to be(true)
+      expect(coordinator.refresh_after_resize?(width: 100, height: 40)).to be(true)
       expect(coordinator.recalculating?).to be(true)
       # a resize arriving while one is in flight coalesces — no second job
-      expect(coordinator.refresh_after_resize(width: 120, height: 50)).to be(false)
+      expect(coordinator.refresh_after_resize?(width: 120, height: 50)).to be(false)
       expect(async_executor).to have_received(:submit).once
     end
 
@@ -184,7 +184,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       captured_job = nil
       allow(async_executor).to receive(:submit) { |&block| captured_job = block }
 
-      coordinator.refresh_after_resize(width: 100, height: 40)
+      coordinator.refresh_after_resize?(width: 100, height: 40)
       expect(coordinator.recalculating?).to be(true)
 
       captured_job.call

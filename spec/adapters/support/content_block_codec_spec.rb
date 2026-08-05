@@ -3,7 +3,7 @@
 require 'spec_helper'
 require 'json'
 
-RSpec.describe Shoko::Core::Models::ContentBlockPayload do
+RSpec.describe Shoko::Adapters::Support::ContentBlockCodec do
   def block(**overrides)
     Shoko::Core::Models::ContentBlock.new(
       **{
@@ -15,8 +15,7 @@ RSpec.describe Shoko::Core::Models::ContentBlockPayload do
     )
   end
 
-  # Blocks reach the JSON article cache and the frozen state tree, and JSON
-  # turns every Symbol into a String on the way back.
+  # JSON turns every Symbol into a String on the way back.
   it 'round-trips a block through JSON without loss' do
     payload = JSON.parse(JSON.generate(described_class.dump([block])))
 
@@ -37,8 +36,10 @@ RSpec.describe Shoko::Core::Models::ContentBlockPayload do
     expect(payload.first[:segments].first[:styles].keys).to all(be_a(String))
   end
 
-  it 'is admissible into the frozen state tree' do
-    expect { Shoko::Shared::DeepStructure.admit(described_class.dump([block])) }.not_to raise_error
+  it 'keeps nested metadata JSON-safe' do
+    payload = described_class.dump([block(metadata: { table: { rows: [{ align: :right }] } })])
+
+    expect(payload.first[:metadata]).to eq('table' => { 'rows' => [{ 'align' => 'right' }] })
   end
 
   it 'canonicalizes block-type aliases' do

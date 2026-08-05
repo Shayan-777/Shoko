@@ -28,6 +28,37 @@ RSpec.describe Shoko::Adapters::BookSources::ImportBudget do
       .to raise_error(Shoko::BookParseError, /PDF stream exceeds 64 bytes/)
   end
 
+  it 'round-trips generated deflate streams only within the configured bound' do
+    random = Random.new(20_260_805)
+
+    100.times do
+      expanded = random.bytes(random.rand(0..1024))
+      budget = described_class.new(
+        path: 'generated-stream',
+        max_expanded_item_bytes: 1024,
+        max_expanded_bytes: 1024
+      )
+
+      expect(budget.inflate(Zlib::Deflate.deflate(expanded))).to eq(expanded)
+    end
+  end
+
+  it 'fails closed for every generated expansion above the configured bound' do
+    random = Random.new(20_260_806)
+
+    50.times do
+      expanded = random.bytes(random.rand(65..512))
+      compressed = Zlib::Deflate.deflate(expanded)
+      budget = described_class.new(
+        path: 'generated-stream',
+        max_expanded_item_bytes: 64,
+        max_expanded_bytes: 1024
+      )
+
+      expect { budget.inflate(compressed) }.to raise_error(Shoko::BookParseError, /exceeds 64 bytes/)
+    end
+  end
+
   it 'accounts expanded data across independent records' do
     budget = described_class.new(
       path: 'hostile.mobi',

@@ -3,7 +3,7 @@
 
 # Visual fidelity harness: drives bin/shoko on a PTY, interprets the ANSI
 # stream into a screen grid, and dumps the page as plain text. Use it to
-# eyeball formatting changes against the books in testbooks/.
+# eyeball formatting changes against a book from the external fixture corpus.
 #
 #   ruby script/visual/capture_page.rb BOOK [keys] [cols] [rows]
 #

@@ -3,7 +3,7 @@
 How Shoko's snappiness is measured, what was fixed in the 2026-06 performance
 overhaul, and how to re-run the numbers. All measurements drive the real
 `bin/shoko` binary on a PTY against a sandboxed 12-book library (epub, fb2,
-rtf, mobi, and three PDFs from `testbooks/`) at 220x56 — nothing is mocked,
+rtf, mobi, and three PDFs from the external fixture corpus) at 220x56 — nothing is mocked,
 and the latencies are what a user sees on screen.
 
 ## The harness
@@ -26,6 +26,9 @@ repaints can never fake a fast result.
 ruby script/bench/menu_responsiveness_benchmark.rb --sandbox /tmp/shoko-bench --keep --out menu.json
 ruby script/bench/reader_open_benchmark.rb --sandbox /tmp/shoko-bench --out reader.json
 ```
+
+Set `SHOKO_FIXTURES_DIR` to the extracted corpus directory, or place it at
+`tmp/book-fixtures`. See [book-fixtures.md](book-fixtures.md).
 
 ## 2026-06 overhaul: background pre-pagination off the GIL
 

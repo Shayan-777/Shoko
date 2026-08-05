@@ -17,7 +17,6 @@ module Shoko
 
             SETTINGS_ACTIONS = Shoko::Application::Ports::Inbound::MenuCatalog.settings_actions
             MOVE_INTENTS = %i[move_settings_selection_up move_settings_selection_down].freeze
-
             SUPPORTED_INTENTS = %i[
               move_settings_selection_up
               move_settings_selection_down
@@ -137,18 +136,25 @@ module Shoko
             end
 
             def wipe_cache
-              menu = current_menu
-              @settings_service.wipe_cache(
-                catalog: @catalog,
-                cached: menu.wipe_cache_cached? || nil,
-                downloads: menu.wipe_cache_downloads? || nil,
-                dictionary: menu.wipe_cache_dictionary? || nil,
-                nuke: menu.wipe_cache_nuke? || nil,
-                annotations: menu.wipe_cache_annotations? || nil,
-                bookmarks: menu.wipe_cache_bookmarks? || nil,
-                progress: menu.wipe_cache_progress? || nil,
-                config_file: menu.wipe_cache_config? || nil
-              )
+              @settings_service.wipe_cache(**wipe_cache_options(current_menu))
+            end
+
+            def wipe_cache_options(menu)
+              { catalog: @catalog, **wipe_book_options(menu), **wipe_state_options(menu) }
+            end
+
+            def wipe_book_options(menu)
+              {
+                cached: menu.wipe_cache_cached? || nil, downloads: menu.wipe_cache_downloads? || nil,
+                dictionary: menu.wipe_cache_dictionary? || nil, nuke: menu.wipe_cache_nuke? || nil
+              }
+            end
+
+            def wipe_state_options(menu)
+              {
+                annotations: menu.wipe_cache_annotations? || nil, bookmarks: menu.wipe_cache_bookmarks? || nil,
+                progress: menu.wipe_cache_progress? || nil, config_file: menu.wipe_cache_config? || nil
+              }
             end
 
             def toggle_wipe_cache_flag(key, default:)

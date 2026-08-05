@@ -4,6 +4,7 @@ require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 require 'shoko/shared/text_sanitizer'
+require 'shoko/core/services/text_buffer_edit'
 
 module Shoko
   module Application
@@ -67,11 +68,16 @@ module Shoko
               }
             end
 
-            def apply_search_edit(op)
-              case op.operation
-              when :insert    then insert_query_text(op.text)
-              when :backspace then write_query(view_snapshot.search_query.to_s[0...-1].to_s)
+            def apply_search_edit(operation)
+              case operation.operation
+              when :insert    then insert_query_text(operation.text)
+              when :backspace then write_query(without_last_grapheme(view_snapshot.search_query))
               end
+            end
+
+            def without_last_grapheme(query)
+              text = query.to_s
+              Shoko::Core::Services::TextBufferEdit.backspace_at(text, text.length).first
             end
 
             def insert_query_text(text)
@@ -90,9 +96,8 @@ module Shoko
             # re-submit.
             def confirm_search
               snapshot = view_snapshot
-              if query_stale?(snapshot)
-                @reader_search_control.submit_search_session
-              elsif (selected = selected_result(snapshot))
+              selected = selected_result(snapshot) unless query_stale?(snapshot)
+              if selected
                 @reader_search_control.open_search_result(selected)
               else
                 @reader_search_control.submit_search_session

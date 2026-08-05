@@ -4,16 +4,14 @@ require 'json'
 require 'spec_helper'
 require_relative '../../../../lib/shoko/adapters/storage/cache/epub/serializer'
 
-RSpec.describe 'PDF real document regressions' do
-  let(:testbooks_dir) { File.expand_path('../../../../testbooks', __dir__) }
+RSpec.describe 'PDF real document regressions', :requires_book_fixtures do
   let(:decline_path) do
-    File.join(
-      testbooks_dir,
+    book_fixture_path(
       'The Decline of the West An Abridged Edition (Oswald Spengler) (an abridged edition)).pdf'
     )
   end
   let(:losurdo_path) do
-    File.join(testbooks_dir, 'class struggle A Political and Philosophical History (Domenico Losurdo).pdf')
+    book_fixture_path('class struggle A Political and Philosophical History (Domenico Losurdo).pdf')
   end
 
   it 'extracts readable title-page and body text from the scanned Decline PDF' do

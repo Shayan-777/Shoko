@@ -1,18 +1,19 @@
 # frozen_string_literal: true
 
 require_relative '../../shared/hash_normalizer'
+require_relative 'value_normalizer'
 
 module Shoko
   module Core
     module Models
       # Represents a unit of formatted content (heading, paragraph, list item, etc.).
-      ContentBlock = Struct.new(:type, :segments, :level, :metadata) do
+      ContentBlock = Data.define(:type, :segments, :level, :metadata) do
         def initialize(type:, segments:, level: 0, metadata: nil)
           super(
             type: type,
-            segments: segments || [],
-            level: level,
-            metadata: Shoko::Shared::HashNormalizer.deep_symbolize(metadata) || {}
+            segments: ValueNormalizer.immutable(Array(segments)),
+            level: Integer(level),
+            metadata: normalized_metadata(metadata)
           )
         end
 
@@ -22,6 +23,13 @@ module Shoko
 
         def heading_level
           (metadata && metadata[:level]) || level
+        end
+
+        private
+
+        def normalized_metadata(metadata)
+          normalized = Shoko::Shared::HashNormalizer.deep_symbolize(metadata) || {}
+          ValueNormalizer.immutable(normalized)
         end
       end
     end

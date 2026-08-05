@@ -10,6 +10,7 @@ module Shoko
   module Application
     module Ports
       module Outbound
+        # Immutable state snapshots exposed by outbound state ports.
         module State
           # Composite reader snapshot covering the full `state[:reader]`
           # partition: domain reading + application process + application
@@ -40,18 +41,20 @@ module Shoko
             loading_mirror: true
           )
 
-          ReaderSnapshot.class_eval do
-            VIEW_LOADING_FIELDS = Shoko::Application::State::Schema::ReaderView::LOADING_FIELDS
-            VIEW_LOADING_UPDATE_PATHS = {
-              loading_active: %i[ui loading_active],
-              loading_message: %i[ui loading_message],
-              loading_progress: %i[ui loading_progress],
+          ReaderSnapshot.const_set(:VIEW_LOADING_FIELDS, Shoko::Application::State::Schema::ReaderView::LOADING_FIELDS)
+          ReaderSnapshot.const_set(
+            :VIEW_LOADING_UPDATE_PATHS,
+            {
+              loading_active: %i[ui loading_active], loading_message: %i[ui loading_message],
+              loading_progress: %i[ui loading_progress]
             }.freeze
+          )
 
+          ReaderSnapshot.class_eval do
             def to_state_updates
               support = Shoko::Application::State::SnapshotFactory
               support
-                .root_state_updates_except(self, root: :reader, skipped_fields: VIEW_LOADING_FIELDS)
+                .root_state_updates_except(self, root: :reader, skipped_fields: self.class::VIEW_LOADING_FIELDS)
                 .merge(
                   support.mapped_state_updates(
                     {
@@ -59,7 +62,7 @@ module Shoko
                       loading_message: loading_message,
                       loading_progress: loading_progress,
                     },
-                    VIEW_LOADING_UPDATE_PATHS
+                    self.class::VIEW_LOADING_UPDATE_PATHS
                   )
                 )
             end

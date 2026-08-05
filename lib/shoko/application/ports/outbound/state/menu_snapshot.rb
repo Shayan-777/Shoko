@@ -8,6 +8,7 @@ module Shoko
   module Application
     module Ports
       module Outbound
+        # Immutable state snapshots exposed by outbound state ports.
         module State
           # Composite menu snapshot covering the full `state[:menu]` partition:
           # the durable process slice + the transient workflow slice.

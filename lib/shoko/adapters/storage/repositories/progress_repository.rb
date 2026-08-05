@@ -6,6 +6,7 @@ require_relative 'base_repository'
 require_relative 'storage/progress_file_store'
 require 'shoko/application/ports/outbound/progress_repository'
 require 'shoko/core/models/reading_progress'
+require 'shoko/adapters/storage/codecs/reading_progress_codec'
 
 module Shoko
   module Adapters
@@ -67,7 +68,7 @@ module Shoko
 
             begin
               progress_hash = @storage.load(book_path)
-              Shoko::Core::Models::ReadingProgress.from_h(progress_hash)
+              Codecs::ReadingProgressCodec.load(progress_hash)
             rescue Shoko::Error => e
               handle_storage_error(e, "loading progress for #{book_path}")
             end
@@ -78,7 +79,7 @@ module Shoko
           # @return [Hash<String, Core::Models::ReadingProgress>] Hash mapping book paths to progress data
           def find_all
             all_progress = @storage.load_all
-            all_progress.transform_values { |progress_hash| Shoko::Core::Models::ReadingProgress.from_h(progress_hash) }
+            all_progress.transform_values { |progress_hash| Codecs::ReadingProgressCodec.load(progress_hash) }
           rescue Shoko::Error => e
             handle_storage_error(e, 'loading all progress data')
           end

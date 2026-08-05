@@ -5,6 +5,7 @@ require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/text_sanitizer'
 require_relative '../ui/cursor_blink'
 require 'shoko/core/services/annotation_list_input'
+require 'shoko/core/services/text_buffer_edit'
 require_relative '../ui/annotation_markup'
 require_relative '../ui/text_utils'
 require_relative '../menu_design/canvas_frame'
@@ -84,8 +85,7 @@ module Shoko
               update_annotation_edit_from do |text, cursor|
                 next nil if cursor <= 0
 
-                prev_cursor = cursor - 1
-                [text[0...prev_cursor] + text[(prev_cursor + 1)..].to_s, prev_cursor]
+                Shoko::Core::Services::TextBufferEdit.backspace_at(text, cursor)
               end
               record_cursor_activity
             end

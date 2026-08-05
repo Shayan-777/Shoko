@@ -3,6 +3,7 @@
 require 'shoko/shared/index_range'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/mouse_button'
+require 'shoko/core/services/grapheme_cursor'
 
 module Shoko
   module Adapters
@@ -54,7 +55,8 @@ module Shoko
             end
 
             def current_source_cursor
-              @menu_state_reader.translator_input_cursor.to_i.clamp(0, translator_input_length)
+              text = @menu_state_reader.translator_input_text.to_s
+              Shoko::Core::Services::GraphemeCursor.clamp(text, @menu_state_reader.translator_input_cursor)
             end
 
             def translator_input_length
@@ -268,16 +270,24 @@ module Shoko
 
             def replace_source_text(pasted_text)
               current_text = @menu_state_reader.translator_input_text.to_s
-              start_index, end_index = replacement_range(current_context_menu || {}, current_text.length)
+              start_index, end_index = replacement_range(current_context_menu || {}, current_text)
               next_text = current_text[0...start_index].to_s + pasted_text + current_text[end_index..].to_s
               next_cursor = start_index + pasted_text.length
               update_menu(source_text_payload(next_text, next_cursor))
             end
 
-            def replacement_range(menu, current_length)
-              return Shoko::Shared::IndexRange.ordered(current_selection) if replace_source_selection?(menu)
+            def replacement_range(menu, current_text)
+              if replace_source_selection?(menu)
+                start_index, end_index = Shoko::Shared::IndexRange.ordered(current_selection)
+                return [
+                  Shoko::Core::Services::GraphemeCursor.clamp(current_text, start_index),
+                  Shoko::Core::Services::GraphemeCursor.ceiling(current_text, end_index),
+                ]
+              end
 
-              index = menu.fetch(:paste_index, current_source_cursor).to_i.clamp(0, current_length)
+              index = Shoko::Core::Services::GraphemeCursor.clamp(
+                current_text, menu.fetch(:paste_index, current_source_cursor)
+              )
               [index, index]
             end
 
@@ -297,10 +307,11 @@ module Shoko
             end
 
             def focus_source_input(index)
+              text = @menu_state_reader.translator_input_text.to_s
               update_menu(
                 mode: :translator,
                 translator_focus: :input,
-                translator_input_cursor: index.to_i.clamp(0, translator_input_length),
+                translator_input_cursor: Shoko::Core::Services::GraphemeCursor.clamp(text, index),
                 translator_selection: nil,
                 translator_context_menu: nil
               )

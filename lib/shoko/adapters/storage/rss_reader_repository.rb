@@ -7,6 +7,7 @@ require 'json'
 
 require_relative '../../core/models/rss_feed'
 require_relative '../../core/models/rss_article'
+require_relative 'codecs/rss_codec'
 require_relative '../../shared/errors'
 require_relative 'atomic_file_writer'
 require_relative 'config_paths'
@@ -146,9 +147,9 @@ module Shoko
           @body_ids = body_ids_from(rows, version)
           {
             schema_version: SCHEMA_VERSION,
-            feeds: Array(payload[:feeds]).map { |row| Shoko::Core::Models::RssFeed.from_h(row) },
+            feeds: Array(payload[:feeds]).map { |row| Codecs::RssCodec.load_feed(row) },
             articles: rows.map do |row|
-              Shoko::Core::Models::RssArticle.from_h(article_payload(row, version))
+              Codecs::RssCodec.load_article(article_payload(row, version))
             end,
           }
         end
@@ -177,7 +178,7 @@ module Shoko
           return { content: '', content_blocks: [] } unless File.exist?(path)
 
           payload = normalize_hash_keys(JSON.parse(File.read(path)))
-          { content: payload[:content].to_s, content_blocks: Array(payload[:content_blocks]) }
+          Codecs::RssCodec.load_body(payload)
         # resilient-boundary
         rescue StandardError => e
           record_article_body_load_error(e, path)
@@ -203,13 +204,13 @@ module Shoko
         def coerce_feed(feed)
           return feed if feed.is_a?(Shoko::Core::Models::RssFeed)
 
-          Shoko::Core::Models::RssFeed.from_h(feed)
+          Codecs::RssCodec.load_feed(feed)
         end
 
         def coerce_article(article)
           return article if article.is_a?(Shoko::Core::Models::RssArticle)
 
-          Shoko::Core::Models::RssArticle.from_h(article)
+          Codecs::RssCodec.load_article(article)
         end
 
         def raise_storage_error(operation, error)
@@ -255,15 +256,15 @@ module Shoko
         def serialized_snapshot(feeds:, articles:)
           {
             schema_version: SCHEMA_VERSION,
-            feeds: Array(feeds).map { |feed| coerce_feed(feed).to_h },
+            feeds: Array(feeds).map { |feed| Codecs::RssCodec.dump_feed(coerce_feed(feed)) },
             articles: Array(articles).map { |article| serialized_article_metadata(coerce_article(article)) },
           }
         end
 
         def serialized_article_metadata(article)
-          article.to_h
-                 .except(:content, :content_blocks)
-                 .merge(has_body: article_body?(article) || @body_ids.include?(article.id))
+          Codecs::RssCodec.dump_article(article)
+                          .except(:content, :content_blocks)
+                          .merge(has_body: article_body?(article) || @body_ids.include?(article.id))
         end
 
         def persist_changed_bodies(previous_articles, articles)
@@ -280,7 +281,7 @@ module Shoko
           @file_utils.mkdir_p(File.dirname(path))
           @atomic_file_writer.write(
             path,
-            JSON.generate(content: article.content, content_blocks: article.content_blocks)
+            JSON.generate(Codecs::RssCodec.dump_body(article))
           )
           @body_ids[article.id] = true
         end

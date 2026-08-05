@@ -14,6 +14,7 @@ require 'shoko/shared/terminal/text_metrics'
 require 'shoko/shared/hash_normalizer'
 require 'shoko/shared/terminal/ansi'
 require 'shoko/core/services/language_directory'
+require 'shoko/core/services/grapheme_cursor'
 require_relative 'translator_text_layout'
 
 module Shoko
@@ -162,11 +163,11 @@ module Shoko
             # source pane actually renders, preserving the column. The new cursor is persisted to
             # translator_input_cursor, the same field the renderer reads.
             def handle_move_left
-              write_cursor([source_cursor - 1, 0].max)
+              write_cursor(Shoko::Core::Services::GraphemeCursor.previous(translator_input_text, source_cursor))
             end
 
             def handle_move_right
-              write_cursor([source_cursor + 1, translator_input_text.length].min)
+              write_cursor(Shoko::Core::Services::GraphemeCursor.next(translator_input_text, source_cursor))
             end
 
             def handle_move_up
@@ -712,7 +713,7 @@ module Shoko
             attr_reader :menu_state_reader, :menu_session_mutator
 
             def source_cursor
-              translator_input_cursor.clamp(0, translator_input_text.length)
+              Shoko::Core::Services::GraphemeCursor.clamp(translator_input_text, translator_input_cursor)
             end
 
             def source_body_width
@@ -720,7 +721,8 @@ module Shoko
             end
 
             def write_cursor(cursor)
-              menu_session_mutator&.update_menu(translator_input_cursor: cursor)
+              normalized = Shoko::Core::Services::GraphemeCursor.clamp(translator_input_text, cursor)
+              menu_session_mutator&.update_menu(translator_input_cursor: normalized)
               record_cursor_activity
             end
 
@@ -730,7 +732,7 @@ module Shoko
               line_index, column = visual_cursor_line_and_column(layouts, source_cursor)
               target_line = layouts[(line_index + delta).clamp(0, layouts.length - 1)]
               new_cursor, = index_for_line_column(target_line, column)
-              write_cursor(new_cursor.clamp(0, text.length))
+              write_cursor(new_cursor)
             end
 
             # Locate the cursor's visual line and display column within the rendered (wrapped) layout,
@@ -824,15 +826,18 @@ module Shoko
             def cursor_column_for_line(line, cursor_index, width)
               return nil unless cursor_index
 
-              line.clusters.each do |cluster|
-                return cluster.column_start if cursor_index >= cluster.start_index && cursor_index < cluster.end_index
-              end
+              containing = line.clusters.find { |cluster| cursor_inside_cluster?(cursor_index, cluster) }
+              return containing.column_start if containing
               return nil unless cursor_index == line.end_index
 
               last = line.clusters.last
               return nil if last && last.column_end >= width
 
               last ? last.column_end : 0
+            end
+
+            def cursor_inside_cluster?(cursor_index, cluster)
+              cursor_index >= cluster.start_index && cursor_index < cluster.end_index
             end
 
             # Selected clusters take the family selection strip; every cluster
@@ -864,7 +869,7 @@ module Shoko
               return nil unless kind == :source && show_input_cursor?
               return nil if selection
 
-              translator_input_cursor.clamp(0, translator_input_text.length)
+              source_cursor
             end
 
             def cluster_selected?(cluster, selection)
@@ -879,7 +884,7 @@ module Shoko
               layouts = body_layouts(kind, width).dup
               return layouts unless needs_cursor_overflow_line?(kind, layouts, width)
 
-              cursor_index = translator_input_cursor.clamp(0, translator_input_text.length)
+              cursor_index = source_cursor
               layouts << @text_layout.empty_line(cursor_index)
             end
 
@@ -908,7 +913,7 @@ module Shoko
             def needs_cursor_overflow_line?(kind, layouts, width)
               return false unless kind == :source && show_input_cursor? && selection_for_kind(:source).nil?
 
-              cursor_index = translator_input_cursor.clamp(0, translator_input_text.length)
+              cursor_index = source_cursor
               last_line = layouts.last || @text_layout.empty_line
               cursor_index == last_line.end_index && last_line.clusters.last&.column_end.to_i >= width
             end

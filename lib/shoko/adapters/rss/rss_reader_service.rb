@@ -4,7 +4,7 @@ require 'digest'
 require_relative 'article_block_sanitizer'
 require_relative 'article_body_hydrator'
 require_relative 'rss_projection'
-require 'shoko/core/models/content_block_payload'
+require 'shoko/adapters/support/content_block_codec'
 
 require_relative '../../core/models/rss_article'
 require_relative '../../core/models/rss_feed'
@@ -262,19 +262,19 @@ module Shoko
           sanitize_text(content_source, preserve_newlines: true, max_length: self.class::MAX_CONTENT_LENGTH)
         end
 
-        # Blocks arrive as ContentBlocks from the parser (or as stored payloads
-        # when an article round-trips); both are sanitized, bounded, and stored
-        # in the plain wire shape.
+        # Blocks arrive as ContentBlocks from the parser. Hash payloads are
+        # accepted only at this adapter boundary for compatibility with feed
+        # clients that pre-serialize their parsed content.
         def sanitized_article_blocks(payload)
           blocks = payload[:content_blocks]
           return [] if blocks.nil? || Array(blocks).empty?
 
           parsed = Array(blocks).first.is_a?(Shoko::Core::Models::ContentBlock) ? blocks : blocks_from_payload(blocks)
-          Shoko::Core::Models::ContentBlockPayload.dump(@block_sanitizer.call(parsed))
+          @block_sanitizer.call(parsed)
         end
 
         def blocks_from_payload(blocks)
-          Shoko::Core::Models::ContentBlockPayload.load(blocks)
+          Shoko::Adapters::Support::ContentBlockCodec.load(blocks)
         end
 
         def article_identity(payload)

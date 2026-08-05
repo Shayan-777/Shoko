@@ -7,6 +7,7 @@ module Shoko
   module Application
     module Ports
       module Outbound
+        # Immutable state snapshots exposed by outbound state ports.
         module State
           # Port-contract snapshot for the reader view-state slice.
           # Data contract for `Application::Ports::Outbound::ReaderViewStateStore`.
@@ -21,21 +22,23 @@ module Shoko
             loading_mirror: true
           )
 
+          ReaderViewSnapshot.const_set(
+            :LOADING_UPDATE_PATHS,
+            {
+              loading_active: %i[ui loading_active], loading_message: %i[ui loading_message],
+              loading_progress: %i[ui loading_progress]
+            }.freeze
+          )
+          ReaderViewSnapshot.const_set(:LOADING_FIELDS, Shoko::Application::State::Schema::ReaderView::LOADING_FIELDS)
+
           # Override to_state_updates so loading_* writes are routed to :ui
           # rather than :reader, preserving the existing canonical-location
           # invariant.
           ReaderViewSnapshot.class_eval do
-            LOADING_UPDATE_PATHS = {
-              loading_active: %i[ui loading_active],
-              loading_message: %i[ui loading_message],
-              loading_progress: %i[ui loading_progress],
-            }.freeze
-            LOADING_FIELDS = Shoko::Application::State::Schema::ReaderView::LOADING_FIELDS
-
             def to_state_updates
               support = Shoko::Application::State::SnapshotFactory
               support
-                .root_state_updates_except(self, root: :reader, skipped_fields: LOADING_FIELDS)
+                .root_state_updates_except(self, root: :reader, skipped_fields: self.class::LOADING_FIELDS)
                 .merge(
                   support.mapped_state_updates(
                     {
@@ -43,7 +46,7 @@ module Shoko
                       loading_message: loading_message,
                       loading_progress: loading_progress,
                     },
-                    LOADING_UPDATE_PATHS
+                    self.class::LOADING_UPDATE_PATHS
                   )
                 )
             end

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'shoko/core/services/annotation_list_input'
+require 'shoko/core/services/grapheme_cursor'
+require 'shoko/core/services/text_buffer_edit'
 require 'shoko/shared/text_sanitizer'
 
 module Shoko
@@ -22,9 +24,9 @@ module Shoko
             @writer = writer
           end
 
-          def apply(op)
-            case op.operation
-            when :insert then insert_text(op.text)
+          def apply(operation)
+            case operation.operation
+            when :insert then insert_text(operation.text)
             when :backspace then delete_character
             when :delete then delete_forward
             when :newline then insert_newline
@@ -45,9 +47,8 @@ module Shoko
             cursor = current_cursor
             return if cursor.zero?
 
-            text = current_text
-            new_text = text[0...(cursor - 1)] + text[cursor..].to_s
-            @writer.call(text: new_text, cursor: cursor - 1)
+            text, cursor = Shoko::Core::Services::TextBufferEdit.backspace_at(current_text, cursor)
+            @writer.call(text: text, cursor: cursor)
           end
 
           def delete_forward
@@ -55,8 +56,8 @@ module Shoko
             text = current_text
             return if cursor >= text.length
 
-            new_text = text[0...cursor] + text[(cursor + 1)..].to_s
-            @writer.call(text: new_text, cursor: cursor)
+            text, cursor = Shoko::Core::Services::TextBufferEdit.delete_at(text, cursor)
+            @writer.call(text: text, cursor: cursor)
           end
 
           def insert_newline
@@ -70,7 +71,9 @@ module Shoko
 
           def current_cursor
             value = @cursor_reader.call
-            value.nil? ? current_text.length : value.to_i.clamp(0, current_text.length)
+            return current_text.length if value.nil?
+
+            Shoko::Core::Services::GraphemeCursor.clamp(current_text, value)
           end
         end
       end

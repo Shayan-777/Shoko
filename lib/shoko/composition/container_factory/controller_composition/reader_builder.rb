@@ -429,29 +429,36 @@ module Shoko
             runtime = Shoko::Adapters::Input::Controllers::Reader::IntentRuntimeBridge.new(
               reader_controller: controller
             )
-
+            state_ports = {
+              reader_session_store: reader_session_store, reader_view_state_store: reader_view_state_store,
+              reader_view_mutator: reader_view_mutator, app_config_store: app_config_store,
+              notification_writer: notification_writer
+            }
             Shoko::Application::UseCases::ReaderIntentHandler.new(
-              navigation_service: controller.navigation_service,
-              bookmark_service: controller.bookmark_service,
-              reader_session_store: reader_session_store,
-              reader_view_state_store: reader_view_state_store,
-              reader_view_mutator: reader_view_mutator,
-              app_config_store: app_config_store,
-              notification_writer: notification_writer,
-              reader_overlay_control: runtime,
-              reader_popup_control: runtime,
-              reader_dictionary_control: runtime,
-              reader_search_control: runtime,
-              reader_toc_control: runtime,
-              reader_translator_control: runtime,
-              reader_notes_control: runtime,
-              reader_annotation_editor_control: runtime,
-              reader_lifecycle_control: runtime,
-              application_exit_control: runtime,
-              annotation_service: controller.annotation_service
+              **reader_intent_handler_options(controller, runtime, state_ports)
             )
           end
           private_class_method :build_reader_intent_handler
+
+          def reader_intent_handler_options(controller, runtime, state_ports)
+            {
+              navigation_service: controller.navigation_service,
+              bookmark_service: controller.bookmark_service,
+              **state_ports,
+              **reader_runtime_control_options(runtime),
+              annotation_service: controller.annotation_service,
+            }
+          end
+          private_class_method :reader_intent_handler_options
+
+          def reader_runtime_control_options(runtime)
+            %i[
+              reader_overlay_control reader_popup_control reader_dictionary_control reader_search_control
+              reader_toc_control reader_translator_control reader_notes_control reader_annotation_editor_control
+              reader_lifecycle_control application_exit_control
+            ].to_h { |key| [key, runtime] }
+          end
+          private_class_method :reader_runtime_control_options
 
           def deps
             Shoko::Adapters::Input::Controllers::Dependencies

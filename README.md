@@ -131,8 +131,14 @@ bundle exec rspec                  # full suite
 Real-book fixtures (opt-in):
 
 ```bash
-SHOKO_BOOK_FIXTURES=1 SHOKO_FIXTURES_DIR=/path/to/fixtures bundle exec rake test:fixtures
+# Extract the separately hosted book-fixtures-v1 release into tmp/book-fixtures first.
+SHOKO_BOOK_FIXTURES=1 bundle exec rake test:fixtures
 ```
+
+Copyrighted and public-domain book binaries are deliberately not stored in
+Git. The nightly fixture workflow downloads a checksum-verified release asset;
+local setup and the required filenames are documented in
+[`docs/book-fixtures.md`](docs/book-fixtures.md).
 
 Benchmark scripts live in `script/bench/` (startup first paint, snappiness, and state-store hot path):
 
@@ -141,8 +147,8 @@ bundle exec ruby script/bench/startup_menu_benchmark.rb
 ```
 
 End-to-end snappiness benchmarks drive the real `bin/shoko` on a PTY against a
-sandboxed library (built once from `testbooks/`, never touching your config or
-cache) and measure what a user feels: keypress→paint latency, paint gaps while
+sandboxed library (built once from `SHOKO_FIXTURES_DIR` or
+`tmp/book-fixtures`, never touching your config or cache) and measure what a user feels: keypress→paint latency, paint gaps while
 background pre-pagination runs, warmup wall time, and reader open/page-turn
 latency:
 

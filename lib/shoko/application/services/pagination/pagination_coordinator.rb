@@ -39,7 +39,8 @@ module Shoko
           # @param app_config_store [Application::Ports::Outbound::AppConfigStore] Config snapshot store
           # @param reader_session_store [Application::Ports::Outbound::ReaderSessionStore] Reader snapshot store
           # @param reader_runtime_context [Application::Ports::Outbound::ReaderRuntimeContext] Live runtime context
-          # @param notification_writer [Application::Ports::Outbound::NotificationWriter, nil] Port for user-facing messages
+          # @param notification_writer [Application::Ports::Outbound::NotificationWriter, nil]
+          #   Port for user-facing messages
           def initialize(doc:, page_calculator:, layout_service:,
                          pagination_cache:, reader_render_requester:,
                          async_executor:, instrumentation:,
@@ -132,7 +133,7 @@ module Shoko
           # rebuild (vs. coalescing into one already in flight), so the caller can
           # invalidate width-keyed caches once per resize burst rather than every
           # frame while the rebuild runs.
-          def refresh_after_resize(width:, height:)
+          def refresh_after_resize?(width:, height:)
             return false if defer_page_map?
 
             start_job = false

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/hash_normalizer'
-
 module Shoko
   module Core
     module Models
@@ -34,42 +32,7 @@ module Shoko
           )
         end
 
-        def self.from_h(payload)
-          data = normalize_hash(payload)
-          new(
-            id: data[:id],
-            url: data[:url],
-            title: data[:title],
-            site_url: data[:site_url],
-            etag: data[:etag],
-            last_modified: data[:last_modified],
-            added_at: data[:added_at],
-            last_synced_at: data[:last_synced_at],
-            sync_error: data[:sync_error]
-          )
-        end
-
-        def to_h
-          {
-            id: id,
-            url: url,
-            title: title,
-            site_url: site_url,
-            etag: etag,
-            last_modified: last_modified,
-            added_at: added_at,
-            last_synced_at: last_synced_at,
-            sync_error: sync_error,
-          }
-        end
-
         private
-
-        def self.normalize_hash(payload)
-          raise ArgumentError, "rss feed payload must be a Hash, got #{payload.class}" unless payload.is_a?(Hash)
-
-          Shoko::Shared::HashNormalizer.symbolize_keys(payload)
-        end
 
         def blank_to_nil(value)
           text = value.to_s.strip

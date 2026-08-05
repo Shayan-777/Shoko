@@ -13,6 +13,7 @@ module Shoko
     module Input
       # Handles all input processing: key handling, popup management, mode switching
       class ReaderInputController
+        DIRECT_MODES = %i[annotation_editor help dictionary in_book_search toc translator notes].freeze
         ANNOTATION_EDITOR_SPELLCHECK_KEYS = ["\ed", "\eD"].freeze
         TRANSLATOR_HOME_KEYS = ["\e[H", "\e[1~", "\eOH", "\x01"].freeze # Home / Ctrl+A
         TRANSLATOR_END_KEYS = ["\e[F", "\e[4~", "\eOF", "\x05"].freeze  # End / Ctrl+E
@@ -106,24 +107,9 @@ module Shoko
           return unless @dispatcher
 
           @modal_mode_stack.clear
-          case mode
-          when :annotation_editor
-            @dispatcher.activate(:annotation_editor)
-          when :help
-            @dispatcher.activate(:help)
-          when :dictionary
-            @dispatcher.activate(:dictionary)
-          when :in_book_search
-            @dispatcher.activate(:in_book_search)
-          when :toc
-            @dispatcher.activate(:toc)
-          when :translator
-            @dispatcher.activate(:translator)
-          when :notes
-            @dispatcher.activate(:notes)
-          else
-            @dispatcher.activate_stack([:read])
-          end
+          return @dispatcher.activate(mode) if DIRECT_MODES.include?(mode)
+
+          @dispatcher.activate_stack([:read])
         end
 
         def enter_modal_mode(mode)
@@ -416,20 +402,19 @@ module Shoko
         def register_notes_bindings
           bindings = {}
           bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:cancel], :close_notes)
-          bind_intent!(bindings,
-                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:up],
-                       :notes_move_up,
-                       payload: selection_delta(-1))
-          bind_intent!(bindings,
-                       Shoko::Adapters::Support::KeyDefinitions::NAVIGATION[:down],
-                       :notes_move_down,
-                       payload: selection_delta(1))
+          bind_notes_movement(bindings)
           bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:confirm], :notes_confirm)
           bind_intent!(bindings, %w[e E], :notes_edit)
           bind_intent!(bindings, %w[n N], :notes_new)
           bind_intent!(bindings, ['d'], :notes_delete)
           bind_intent!(bindings, Shoko::Adapters::Support::KeyDefinitions::ACTIONS[:delete], :notes_delete)
           @dispatcher.register_mode(:notes, bindings)
+        end
+
+        def bind_notes_movement(bindings)
+          navigation = Shoko::Adapters::Support::KeyDefinitions::NAVIGATION
+          bind_intent!(bindings, navigation[:up], :notes_move_up, payload: selection_delta(-1))
+          bind_intent!(bindings, navigation[:down], :notes_move_down, payload: selection_delta(1))
         end
 
         # The notes compose editor is a free-form multi-line text field, so — like the

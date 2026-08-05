@@ -5,6 +5,7 @@ require_relative '../../constants/ui'
 require_relative '../ui/box_drawer'
 require_relative '../ui/cursor_blink'
 require 'shoko/core/services/annotation_list_input'
+require 'shoko/core/services/text_buffer_edit'
 require_relative 'annotation_text_box'
 require 'shoko/core/models/annotation_draft'
 
@@ -61,8 +62,7 @@ module Shoko
             def handle_backspace
               return unless @cursor_pos.positive?
 
-              @note.slice!(@cursor_pos - 1)
-              @cursor_pos -= 1
+              @note, @cursor_pos = Shoko::Core::Services::TextBufferEdit.backspace_at(@note, @cursor_pos)
               record_cursor_activity
             end
 

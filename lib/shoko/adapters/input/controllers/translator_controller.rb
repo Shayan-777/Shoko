@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'shoko/core/services/text_buffer_edit'
+require 'shoko/core/services/grapheme_cursor'
 require 'shoko/application/use_cases/requests/edit_op'
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_access'
@@ -34,6 +35,7 @@ module Shoko
         #     Source⇄Target, ↵ applies the language and re-translates, Esc backs out.
         class TranslatorController
           TextBufferEdit = Shoko::Core::Services::TextBufferEdit
+          GraphemeCursor = Shoko::Core::Services::GraphemeCursor
 
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
           include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeAccess
@@ -290,12 +292,12 @@ module Shoko
 
           def insert_source_text(text)
             current = @reader_state.translator_query.to_s
-            cursor = clamp_cursor(@reader_state.translator_cursor.to_i, current.length)
+            cursor = clamp_cursor(current, @reader_state.translator_cursor)
             sanitized = sanitize_pasted_text(text)
             return if sanitized.empty?
 
-            new_text = "#{current[0...cursor]}#{sanitized}#{current[cursor..]}"
-            @translator_ui_session.write_source(text: new_text, cursor: cursor + sanitized.length)
+            new_text, new_cursor = TextBufferEdit.insert_at(current, cursor, sanitized, literal: true)
+            @translator_ui_session.write_source(text: new_text, cursor: new_cursor)
           end
 
           def sanitize_pasted_text(text)
@@ -311,7 +313,7 @@ module Shoko
 
           def edit_source(edit_op)
             text = @reader_state.translator_query.to_s
-            cursor = clamp_cursor(@reader_state.translator_cursor.to_i, text.length)
+            cursor = clamp_cursor(text, @reader_state.translator_cursor)
             new_text, new_cursor = TextBufferEdit.apply(text, cursor, edit_op)
             @translator_ui_session.write_source(text: new_text, cursor: new_cursor)
           end
@@ -326,10 +328,10 @@ module Shoko
 
           def move_source_cursor(direction)
             text = @reader_state.translator_query.to_s
-            cursor = clamp_cursor(@reader_state.translator_cursor.to_i, text.length)
+            cursor = clamp_cursor(text, @reader_state.translator_cursor)
             target = case direction
-                     when :left  then [cursor - 1, 0].max
-                     when :right then [cursor + 1, text.length].min
+                     when :left  then GraphemeCursor.previous(text, cursor)
+                     when :right then GraphemeCursor.next(text, cursor)
                      when :home  then 0
                      when :end   then text.length
                      else cursor
@@ -337,8 +339,8 @@ module Shoko
             @translator_ui_session.write_cursor(target) if target != cursor
           end
 
-          def clamp_cursor(cursor, length)
-            cursor.clamp(0, length)
+          def clamp_cursor(text, cursor)
+            GraphemeCursor.clamp(text, cursor)
           end
 
           def scroll_result(delta)
@@ -388,7 +390,7 @@ module Shoko
             when :insert
               char = edit_op.text.to_s
               Shoko::Shared::TextSanitizer.printable_char?(char) ? "#{text}#{char}" : text
-            when :backspace then text[0...-1].to_s
+            when :backspace then TextBufferEdit.backspace_at(text, text.length).first
             else text
             end
           end

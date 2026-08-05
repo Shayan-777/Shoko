@@ -204,7 +204,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
 
       workflow.download_book({ title: 'Pride and Prejudice' })
       expect(menu_transient_store.load.download_status).to eq(:downloading)
-      expect(workflow.cancel_active_download).to be(true)
+      expect(workflow.cancel_active_download?).to be(true)
 
       deferred_executor.run_all
       workflow.process_pending_events

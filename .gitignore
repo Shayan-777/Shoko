@@ -1,6 +1,8 @@
 vendor/
 Gemfile.lock
 coverage/
+# Real-book corpora are external test inputs, never repository content.
+testbooks/
 spec/examples.txt
 tmp/
 pkg/*.gem
